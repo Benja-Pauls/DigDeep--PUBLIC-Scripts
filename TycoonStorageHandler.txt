@@ -1,0 +1,546 @@
+(LocalScript)
+Visuals for data menu associated with items inside of the tycoon's (business) storage
+-----------------------------------------------------------------------------------------------------------------------------------------------
+
+local Players = game:GetService("Players")
+local Player = Players.LocalPlayer
+local LocalLoadTycoon = game.ReplicatedStorage.Events.Tycoon.LocalLoadTycoon
+local MoveAllBaseScreenUI = game.ReplicatedStorage.Events.GUI.MoveAllBaseScreenUI
+local ComputerIsOn = false
+local TweenService = game:GetService("TweenService")
+local PlayerTycoon
+local TycoonComputer
+
+local TycoonStorageGui = script.Parent
+local ComputerScreen = TycoonStorageGui.ComputerScreen
+local BackButton = ComputerScreen.Taskbar.BackButton
+local FadeOut = ComputerScreen.FadeOut
+local function StartUpComputer()
+	ComputerIsOn = true
+	ComputerScreen.Visible = true
+	FadeOut.BackgroundTransparency = 0
+	wait(.7)
+	SetUpCredentials()
+end
+
+local function ShutDownComputer()
+	ComputerIsOn = false
+	for t = 1,20,1 do
+		wait(.02)
+		FadeOut.BackgroundTransparency = FadeOut.BackgroundTransparency - 0.05
+	end
+	TycoonComputer.Laptop:WaitForChild("E GUI").Enabled = false
+	TycoonStorageGui.ComputerScreen.Visible = false
+	ShutDownCutscene()
+end
+
+function SetUpCredentials()
+	--Get playeruser id from tycoon owner
+	local PlayerUserId = Player.UserId
+	
+	local stringTime = "%I:%M %p"
+	local timestamp = os.time()
+	ComputerScreen.CredentialsScreen.Time.Text = tostring(os.date(stringTime, timestamp))
+	
+	local PlayerThumbnail = ComputerScreen.CredentialsScreen.PlayerThumbnail
+	local thumbType = Enum.ThumbnailType.HeadShot
+	local thumbSize = Enum.ThumbnailSize.Size420x420
+	local PlayerProfilePicture = Players:GetUserThumbnailAsync(PlayerUserId, thumbType, thumbSize)
+	PlayerThumbnail.Image = PlayerProfilePicture
+	
+	ComputerScreen.DataTabSelect.Visible = false
+	ComputerScreen.SelectionMenu.Visible = false
+	ComputerScreen.ItemsPreview.Visible = false
+	ComputerScreen.Taskbar.Visible = false
+	ComputerScreen.CredentialsScreen.Visible = true
+	
+	ComputerScreen.CredentialsScreen.Username.Text = tostring(Player)
+	
+	--Fade-in login screen
+	
+	local PasswordInput = ComputerScreen.CredentialsScreen.Password
+	local KeyboardSound = script.Parent.KeyboardClick
+	for i = 1,4,1 do
+		PasswordInput:FindFirstChild(tostring(i)).Visible = false
+	end
+	for t = 1,20,1 do
+		print(FadeOut.BackgroundTransparency)
+		wait(.02)
+		FadeOut.BackgroundTransparency = FadeOut.BackgroundTransparency + 0.05
+	end
+	for i = 1,4,1 do
+		wait(1/i-.1)
+		if KeyboardSound.Playing then
+			KeyboardSound:Stop()
+		end
+		KeyboardSound:Play()
+		PasswordInput:FindFirstChild(tostring(i)).Visible = true
+	end
+	wait(1.5)
+	
+	ComputerScreen.DataTabSelect.Visible = true
+	BackButton.Position = UDim2.new(BackButton.Position.X.Scale, 0, 1, 0)
+	ComputerScreen.CredentialsScreen:TweenPosition(UDim2.new(-0.017,0,-1.3,0), "Out", "Quint", .5)
+	ComputerScreen.Taskbar.Visible = true
+	wait(.5)
+	
+	ComputerScreen.CredentialsScreen.Visible = false
+	ComputerScreen.CredentialsScreen.Position = UDim2.new(-0.017,0,-0.031,0)
+	
+	OpenDataTabScreen()
+end
+
+local SelectionMenu = TycoonStorageGui.ComputerScreen.SelectionMenu
+local ItemsPreview = TycoonStorageGui.ComputerScreen.ItemsPreview
+local DataTabSelect = TycoonStorageGui.ComputerScreen.DataTabSelect
+function OpenDataTabScreen() --Problem, with every time it opens: repeats button press
+	local stringTime = "%I:%M %p"
+	local timestamp = os.time()
+	ComputerScreen.Taskbar.Time.Text = tostring(os.date(stringTime, timestamp))
+	
+	local BeepSound = script.Parent.Beep
+	SelectionMenu.Visible = false
+	ItemsPreview.Visible = false
+	for i,button in pairs (DataTabSelect:GetChildren()) do
+		if button:IsA("ImageButton") then --and tostring(button) ~= "ShutDown" then
+			button.Activated:Connect(function()
+				print(tostring(button) .. " has been pressed")
+				BeepSound:Play()
+				OpenAffiliatedItemPreview(button)
+			end)
+		end
+	end
+end
+
+ComputerScreen.Taskbar.ShutDown.Activated:Connect(function()
+	SelectionMenu.CurrentSelection.Value = ""
+	SelectionMenu.CurrentRarity.Value = ""
+	SelectionMenu.PreviousSelection.Value = ""
+	--Move "back button" back
+	ShutDownComputer()
+end)
+
+function OpenAffiliatedItemPreview(button)
+	local MenuName = button.Name
+	if TycoonStorageGui.ComputerScreen.ItemsPreview:FindFirstChild(MenuName) then
+		TycoonStorageGui.ComputerScreen.SelectionMenu.Visible = true
+		local ItemsPreview = TycoonStorageGui.ComputerScreen.ItemsPreview
+		ItemsPreview.Visible = true
+		for i,menu in pairs (ItemsPreview:GetChildren()) do
+			if menu:IsA("Frame") then
+				if tostring(menu) == MenuName then
+					menu.Visible = true
+				else
+					menu.Visible = false
+				end
+			end
+		end
+		BackButton:TweenPosition(UDim2.new(BackButton.Position.X.Scale, 0, 0, 0), "Out", "Quint", 0.5)
+		ReadySelectionMenu(TycoonStorageGui.ComputerScreen.ItemsPreview:FindFirstChild(MenuName))
+	end
+end
+
+
+LocalLoadTycoon.OnClientEvent:Connect(function(tycoon)
+	PlayerTycoon = tycoon
+	TycoonComputer = tycoon:WaitForChild("Essentials"):WaitForChild("Computer")
+	local EGUI = script:FindFirstChild("E GUI")
+	local EGUIClone = EGUI:Clone()
+	--EGUIClone.Name = "E GUI"
+	EGUIClone.Parent = TycoonComputer:FindFirstChild("Laptop")
+	EInteract()
+	--local debounce = false
+	--TycoonComputer.Touched:Connect(function(hit)
+		--local TouchedPlayer = game.Players:GetPlayerFromCharacter(hit.Parent)
+		--if tostring(TouchedPlayer) == tostring(Player) then
+			--if debounce == false then
+				--debounce = true
+				--StartUpComputer()
+				--wait(1)
+				--debounce = false
+			--end
+		--end
+	--end)
+end)
+
+--------------<Current Selection Info>------------------------------------------------------------
+
+local function UpdateSelectionInfo(RarityMenu, tile)
+	local Menu = RarityMenu.Parent
+	local ItemInformation = game.ReplicatedStorage:FindFirstChild(tostring(Menu)):FindFirstChild(tostring(tile))
+	if tile.Discovered.Value == true then
+		SelectionMenu.Picture.Image = ItemInformation["GUI Info"].InventoryImage.Value
+		SelectionMenu:FindFirstChild("Name").Text = tostring(tile)
+		SelectionMenu.Amount.Text = tostring(tile.AmountInStorage.Value)
+		tile.AmountInStorage.Changed:Connect(function()
+			if tostring(tile) == SelectionMenu.CurrentSelection.Value then
+				SelectionMenu.Amount.Text = tostring(tile.AmountInStorage.Value)
+			end
+		end)
+	else
+		SelectionMenu:FindFirstChild("Name").Text = "[Locked]"
+		SelectionMenu.Picture.Image = "rbxgameasset://Images/lock2"
+		SelectionMenu.Amount.Text = "0"
+	end
+end
+
+local UpdateTycoonStorage = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateTycoonStorage")
+UpdateTycoonStorage.OnClientEvent:Connect(function(File, Stat, StatValue, AmountAdded)
+	if typeof(StatValue) == "string" then
+		File = string.gsub(File, "TycoonStorage", "")
+		Stat = string.gsub(Stat, "TycoonStorage", "")
+	else
+		Stat = string.gsub(Stat, "Discovered", "")
+		local RarityName = game.ReplicatedStorage:FindFirstChild(tostring(File)):FindFirstChild(tostring(Stat)):FindFirstChild("GUI Info").RarityName.Value
+		ItemsPreview:FindFirstChild(tostring(File)):FindFirstChild(RarityName):WaitForChild(tostring(Stat)).Discovered.Value = StatValue
+	end
+	for i,rarity in pairs (ItemsPreview:FindFirstChild(File):GetChildren()) do
+		if rarity:IsA("TextLabel") then
+			if rarity:FindFirstChild(Stat) then
+				if typeof(StatValue) == "boolean" then
+					rarity:FindFirstChild(Stat).Discovered.Value = StatValue
+					UpdateTileLock(rarity:FindFirstChild(Stat),StatValue)
+				else
+					rarity:FindFirstChild(Stat).AmountInStorage.Value = StatValue
+				end
+			end
+		end
+	end	
+end)
+
+function UpdateTileLock (tile, StatValue)
+	if StatValue == true then
+		tile.LockImage.Visible = false
+	else
+		tile.LockImage.Visible = true
+	end
+end
+
+
+--------------<Tile Selection Buttons>---------------------------------------------------------------------
+local CurrentMenu
+function ReadySelectionMenu(Menu)
+	CurrentMenu = Menu
+	
+	for i,item in pairs (Menu.Common:GetChildren()) do
+		if item:IsA("Frame") then
+			if item.SlotNumber.Value == 1 then --Select first common item
+				item.BorderSizePixel = 4
+				item.BorderColor3 = Color3.fromRGB(0, 170, 255)
+				SelectionMenu.CurrentSelection.Value = tostring(item)
+				SelectionMenu.CurrentRarity.Value = "Common"
+				if item.Discovered.Value == true then
+					SelectionMenu:FindFirstChild("Name").Text = tostring(item)
+					SelectionMenu.Picture.Image = game.ReplicatedStorage:FindFirstChild(tostring(Menu)):FindFirstChild(tostring(item))["GUI Info"].InventoryImage.Value
+					while SelectionMenu.CurrentSelection.Value == tostring(item) do
+						SelectionMenu.Amount.Text = tostring(item.AmountInStorage.Value)
+						wait()
+					end
+				else
+					SelectionMenu:FindFirstChild("Name").Text = "[LOCKED]"
+					SelectionMenu.Picture.Image = "rbxgameasset://Images/lock1"
+					SelectionMenu.Amount.Text = ""
+				end
+			end
+		end
+	end
+end
+
+SelectionMenu.NextItem.Activated:Connect(function()
+	print("Calling next item button activation")
+	MoveToTile(CurrentMenu, 1)
+end)
+
+SelectionMenu.PreviousItem.Activated:Connect(function()
+	MoveToTile(CurrentMenu, -1)
+end)
+
+SelectionMenu.NextRarity.Activated:Connect(function()
+	MoveToTile(CurrentMenu, nil, "Next")
+end)
+
+SelectionMenu.PrevRarity.Activated:Connect(function()
+	MoveToTile(CurrentMenu, nil, "Previous")
+end)
+
+BackButton.Activated:Connect(function()
+	ItemsPreview.Visible = false
+	SelectionMenu.Visible = false
+	BackButton:TweenPosition(UDim2.new(BackButton.Position.X.Scale, 0, 1, 0), "Out", "Quint", 0.5)
+end)
+
+local function ChangeToTileInMenu(Menu, CurrentSelection, SeekedSlotValue)
+	if SeekedSlotValue == 0 then
+		local CurrentMenuOrderValue = Menu.DisplayOrder.Value
+		for i,rarity in pairs (Menu.Parent:GetChildren()) do
+			if rarity:IsA("TextLabel") then
+				if rarity.DisplayOrder.Value == CurrentMenuOrderValue then
+					for i,item in pairs (rarity:GetChildren()) do
+						if item:IsA("Frame") then
+							if item.SlotNumber.Value > SeekedSlotValue then
+								SeekedSlotValue = item.SlotNumber.Value
+							end
+						end
+					end
+				end
+			end
+		end
+	end
+	print("Changing to tile in menu function has been called", SeekedSlotValue, Menu)
+	for i,tile in pairs (Menu:GetChildren()) do
+		if tile:IsA("Frame") then
+			if tile.SlotNumber.Value == SeekedSlotValue then
+				CurrentSelection.BorderSizePixel = 2 --Change Previous tile to
+				CurrentSelection.BorderColor3 = Color3.fromRGB(27, 42, 53)
+				tile.BorderSizePixel = 4 --Change now selected tile to
+				tile.BorderColor3 = Color3.fromRGB(0, 170, 255)
+				SelectionMenu.CurrentRarity.Value = tostring(Menu)
+				SelectionMenu.CurrentSelection.Value = tostring(tile)
+				UpdateSelectionInfo(Menu, tile)
+			end
+		end
+	end
+end
+
+function MoveToTile(Menu, amount, RaritySkip)
+	local CurrentSelectionName = SelectionMenu.CurrentSelection.Value
+	local CurrentRarityName = SelectionMenu.CurrentRarity.Value
+	local CurrentRarityMenu = ItemsPreview:FindFirstChild(tostring(Menu)):FindFirstChild(CurrentRarityName)
+	local CurrentSelection = CurrentRarityMenu:FindFirstChild(CurrentSelectionName)
+	
+	local AmountOfSlots = 0
+	for i,item in pairs (CurrentRarityMenu:GetChildren()) do
+		if item:IsA("Frame") then
+			AmountOfSlots = AmountOfSlots + 1
+		end
+	end
+	
+	local LowestRarityMenu = CurrentRarityMenu
+	local HighestRarityMenu = CurrentRarityMenu
+	local NextRarityMenu = CurrentRarityMenu
+	local PreviousRarityMenu = CurrentRarityMenu
+	
+	for i,rarity in pairs (ItemsPreview:FindFirstChild(tostring(Menu)):GetChildren()) do
+		if rarity:IsA("TextLabel") then
+			if rarity.DisplayOrder.Value < LowestRarityMenu.DisplayOrder.Value then
+				LowestRarityMenu = rarity
+			end
+			if rarity.DisplayOrder.value > HighestRarityMenu.DisplayOrder.Value then
+				HighestRarityMenu = rarity
+			end
+			if rarity.DisplayOrder.Value + 1 == CurrentRarityMenu.DisplayOrder.Value then
+				PreviousRarityMenu = rarity
+			end
+			if rarity.DisplayOrder.Value - 1 == CurrentRarityMenu.DisplayOrder.Value then
+				NextRarityMenu = rarity
+			end
+		end
+	end
+	
+	local HighestTileOfHighRarity = 0
+	for i,tile in pairs (HighestRarityMenu:GetChildren()) do
+		if tile:IsA("Frame") then
+			if tile.SlotNumber.Value > HighestTileOfHighRarity then
+				HighestTileOfHighRarity = tile.SlotNumber.Value
+			end
+		end
+	end
+	
+	--local NumberOfRarities = #ItemsPreview:FindFirstChild(tostring(Menu)):GetChildren()
+	local CurrentSelectionSlotValue = CurrentSelection.SlotNumber.Value
+	if amount then
+		if CurrentSelectionSlotValue + amount > AmountOfSlots or CurrentSelectionSlotValue + amount <= 0 then --Moving to next rarity menu			
+				--Move to lowest rarity 
+			if CurrentRarityMenu.DisplayOrder.Value == NextRarityMenu.DisplayOrder.Value and amount > 0 then
+				ChangeToTileInMenu(LowestRarityMenu, CurrentSelection, 1)
+				
+				--Move to highest rarity
+			elseif CurrentRarityMenu.DisplayOrder.Value == LowestRarityMenu.DisplayOrder.Value and amount < 0 then
+				ChangeToTileInMenu(HighestRarityMenu, CurrentSelection, HighestTileOfHighRarity)
+				
+			else
+				if amount > 0 then
+					--First of next rarity
+					ChangeToTileInMenu(NextRarityMenu, CurrentSelection, 1)
+				else 
+					--Highest of 'previous' rarity
+					ChangeToTileInMenu(PreviousRarityMenu, CurrentSelection, 0)
+				end
+			end
+			--end
+		else --Just move to next tile in the rarity
+			ChangeToTileInMenu(CurrentRarityMenu, CurrentSelection, CurrentSelectionSlotValue + amount)
+		end
+	elseif RaritySkip then
+		if RaritySkip == "Next" then
+			if CurrentRarityMenu.DisplayOrder.Value ~= NextRarityMenu.DisplayOrder.Value then
+				ChangeToTileInMenu(NextRarityMenu, CurrentSelection, 1)
+			else --Moving to lowest rarity
+				ChangeToTileInMenu(LowestRarityMenu, CurrentSelection, 1)
+			end
+		elseif RaritySkip == "Previous" then
+			if CurrentRarityMenu.DisplayOrder.Value ~= PreviousRarityMenu.DisplayOrder.Value then
+				ChangeToTileInMenu(PreviousRarityMenu, CurrentSelection, 1)
+			else --Moving to highest rarity
+				ChangeToTileInMenu(HighestRarityMenu, CurrentSelection, 1)
+			end
+		end
+	end
+end
+
+
+--------------<Tile Management>--------------------------------------------------------------------------------
+
+local AmountPerRow = 2
+function SetupTycoonStorageTiles(button)
+	ItemsPreview.Visible = false
+	local MenuName = button.Name
+	if ItemsPreview:FindFirstChild(MenuName) then
+		local AffiliatedItemsPreview = ItemsPreview:FindFirstChild(MenuName)
+		local ItemDataFolder = game.ReplicatedStorage:FindFirstChild(MenuName)
+		local TycoonStorageTile = game.ReplicatedStorage.GuiElements:FindFirstChild("TycoonStorageTile")
+		
+		for i,item in pairs (ItemDataFolder:GetChildren()) do
+			local ItemRarity = item["GUI Info"].RarityName.Value
+			local RarityMenu = AffiliatedItemsPreview:FindFirstChild(ItemRarity)
+			local RarityChildCount = 0
+			local PrevTile
+			for i,tile in pairs (RarityMenu:GetChildren()) do
+				if tile:IsA("Frame") then
+					if tile.SlotNumber.Value > RarityChildCount then
+						RarityChildCount = tile.SlotNumber.Value
+						PrevTile = tile
+					end
+				end
+			end
+			local NewTile = TycoonStorageTile:Clone()
+			NewTile.SlotNumber.Value = RarityChildCount + 1
+			NewTile.Name = tostring(item)
+			--NewTile.BorderColor3 = Color3.fromRGB(RarityMenu.TextStrokeColor3)
+			
+			NewTile.Picture.Image = item["GUI Info"].InventoryImage.Value --Put in check for discovered remotefunction for image/lock
+			
+			NewTile.Parent = RarityMenu
+			--print(RarityChildCount, RarityChildCount/AmountPerRow, math.floor(RarityChildCount/AmountPerRow))
+			
+			if RarityChildCount == 0 then
+				NewTile.Position = UDim2.new(0.05, 0, 1, 0)
+				MoveOtherRaritiesDown(RarityMenu)
+				
+			elseif (RarityChildCount)/AmountPerRow ~= math.floor(RarityChildCount/AmountPerRow) then
+				NewTile.Position = UDim2.new(PrevTile.Position.X.Scale + .3, 0, PrevTile.Position.Y.Scale, 0)
+				
+			elseif (RarityChildCount)/AmountPerRow == math.floor(RarityChildCount/AmountPerRow) then
+				--Starting a new row
+				local RowStarterTile
+				for i,tile in pairs (RarityMenu:GetChildren()) do
+					if tile:IsA("Frame") then
+						if tile.SlotNumber.Value == NewTile.SlotNumber.Value - AmountPerRow then
+							RowStarterTile = tile
+						end
+					end
+				end
+				NewTile.Position = UDim2.new(RowStarterTile.Position.X.Scale, 0, RowStarterTile.Position.Y.Scale + 1.67, 0)
+				MoveOtherRaritiesDown(RarityMenu)
+			end
+			
+		end
+	end
+end
+
+function MoveOtherRaritiesDown(RarityMenu)
+	print("Move rarities down was called")
+	local Menu = RarityMenu.Parent
+	local DisplayOrderValue = RarityMenu.DisplayOrder.Value
+	for i,rarity in pairs (Menu:GetChildren()) do
+		if rarity:IsA("TextLabel") then
+			if rarity.DisplayOrder.Value > DisplayOrderValue then
+				rarity.Position = UDim2.new(RarityMenu.Position.X.Scale, 0, rarity.Position.Y.Scale + .09, 0)
+			end
+		end
+	end
+end
+
+-------------<E Interaction>---------------------------------------------------------------------------
+local UIS = game:GetService("UserInputService")
+local Mouse = Player:GetMouse()
+local HumanoidRootPart = game.Workspace.Players:WaitForChild(tostring(Player)):WaitForChild("HumanoidRootPart")
+function EInteract()
+	UIS.InputBegan:Connect(function(input)
+		if input.KeyCode == Enum.KeyCode.E then
+			print("Pressed E")
+			if Mouse.Target and (Mouse.Target.Position - HumanoidRootPart.Position).magnitude < 20 then
+				if Mouse.Target:IsDescendantOf(TycoonComputer) then
+					TycoonComputer.Laptop:WaitForChild("E GUI").Enabled = false
+					print("Name is computer")
+					local Laptop = Mouse.Target
+					StartUpCutscene()
+					TycoonComputer.Laptop:WaitForChild("E GUI").Enabled = true
+				end
+			end
+		end
+	end)
+	
+	--Graphical
+	local debounce2 = false
+	while true do
+		wait(.1)
+		if Mouse.Target then
+			--for i,v in pairs (PlayerTycoon.Essentials:GetChildren()) do
+				if Mouse.Target:IsDescendantOf(TycoonComputer) and (Mouse.Target.Position - HumanoidRootPart.Position).magnitude < 20 then 
+					if debounce2 == false then
+						debounce2 = true
+						TycoonComputer.Laptop:WaitForChild("E GUI").Enabled = true
+					end
+				else
+					if debounce2 == true and TycoonComputer.Laptop:WaitForChild("E GUI").Enabled == true then
+						TycoonComputer.Laptop:WaitForChild("E GUI").Enabled = false
+						debounce2 = false
+					end
+				end
+			--end
+		end
+	end
+end
+
+----------------<Cutscene Manager>-------------------------------------------------------------
+local Camera = game.Workspace.CurrentCamera
+
+function MoveCamera(StartPart, EndPart, Duration, EasingStyle, EasingDirection)
+	Camera.CameraType = Enum.CameraType.Scriptable
+	Camera.CFrame = StartPart.CFrame
+	local Cutscene = TweenService:Create(Camera, TweenInfo.new(Duration, EasingStyle, EasingDirection), {CFrame = EndPart.CFrame})
+	Cutscene:Play()
+	wait(Duration)
+end
+
+--VIDEO TUTORIAL:
+--https://www.bing.com/videos/search?q=roblox+2020+cutscene+editor&&view=detail&mid=BEC7BCBD747366BD75C8BEC7BCBD747366BD75C8&rvsmid=E7AB6D6F25AAAC254ED0E7AB6D6F25AAAC254ED0&FORM=VDRVRV
+function StartUpCutscene()
+	local CutsceneFolder = TycoonComputer:FindFirstChild("CutsceneCameras")
+	MoveCamera(Camera, CutsceneFolder.Camera1, 1.5, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
+	MoveAllBaseScreenUI:Fire("Hide") --Move "surface screen" tiles away
+	MoveCamera(CutsceneFolder.Camera1, CutsceneFolder.Camera2, .7, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
+	
+	StartUpComputer()
+end
+
+function ShutDownCutscene()
+	local CutsceneFolder = TycoonComputer:FindFirstChild("CutsceneCameras")
+	MoveCamera(CutsceneFolder.Camera2, CutsceneFolder.Camera1, .7, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
+	MoveAllBaseScreenUI:Fire("Show")
+
+	wait(.8)
+	Camera.CameraType = Enum.CameraType.Custom
+	Camera.CameraSubject = game.Players.LocalPlayer.Character:WaitForChild("Humanoid")
+	TycoonComputer.Laptop:WaitForChild("E GUI").Enabled = true
+end
+
+
+
+for i,button in pairs (TycoonStorageGui.ComputerScreen.DataTabSelect:GetChildren()) do
+	if button:IsA("ImageButton") then
+		SetupTycoonStorageTiles(button)
+	end
+end
+

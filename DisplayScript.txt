@@ -1,0 +1,50 @@
+(LocalScript)
+Updates money amount display, also waits for player to press the display's hide button
+---------------------------------------------------------------------------------------------------------------------------------------------
+
+local TweenService = game:GetService("TweenService")
+local MoveAllBaseScreenUI = game.ReplicatedStorage.Events.GUI.MoveAllBaseScreenUI
+
+local Display = script.Parent:WaitForChild("Display")
+local ShowButton = Display:WaitForChild("Show")
+local PutAwayButton = Display:WaitForChild("PutAway")
+
+ShowButton.Activated:Connect(function()
+	Showing = true
+	Display:TweenPosition(UDim2.new(0,0 , 0.865,0), "Out", "Bounce", 1)
+	wait(.8)
+	ShowButton.Visible = false
+	ShowButton.Active = false
+	PutAwayButton.Visible = true
+	PutAwayButton.Active = true
+end)
+
+PutAwayButton.Activated:Connect(function()
+	Showing = false
+	Display:TweenPosition(UDim2.new(0,0 ,1.012,0), "Out", "Quint", 1)
+	wait(.8)
+	ShowButton.Visible = true
+	ShowButton.Active = true
+	PutAwayButton.Visible = false
+	PutAwayButton.Active = false
+end)
+
+MoveAllBaseScreenUI.Event:Connect(function(ChangeTo)
+	print("Hide All Base Screen UI bindable event has been fired")
+	Showing = false
+	if ChangeTo == "Hide" then
+		Display:TweenPosition(UDim2.new(0, 0, 1.08, 0), "Out", "Quint", 1)
+	else --Show
+		Display:TweenPosition(UDim2.new(0,0 ,1.012,0), "Out", "Quint", 1)
+	end
+	wait(.8)
+	ShowButton.Visible = true
+	ShowButton.Active = true
+	PutAwayButton.Visible = false
+	PutAwayButton.Active = false
+end)
+
+
+
+
+

@@ -1,0 +1,80 @@
+(LocalScript)
+Mining visuals handler (mining progress bar, denoting selected block, and return to surface button)
+-----------------------------------------------------------------------------------------------------------------------------------------------
+
+local MiningGui = script.Parent
+local OreLabel = MiningGui:WaitForChild("OreLabel")
+local ProgressBar = script.Parent:WaitForChild("ProgressBarBillboardGui")
+repeat wait() until workspace.CurrentCamera.SelectedItem ~= nil
+
+local OriginalSelectOreColor = script.Parent.SelectedOre.Color3
+
+local function SelectedItem()
+	if workspace.CurrentCamera.SelectedItem.Value ~= nil then
+		script.Parent.SelectedOre.Adornee = workspace.CurrentCamera.SelectedItem.Value
+		
+		local OreName = workspace.CurrentCamera.SelectedItem.Value.Name
+		local RealOre = game.ReplicatedStorage.Ores:FindFirstChild(OreName)
+	
+		OreLabel.TextColor3 = RealOre.OreColor.Value
+
+		local Target = workspace.CurrentCamera.SelectedItem.Value
+		local ProgressBarClone = ProgressBar:Clone()
+		ProgressBarClone.Parent = Target
+		ProgressBarClone.Adornee = Target
+		ProgressBarClone.ProgressBar.TimeLeft.BackgroundColor3 = RealOre.OreColor.Value
+		
+		while Target == workspace.CurrentCamera.SelectedItem.Value do
+			wait()
+			if Target:IsA("BasePart") and Target.Reflectance > 0 then --and Target:FindFirstChild("Owner")
+				ProgressBarClone.Enabled = true
+				local Progress = Target.Reflectance
+				
+				--Maybe set it at start to ore color, then switch it to blue when not interacted
+				script.Parent.SelectedOre.Color3 = Color3.new(0.7 - (Progress * 0.7),1,1 - (Progress * 0.7))
+				script.Parent.SelectedOre.SurfaceColor3 = Color3.new(0.7 - (Progress * 0.7),1,1 - (Progress * 0.6))
+
+				ProgressBarClone.ProgressBar.TimeLeft.Size = UDim2.new(Progress,0,1,0)
+				--ProgressBar.Parent.Enabled = true
+			elseif Target:IsA("BasePart") and Target.Reflectance == 0 then
+				wait() --Why does this wait NEED to be here? otherwise, mining repeats
+				script.Parent.SelectedOre.Color3 = OriginalSelectOreColor
+				script.Parent.SelectedOre.SurfaceColor3 = OriginalSelectOreColor
+				ProgressBarClone.Enabled = false --(disappear when let go)
+			end
+		end
+	end
+end
+
+local ToSurfaceButton = script.Parent:WaitForChild("ToSurfaceButton")
+local TeleportButton = game:GetService("ReplicatedStorage").Events.GUI:WaitForChild("TeleportButton")
+
+coroutine.resume(coroutine.create(function()
+	while wait(0.1) do
+		--Maybe change this to a function call to be more efficient? no more while loops, unless in function?
+		local RawPosition = game.Players.LocalPlayer.Character.LowerTorso.Position
+		local CompactPos = Vector3.new(0 + RawPosition.X/7,(RawPosition.Y - -5)/(-7),RawPosition.Z/7)
+		if math.floor(CompactPos.X) > 0 and -math.floor(CompactPos.Y) < -1 and math.floor(CompactPos.Z) > 0 then
+			ToSurfaceButton.Visible = true
+		else
+			ToSurfaceButton.Visible = false
+		end
+	end
+end))
+
+ToSurfaceButton.Activated:Connect(function()
+	if ToSurfaceButton.Visible == true then
+		TeleportButton:FireServer(ToSurfaceButton)
+	end
+end)
+
+SelectedItem()
+workspace.CurrentCamera.SelectedItem.Changed:connect(SelectedItem)
+
+
+
+
+
+
+
+

@@ -1,0 +1,516 @@
+(LocalScript)
+Inventory graphical menu handler
+-------------------------------------------------------------------------------------------------------------------------------------------------
+
+local Player = game.Players.LocalPlayer
+local OpenDataMenuButton = script.Parent.OpenDataMenuButton
+local DataMenu = script.Parent.DataMenu
+local UpdateInventory = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateInventory")
+local MoveAllBaseScreenUI = game.ReplicatedStorage.Events.GUI.MoveAllBaseScreenUI
+local TweenService = game:GetService("TweenService")
+
+local Open = false
+OpenDataMenuButton.Activated:Connect(function()
+	print("Button pressed")
+	if Open == false then
+		print("Open = false")
+		DataMenu.Visible = true
+		Open = true
+		ReadyMenuButtons(DataMenu) --Manage Tabs
+	elseif Open == true then
+		DataMenu.Visible = false
+		Open = false
+	end
+end)
+
+MoveAllBaseScreenUI.Event:Connect(function(ChangeTo)
+	DataMenu.Visible = false
+	Open = false
+	if ChangeTo == "Hide" then
+		OpenDataMenuButton:TweenPosition(UDim2.new(-.1, 0, OpenDataMenuButton.Position.Y.Scale, 0), "Out", "Quint", 1)
+	else
+		OpenDataMenuButton:TweenPosition(UDim2.new(0.017, 0, 0.695, 0), "Out", "Quint", 1)
+	end
+end)
+
+--------------<|Utility Functions|>----------------------------------------------------
+
+local MenuAcceptance = true
+function ReadyMenuButtons(Menu)
+	if MenuAcceptance == true then
+		MenuAcceptance = false
+		local AmountofButtons = 0
+		for i,button in pairs(Menu:GetChildren()) do
+			if button:IsA("TextButton") and button:FindFirstChild("Menu") then
+				AmountofButtons = AmountofButtons + 1
+				local AssociatedMenu = button:FindFirstChild("Menu").Value
+				local ButtonMenu = Menu:FindFirstChild(AssociatedMenu)
+				
+				button.Activated:Connect(function()
+					for i,v in pairs (ButtonMenu.Parent:GetChildren()) do
+						if not v:IsA("TextButton") and not v:FindFirstChild("Menu") and tostring(v) ~= "TopTabBar" then
+							v.Visible = false
+						end
+					end
+					ButtonMenu.Visible = true
+					ReadyMenuButtons(ButtonMenu)
+				end)
+			end
+		end
+		wait(.1)
+		MenuAcceptance = true
+	else
+		--cancellation of other menus, way to count this so wait waits for a certain number to
+		--be achieved here?
+	end
+end
+
+local function GetStatImage(File, Stat)
+	local ImageId
+	if Stat.Name then
+		ImageId = game.ReplicatedStorage:FindFirstChild(tostring(File)):FindFirstChild(Stat.Name)["GUI Info"].InventoryImage.Value
+	else
+		ImageId = game.ReplicatedStorage:FindFirstChild(tostring(File)):FindFirstChild(Stat)["GUI Info"].InventoryImage.Value
+	end
+	return ImageId
+end
+
+local function FindStatLevel(StatInfo, EXPValue)
+	local CurrentLevel = 0
+	for i,level in pairs (StatInfo.Levels:GetChildren()) do
+		if tonumber(EXPValue) >= level.Value and tonumber(level.Name) > CurrentLevel then
+			CurrentLevel = tonumber(level.Name)
+		end
+	end
+	local NextLevel
+	if StatInfo.Levels:FindFirstChild(tostring(CurrentLevel + 1)) then
+		NextLevel = StatInfo.Levels:FindFirstChild(tostring(CurrentLevel + 1))
+	else
+		NextLevel = StatInfo.Levels:FindFirstChild(tostring(CurrentLevel))
+	end
+	return CurrentLevel,NextLevel
+end
+
+
+--------------<|Tile Functions|>---------------------------------------------------------------
+
+local function InsertTileInfo(Type, tile, Stat, Value, looking, found, File)
+	if Type == "Inventory" then
+		tile.DisplayName.Text = tostring(Stat)
+		tile.Amount.Text = tostring(Value)
+		local ImageId = GetStatImage(File, Stat)
+		tile.Picture.Image = ImageId
+		
+		looking = false
+		found = true
+	elseif Type == "Experience" then
+		local StatInfo = game.ReplicatedStorage:FindFirstChild("Skills"):FindFirstChild(tostring(Stat) .. "Skill")
+		local CurrentLevel = 0
+		--Move into Levels value where the value is how many levels, no for in pairs, just 1,amount,1 loop
+		for i,level in pairs (StatInfo.Levels:GetChildren()) do
+			if Value >= level.Value and tonumber(level.Name) > CurrentLevel then
+				CurrentLevel = tonumber(level.Name)
+			end
+		end
+		--current displays all accumulated exp, should show accumulated exp in this level
+		--small total exp text box?
+		local NextLevel
+		if StatInfo.Levels:FindFirstChild(tostring(CurrentLevel + 1)) then
+			NextLevel = StatInfo.Levels:FindFirstChild(tostring(CurrentLevel + 1))
+			tile.NextLevel.Text = tostring(NextLevel)
+		else
+			NextLevel = StatInfo.Levels:FindFirstChild(tostring(CurrentLevel))
+			tile.NextLevel.Text = "*"
+		end
+		local CurrentLevelEXP = StatInfo.Levels:FindFirstChild(tostring(CurrentLevel))
+		local ProgressBar = tile.ProgressBar
+		ProgressBar.Current.Text = tostring(Value - CurrentLevelEXP.Value)
+		ProgressBar.Total.Text = tostring(NextLevel.Value - CurrentLevelEXP.Value)
+		tile.CurrentLevel.Text = tostring(CurrentLevel)
+		
+		local Percentage = tonumber(Value - CurrentLevelEXP.Value) / tonumber(NextLevel.Value - CurrentLevelEXP.Value)
+		ProgressBar.Progress.Size = UDim2.new(0, 408*Percentage, 0, 30)
+		
+		looking = false
+		found = true
+	end
+	return looking,found
+end
+
+function ManageTiles(Stat, Menu, Value, File, Type)
+	--print(Stat,Menu,Value,File,Type) = Stone,OresMenu,2,Ores,Inventory
+	local Value = tonumber(Value)
+	local Slots = Menu:GetChildren()
+	local OriginalMaterialSlot
+	--local DataMenuInfoFolder = script.Parent.Parent:FindFirstChild("DataMenuInformation"):FindFirstChild(tostring(Type))
+	--local ItemFolderMenu = DataMenuInfoFolder:FindFirstChild(tostring(File))
+	if Type == "Inventory" then
+		OriginalMaterialSlot = game.ReplicatedStorage.GuiElements:FindFirstChild("InventoryMaterialSlot")
+	else
+		OriginalMaterialSlot = game.ReplicatedStorage.GuiElements:FindFirstChild("ExperienceSlot")
+	end
+	
+	if #Slots > 0 then
+		local looking = true
+		local found = false
+		for i,tile in pairs (Slots) do
+			if tile.DisplayName.Text == tostring(Stat) and looking == true then --Update Tile
+				--local ItemFolderInfo = ItemFolderMenu:FindFirstChild(tostring(Stat))
+				if Value ~= 0 then
+					
+					--tile = slot
+					looking,found = InsertTileInfo(Type, tile, Stat, Value, looking, found, File)
+					--ItemFolderInfo.Value = Value
+				else
+					--print("Deleting " .. tostring(tile) .. " because Value is now 0")
+					looking = false
+					found = true
+					local SlotNumber = i
+					for i,tile in pairs (Slots) do
+						if i > SlotNumber then
+							local tileYScale = tile.Position.Y.Scale
+							tile.Position = UDim2.new(0.025, 0, tileYScale - .1, 0)
+							tile.Name = tostring("Slot" .. tostring(i - 1))
+						end
+					end
+					tile:Destroy()
+					--ItemFolderInfo:Destroy()
+				end
+			end
+		end
+		--Make new tile
+		if found == false and Value ~= 0 then
+			--print("Making a new tile: " .. tostring(Stat))
+			local tile = OriginalMaterialSlot:Clone()
+			local tileNumber = #Slots + 1
+			local PreviousTile = Menu:FindFirstChild("Slot" .. tostring(#Slots))
+			tile.Name = "Slot" .. tostring(tileNumber)
+			tile.Parent = Menu
+			
+			local PrevTileY = PreviousTile.Position.Y.Scale
+			tile.Position = UDim2.new(0.025, 0, PrevTileY + .1, 0)
+			
+			looking,found = InsertTileInfo(Type, tile, Stat, Value, looking, found, File)
+			
+			--local NewItem = Instance.new("IntValue",ItemFolderMenu)
+			--NewItem.Name = tostring(Stat)
+			--NewItem.Value = Value
+		end
+	else
+		--First tile to be made for menu
+		if Value ~= 0 then
+			local FirstSlot = OriginalMaterialSlot:Clone()
+			FirstSlot.Name = "Slot1"
+			FirstSlot.Parent = Menu
+			FirstSlot.Position = UDim2.new(0.028,0,0.036,0)
+			
+			--This entire section below this comment is used before, could be put in function named (InsertTileInfo)
+			FirstSlot.DisplayName.Text = tostring(Stat)
+			InsertTileInfo(Type, FirstSlot, Stat, Value, nil, nil, File)
+			
+			--local NewItem = Instance.new("IntValue",ItemFolderMenu)
+			--NewItem.Name = tostring(Stat)
+			--NewItem.Value = Value
+		end
+	end
+end
+
+
+------------------<|Material PopUp Functions|>-----------------------------------------------------
+
+local MaterialPopUpAmount
+local function InsertNewMaterialPopUp(ItemPopUp, Object, File, AmountAdded, Currency)
+	--print("New PopUp: " .. tostring(Object))
+	local OriginalPopUpGUI = game.ReplicatedStorage.GuiElements:FindFirstChild("PopUpSlot")
+	
+	--Move other tiles upward
+	for i,slot in pairs (ItemPopUp:GetChildren()) do
+		--slot.Position = UDim2.new(slot.Position.X.Scale, 0, slot.Position.Y.Scale - .1, 0)
+		slot:TweenPosition(UDim2.new(slot.Position.X.Scale, 0, slot.Position.Y.Scale - .1, 0), "Out", "Quint", .8)
+	end
+	
+	local NewPopUp = OriginalPopUpGUI:Clone()
+	NewPopUp.Parent = ItemPopUp
+	NewPopUp.Amount.Text = tostring(AmountAdded)
+	NewPopUp.DisplayName.Text = tostring(Object)
+	NewPopUp.Position = UDim2.new(0.835, 0,1, 0)
+	MaterialPopUpAmount = #ItemPopUp:GetChildren()
+	NewPopUp.Name = "PopUp" .. tostring(MaterialPopUpAmount)
+	NewPopUp.Object.Value = tostring(Object)
+	if Currency then
+		print("Detected Currency")
+		NewPopUp.Picture.Image = "rbxgameasset://Images/" .. tostring(Currency)
+	else
+		local ItemImage = GetStatImage(File, Object)
+		NewPopUp.Picture.Image = ItemImage
+	end
+	NewPopUp:TweenPosition(UDim2.new(0.835, 0,0.835, 0), "Out" , "Quint", .45)
+	CountdownPopUp(ItemPopUp, NewPopUp, 5, .2)
+end
+
+local PrevItem
+local PrevAmount
+local CurrentObject
+local function ManageMaterialPopups(ObjectName, File, AmountAdded, Currency)
+	local ItemPopUp = script.Parent.Parent:FindFirstChild("ItemPopUp")
+	if AmountAdded ~= nil then
+		if AmountAdded ~= 0 then
+			if AmountAdded < 0 then
+				CurrentObject = "Negative" .. tostring(ObjectName)
+			elseif AmountAdded > 0 then --change to just else
+				CurrentObject = ObjectName
+			end
+			if PrevItem ~= tostring(CurrentObject) then
+				InsertNewMaterialPopUp(ItemPopUp, ObjectName, File, AmountAdded, Currency)
+				PrevItem = tostring(ObjectName)
+				PrevAmount = AmountAdded
+			elseif PrevItem == tostring(CurrentObject) and #ItemPopUp:GetChildren() == 0 then
+				print("Detected that no slot is available, but prev has been mined")
+				InsertNewMaterialPopUp(ItemPopUp, ObjectName, File, AmountAdded, Currency)
+				PrevItem = tostring(ObjectName)
+				PrevAmount = AmountAdded
+			elseif #ItemPopUp:GetChildren() >= 1 then
+				PrevAmount = PrevAmount + AmountAdded
+				
+				--Find most recent version of the popup related to the object
+				local MostRecent = 0
+				for i,slot in pairs (ItemPopUp:GetChildren()) do
+					if slot.Object.Value == tostring(ObjectName) then
+						if i > MostRecent then
+							MostRecent = i
+						end
+					end
+				end
+				ItemPopUp:FindFirstChild("PopUp" .. tostring(MostRecent)).Amount.Text = tostring(PrevAmount)
+				CountdownPopUp(ItemPopUp, ItemPopUp:FindFirstChild("PopUp" .. tostring(MostRecent)), 5, .2)
+			end
+		end
+	end
+end
+
+
+--------------------<|Countdown Functions|>-----------------------------------------------------
+
+function CountdownPopUp(PopUpGui, Slot, TimeBeforeExpire, JumpDistance)
+	if Slot:FindFirstChild("TimeLeft") then
+		local Timer = Slot:FindFirstChild("TimeLeft")
+		Timer.Value = 0
+		coroutine.resume(coroutine.create(function()
+			for sec = 1,TimeBeforeExpire,1 do
+				wait(1)
+				--if Timer then
+				if sec == Timer.Value + 1 then
+					Timer.Value = sec
+					if sec == TimeBeforeExpire then
+						if Slot:FindFirstChild("NamePlate") then
+							local NamePlate = Slot:FindFirstChild("NamePlate")
+							NamePlate:TweenPosition(UDim2.new(-12,0,NamePlate.Position.Y.Scale + 0.9 ,0), "Out", "Quint", .3)
+							wait(.4)
+						end
+						Slot:TweenPosition(UDim2.new(Slot.Position.X.Scale + JumpDistance, 0, Slot.Position.Y.Scale, 0), "Out", "Quint", .5)
+						wait(.8)
+						Slot:Destroy()
+						for i,slot in pairs (PopUpGui:GetChildren()) do
+							slot.Name = "PopUp" .. tostring(i)
+						end
+					end
+					--else
+					--print("Timer is gone for " .. tostring(Slot))
+					--So far, only used by expbar because only want one bar on screen, so timer is deleted in InsertEXPBar()
+					--if Slot:FindFirstChild("NamePlate") then
+					--local NamePlate = Slot:FindFirstChild("NamePlate")
+					--NamePlate:TweenPosition(UDim2.new(-12,0,NamePlate.Position.Y.Scale + 0.9 ,0), "Out", "Quint", .3)
+					--wait(.4)
+					--end
+					--Slot:TweenPosition(UDim2.new(Slot.Position.X.Scale + JumpDistance, 0, Slot.Position.Y.Scale, 0), "Out", "Quint", .5)
+					--wait(.6)
+					--Slot:Destroy()
+					--end
+				end
+			end
+		end))
+	end
+end
+
+local DifferenceEXPAdded = 0
+local LastPercentage = 0
+local function CountdownDifference(Difference, OriginalProgressBar, Percentage, AmountAdded, Finished)
+	local ExpBar = Difference.Parent.Parent
+	if ExpBar:FindFirstChild("TimeLeft") then
+		DifferenceEXPAdded = DifferenceEXPAdded + AmountAdded
+		local Timer = Difference:FindFirstChild("TimeLeft")
+		Timer.Value = 0
+		if Percentage < LastPercentage or Percentage >= 1 or Finished then
+			print("Finished a skill level, updating exp bar",Percentage,LastPercentage)
+			LastPercentage = Percentage
+			EXPPopUp(ExpBar, DifferenceEXPAdded, 1)
+			DifferenceEXPAdded = 0
+			
+			OriginalProgressBar:TweenSize(UDim2.new(Percentage, 0, 0, 30), "Out", "Quint", .5)
+			Difference:TweenSize(UDim2.new(Percentage, 0, 0, 30), "Out", "Quint", .5)
+			local PreviousLevel = tonumber(ExpBar.CurrentLevel.Text)
+			ExpBar.CurrentLevel.Text = PreviousLevel + 1
+			ExpBar.NextLevel.Text = PreviousLevel + 2
+			--Maybe put countdown popup here to refresh the experience bar?
+			--Level up animation could go here, or in the ShowEXPChange function
+		else
+			print("Percentage: " .. tostring(Percentage))
+			LastPercentage = Percentage
+			coroutine.resume(coroutine.create(function()
+				for sec = 1,5,1 do
+					wait(1)
+					if Timer then
+						if sec == Timer.Value + 1 then
+							Timer.Value = sec
+							if sec == 5 then
+								EXPPopUp(ExpBar, DifferenceEXPAdded, 3)
+								DifferenceEXPAdded = 0
+								OriginalProgressBar:TweenSize(UDim2.new(0, Difference.Size.X.Offset, Difference.Size.Y.Scale, 30), "Out", "Quint", .5)
+								wait(.6)
+								Difference:Destroy()
+							end
+							--else
+							--coroutine.yield() --if implemented, would this prevent repeats with menu presses? or greater efficiency??
+						end
+					end
+				end
+			end))
+		end
+	end
+end
+
+
+-----------------<|EXPBar PopUp Functions|>--------------------------------------------------
+
+function EXPPopUp(ExpBar, Value, Pace)
+	local RealEXPPopUp = game.ReplicatedStorage.GuiElements:FindFirstChild("EXPPopUp")
+	local NewExpPopUp = RealEXPPopUp:Clone()
+	NewExpPopUp.Parent = ExpBar
+	NewExpPopUp.Text = "+" .. tostring(Value) .. "XP"
+	NewExpPopUp.Position = UDim2.new(math.random(-17.72,-15.48), 0, math.random(-1.71,-.777), 0)
+	NewExpPopUp:TweenSize(UDim2.new(0, 100, 0, 25), "Out", "Quart", .5) --Grow
+	wait(Pace)
+	NewExpPopUp:TweenSizeAndPosition(UDim2.new(0, 0, 0, 0), UDim2.new(-7.64, 0, 0.123, 0), "Out", "Quint", 1) --Move to bar
+	wait(1.2)
+	NewExpPopUp:Destroy()
+end
+
+local function ShowEXPChange(CurrentLevel, NextLevel, StatInfo, Value, AmountAdded)
+	local ExperienceBarGui = script.Parent.Parent:FindFirstChild("EXPBarPopUp")
+	local ProgressBar = ExperienceBarGui.ExperienceBar.ProgressBar
+	local CurrentLevelEXP = StatInfo.Levels:FindFirstChild(tostring(CurrentLevel))
+	
+	--Difference bar check
+	if ProgressBar:FindFirstChild("EXPDifference") then
+		local Difference = ProgressBar.EXPDifference
+		local Percentage = tonumber(Value - CurrentLevelEXP.Value) / tonumber(NextLevel.Value - CurrentLevelEXP.Value)
+		if Percentage < LastPercentage then
+			--Here instead of CountdownDifference to prevent delay
+			Difference:TweenSize(UDim2.new(0, 276, 0, 30), "Out", "Quint", .2)
+			wait(.2)
+			ProgressBar.Progress:TweenSize(UDim2.new(0, 276, 0, 30), "Out", "Quint", .2)
+			wait(.2)
+			CountdownDifference(Difference, ProgressBar.Progress, Percentage, AmountAdded, true)
+		else
+			Difference:TweenSize(UDim2.new(0, 276*Percentage, 0, 30), "Out", "Quint", .2)
+			CountdownDifference(Difference, ProgressBar.Progress, Percentage, AmountAdded)
+		end
+	else
+		local Difference = ProgressBar.Progress:Clone()
+		Difference.ZIndex = 3 --Put behind progress frame
+		Difference.Parent = ProgressBar
+		Difference.Name = "EXPDifference"
+		Difference.BackgroundColor3 = Color3.new(85, 255, 255)
+		local TimeLeftValue = Instance.new("IntValue",Difference)
+		TimeLeftValue.Name = "TimeLeft"	
+		local Percentage = tonumber(Value - CurrentLevelEXP.Value) / tonumber(NextLevel.Value - CurrentLevelEXP.Value)
+		Difference:TweenSize(UDim2.new(0, 276*Percentage, 0, 30), "Out", "Quint", .2)
+		
+		CountdownDifference(Difference, ProgressBar.Progress, Percentage, AmountAdded)
+	end
+end
+
+local function InsertNewEXPBar(ExperienceBarGui, ExperienceBar, Stat, Value, CurrentLevel, NextLevel, NewBar)
+	
+	if NewBar ~= true then
+		ExperienceBarGui.ExperienceBar.TimeLeft:Destroy() --CountdownPopUp() will recognize and delete other experience bar
+		wait(.6)
+	end
+	
+	local NewExperienceBar = ExperienceBar:Clone()
+	NewExperienceBar.Parent = ExperienceBarGui
+	NewExperienceBar.Position = UDim2.new(0.969, 0, 1.055, 0)
+	NewExperienceBar:TweenPosition(UDim2.new(.969, 0, NewExperienceBar.Position.Y.Scale - .1, 0), "Out", "Quint", .5)
+	
+	NewExperienceBar.CurrentLevel.Text = tostring(CurrentLevel)
+	NewExperienceBar.NextLevel.Text = tostring(NextLevel)
+	
+	local StatInfo = game.ReplicatedStorage:FindFirstChild("Skills"):FindFirstChild(tostring(Stat) .. "Skill")
+	local ProgressBar = ExperienceBarGui.ExperienceBar.ProgressBar
+	local CurrentLevelEXP = StatInfo.Levels:FindFirstChild(tostring(CurrentLevel))
+	local Percentage = tonumber(Value - CurrentLevelEXP.Value) / tonumber(NextLevel.Value - CurrentLevelEXP.Value)
+	ProgressBar.Progress.Size = UDim2.new(0, 276*Percentage, 0, 30)
+	CountdownPopUp(ExperienceBarGui, NewExperienceBar, 12, .45)
+	wait(.5)
+	
+	local NamePlate = NewExperienceBar.NamePlate
+	NamePlate.DisplayName.Text = tostring(Stat)
+	NamePlate:TweenPosition(UDim2.new(-12, 0, -0.9, 0), "Out", "Quint", .3)
+end
+
+local PrevEXPBar
+local function ManageEXPPopUp(Stat, Value, AmountAdded)
+	local ExperienceBar = game.ReplicatedStorage.GuiElements:FindFirstChild("ExperienceBar")
+	local ExperienceBarGui = script.Parent.Parent:FindFirstChild("EXPBarPopUp")
+	local StatInfo = game.ReplicatedStorage:FindFirstChild("Skills"):FindFirstChild(tostring(Stat) .. "Skill")
+	
+	local CurrentLevel,NextLevel = FindStatLevel(StatInfo, Value)
+	
+	if AmountAdded ~= nil then
+		if #ExperienceBarGui:GetChildren() ~= 0 then
+			if ExperienceBarGui.ExperienceBar.NamePlate.DisplayName.Text == tostring(Stat) then
+				--DisplayEXPChange(ExperienceBarGui, AmountAdded)
+			else	
+				InsertNewEXPBar(ExperienceBarGui,ExperienceBar,Stat, Value, CurrentLevel, NextLevel)
+			end
+			ShowEXPChange(CurrentLevel, NextLevel, StatInfo, Value, AmountAdded)
+			CountdownPopUp(ExperienceBarGui, ExperienceBarGui.ExperienceBar, 12, .5)
+		else --Pop up new experience bar
+			InsertNewEXPBar(ExperienceBarGui,ExperienceBar,Stat, Value, CurrentLevel, NextLevel, true)
+			ShowEXPChange(CurrentLevel, NextLevel, StatInfo, Value, AmountAdded)
+		end
+	end
+	
+end
+
+
+UpdateInventory.OnClientEvent:Connect(function(Stat, File, Value, AmountAdded, Type, Currency)
+	local TypeSlots = DataMenu:FindFirstChild(tostring(Type) .. "Menu")
+	local Slots
+	if File then
+		Slots = TypeSlots:FindFirstChild(File .. "Menu") or TypeSlots:FindFirstChild(File)
+	end
+	
+	if Type == "Inventory" then
+		ManageMaterialPopups(Stat, File, AmountAdded, Currency)
+		
+		if Currency == nil then	
+			ManageTiles(Stat, Slots, Value, File, Type)
+		end
+	elseif Type == "Experience" then --Later, possibly have tile/pop-up manager handle types
+		
+		--The fact that experience tiles are also unlocked once you get at least one point of exp
+		--would be fun to have a "You've unlocked a new skill!" animated gui
+		if string.find(tostring(Stat), "Skill") then --Find Skill in string
+			Stat = string.gsub(tostring(Stat), "Skill", "") --Replace Skill with ""
+		end
+		ManageEXPPopUp(Stat, Value, AmountAdded)
+		ManageTiles(Stat, Slots, Value, File, Type)
+	end
+end)
+
+
+
+
+
+

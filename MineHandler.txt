@@ -1,0 +1,234 @@
+(Script)
+Handles mining, mine generation, and ore generation after ore is mined (generates a new block around mined block that were previously nothing)
+------------------------------------------------------------------------------------------------------------------------------------------------
+
+local PlayerStatManager = require(game.ServerScriptService:WaitForChild("PlayerStatManager"))
+local OriginalOres = game.ReplicatedStorage.Ores:GetChildren()
+local PlayerData = game:GetService("ServerStorage"):WaitForChild("PlayerData")
+local TeleportButton = game:GetService("ReplicatedStorage").Events.GUI:WaitForChild("TeleportButton")
+
+local Ores = {}
+for index,Ore in pairs(OriginalOres) do
+	if Ore:IsA("BasePart") then
+		table.insert(Ores,Ore)
+	end
+end
+
+local function GetOreFromId(Id)
+	return Ores[Id]
+end
+
+local UsedPositions = {} --Check if position is taken up by block
+
+local function PositionKey(x,y,z)
+	return x..","..y..","..z
+end
+
+TeleportButton.OnServerEvent:Connect(function(player, button)
+	local PlayersFolder = workspace:FindFirstChild("Players")
+	if PlayersFolder:FindFirstChild(tostring(player)) ~= nil then
+		if button.Name == "ToSurfaceButton" then
+			local Player = PlayersFolder:FindFirstChild(tostring(player))
+			Player.LowerTorso.CFrame = workspace.SpawnLocation.CFrame
+		end
+	end
+end)
+
+
+local function DecideOre(y,Cave)
+	
+	local Lottery = {}
+	
+	for Index, Ore in pairs(Ores) do
+		local MaxDepth, MinDepth = (Ore.MaxDepth.Value > 0 and Ore.MaxDepth.Value) or 9999, (Ore.MinDepth.Value > 0 and Ore.MinDepth.Value) or 1
+		local Range = MaxDepth - MinDepth + 1
+		local MinDistance = y - MinDepth + 1
+		local MaxDistance = MaxDepth - y + 1
+		local MaxRarity, MinRarity = Ore.MaxRarity.Value, Ore.MinRarity.Value
+		
+		--math.ceil means round up
+		local OreChance = math.ceil(((MinDistance/Range) * MinRarity + (MaxDistance/Range) * MaxRarity) / 2)
+		--This calculation, since average ore won't have MinDistance and MaxDistance = 0, there is a VERY small chance they could spawn on surface
+		--^^Average calculation, bigger range = larger cover area. If cannot spawn at y, min and max dist will result in 0
+		
+		if Ore:FindFirstChild("Cave") == nil or Cave == true then
+			if y >= MinDepth and y <= MaxDepth then
+				for i=1,OreChance do
+					table.insert(Lottery,Index)
+				end
+			end
+		end
+	end
+	
+	local Id = Lottery[math.random(1,#Lottery)]
+	return GetOreFromId(Id)
+end
+
+--Immediate blocks around 0,0,0
+local VectorsGen = {
+	Vector3.new(-1,0,0),
+	Vector3.new(1,0,0),
+	Vector3.new(0,-1,0),	
+	Vector3.new(0,1,0),
+	Vector3.new(0,0,1),
+	Vector3.new(0,0,-1)
+}
+
+--Blocks around and prepping below with widened top (mining pattern)
+local VectorsMine = {
+	Vector3.new(-1,0,0),
+	Vector3.new(1,0,0),
+	Vector3.new(0,-1,0),
+	Vector3.new(0,1,0),
+	Vector3.new(0,0,1),
+	Vector3.new(0,0,-1),
+	Vector3.new(0,2,0),
+	Vector3.new(-1,0,-1),
+	Vector3.new(1,0,1),
+	Vector3.new(-1,0,1),
+	Vector3.new(1,0,-1)
+}
+
+function GenerateOre(x,y,z,Override,PresetOre,Default,Effect)
+	if (UsedPositions[PositionKey(x,y,z)] == nil or Override == true) and y > 0 then
+		--local CompactPos = Vector3.new(x,y,z)
+		
+		local Ore
+		Ore = DecideOre(y,(Override == "Branch")):Clone()
+		
+		for i,v in pairs(Ore:GetChildren()) do --Makes spawns more efficient
+			if v:IsA("StringValue") or v:IsA("NumberValue") or v:IsA("Color3Value") or v:IsA("IntValue") or v:IsA("Folder") then
+				v:Destroy()
+			end
+		end
+		
+		Ore.Parent = workspace.Mine
+		Ore.CFrame = CFrame.new(0+x*7, -5+y*(-7), 0+z*7)
+		UsedPositions[PositionKey(x,y,z)] = Ore
+		return Ore
+	end		
+end
+
+--[[
+local function DestroyOre(Ore)
+	
+	local Hitbox = Ore
+	
+	local CompactPos = Vector3.new(0 + Hitbox.Position.X/7,(Hitbox.Position.Y - -5)/(-7),Hitbox.Position.Z/7)
+	
+	UsedPositions[PositionKey(CompactPos.X,CompactPos.Y,CompactPos.Z)] = false
+	
+	if Ore.IsA("BasePart") and Ore:FindFirstChild("AntiGen") == nil and Ore.Anchored then
+		for i,Vector in pairs(VectorsMine) do
+			local NewPos = CompactPos + Vector
+			if UsedPositions[PositionKey(NewPos.x,NewPos.y,NewPos.z)] == nil then
+				
+				GenerateOre(NewPos.x,NewPos.y,NewPos.z,false,nil,nil,nil)
+			end
+		end
+	end
+	Ore:Destroy() --Destroy Ore after all has been prepared
+end
+]]
+
+function game.ServerStorage.MineOre.OnInvoke(Player,Ore)
+	local RealOre = game.ReplicatedStorage.Ores:FindFirstChild(Ore.Name)
+	if Ore:FindFirstChild("Claimed") == nil then
+		
+		local Hitbox = Ore
+		local CompactPos = Vector3.new(0 + Hitbox.Position.X/7,(Hitbox.Position.Y - -5)/(-7),Hitbox.Position.Z/7)
+		
+		UsedPositions[PositionKey(CompactPos.X,CompactPos.Y,CompactPos.Z)] = false
+		
+		for i,Vector in pairs(VectorsMine) do
+			local NewPos = CompactPos + Vector
+			if UsedPositions[PositionKey(NewPos.x,NewPos.y,NewPos.z)] == nil then
+				GenerateOre(NewPos.x,NewPos.y,NewPos.z,false,nil,nil,nil)
+			end
+		end
+		
+		--Add Ore to inventory
+		local mined = PlayerStatManager:getStat(Player, Ore.Name)
+		local experience = PlayerStatManager:getStat(Player, "MiningSkill")
+		print(typeof(mined),typeof(experience))
+		if typeof(mined) == "number" and typeof(experience) == "number" then
+			PlayerStatManager:ChangeStat(Player, Ore.Name, 1, "Inventory", true)
+			
+			local InitialOreExperience = RealOre.Experience.Value
+			PlayerStatManager:ChangeStat(Player, "MiningSkill", InitialOreExperience, "Experience", true)
+			
+			local PlayerDataFile = PlayerData:WaitForChild(tostring(Player.UserId))
+			local PlayerInventory = PlayerDataFile:WaitForChild("Inventory")
+			local PlayerExperience = PlayerDataFile:WaitForChild("Experience")
+			local OresFolder = PlayerInventory:WaitForChild("Ores")
+			local SkillsFolder = PlayerExperience:WaitForChild("Skills")
+			
+			local CurrentOre = OresFolder:FindFirstChild(Ore.Name)
+			CurrentOre.Value = CurrentOre.Value + 1
+			
+			local CurrentSkill = SkillsFolder:FindFirstChild("MiningSkill")
+			CurrentSkill.Value = CurrentSkill.Value + InitialOreExperience
+			
+			--Change player discovered value if this is first time acquired
+			local DiscoverValue = CurrentOre:FindFirstChild(tostring(Ore) .. "Discovered")
+			if DiscoverValue.Value == false then
+				print("Changing " .. tostring(DiscoverValue) .. " to true")
+				DiscoverValue.Value = true
+				PlayerStatManager:ChangeStat(Player, tostring(Ore) .. "Discovered", true, tostring(OresFolder))
+				--InsertNew TycoonStorage tile for menu
+			end
+		else
+			warn("mined or experience do not equal numbers")
+		end
+		Ore:Destroy()
+	end
+end
+
+local function GenerateMine()
+	print("Generating Mine")
+	
+	workspace.Regen.Transparency = 0
+	workspace.Regen.CanCollide = true
+	workspace.Regen.CFrame = CFrame.new(355, -10, 11)
+	
+	for i,Player in pairs(workspace.Players:GetChildren()) do
+		if Player:FindFirstChild("LowerTorso") then
+			local RawPosition = Player.LowerTorso.Position
+			local CompactPos = Vector3.new(0 + RawPosition.X/7,(RawPosition.Y - -5)/(-7),RawPosition.Z/7)
+			if math.floor(CompactPos.X) > 0 and -math.floor(CompactPos.Y) < 10 and math.floor(CompactPos.Z) > 0 then
+				Player.LowerTorso.CFrame = workspace.SpawnLocation.CFrame
+			end
+		end
+	end
+	
+	local count = 1
+	for i,Ore in pairs(workspace.Mine:GetChildren()) do
+		Ore:Destroy()
+		count = count + 1
+		if count > 50 then
+			count = 1
+			wait()
+		end
+	end
+	
+	UsedPositions = {} --Reset Table
+	for x=1,27 do
+		for z=1,27 do
+			GenerateOre(x,1,z,false,nil,true)
+		end
+	end
+	
+	wait(1)
+	
+	workspace.Regen.Transparency = 1
+	workspace.Regen.CanCollide = false
+	workspace.Regen.CFrame = CFrame.new(355, 10, 11)
+	
+	repeat wait(10) until #workspace.Mine:GetChildren() > 900
+	print(tostring(#workspace.Mine:GetChildren()) .. ";consequently, mine is resetting")
+	GenerateMine()
+end
+
+GenerateMine()
+
+

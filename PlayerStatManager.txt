@@ -1,0 +1,350 @@
+(ModuleScript)
+Handles all saving that occurs. Any true saving (ROBLOX data store assigning)
+-------------------------------------------------------------------------------------------------------------------------------------------------
+
+local PlayerStatManager = {}
+
+local tycoons = game.Workspace["Tycoon Game"]:WaitForChild("Tycoons"):GetChildren()
+
+local serverStorage = game:GetService("ServerStorage")
+local PlayerData = serverStorage:FindFirstChild("PlayerData")
+local DataStoreService = game:GetService("DataStoreService") 
+local Utility = require(game.ServerScriptService:WaitForChild("Utility"))
+local UpdateInventory = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateInventory")
+local UpdateTycoonStorage = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateTycoonStorage")
+
+local PlayerSave = DataStoreService:GetDataStore("Tycoon Test188") --Changing this will change the datastore info is taken from
+
+local sessionData = {}
+
+local function UpdateGUIForFile(DataTabName, PlayerDataFile, player, playerUserId, statName, value)
+	--print(DataTabName)
+	local DataTab = PlayerDataFile:FindFirstChild(DataTabName) --Example: (UserId).Experience
+	for i,file in pairs (DataTab:GetChildren()) do
+		if file:FindFirstChild(tostring(statName)) then --DataTab:FindFirstChild(file):FindFirstChild(statName)?
+			local amount = sessionData[playerUserId][statName]
+			local added = value
+			if tostring(DataTabName) == "Inventory" or tostring(DataTabName) == "Experience" then
+				UpdateInventory:FireClient(player, statName, tostring(file), tostring(amount), added, tostring(DataTab))
+			elseif tostring(DataTabName) == "TycoonStorage" then
+				UpdateTycoonStorage:FireClient(player, tostring(file), statName, tostring(amount), added)
+			end
+		end
+	end
+end
+
+--Change saved stat to new value
+function PlayerStatManager:ChangeStat(player, statName, value, File, InventoryItem, special)
+	local playerUserId = game.Players:FindFirstChild(tostring(player)).UserId
+	local PlayerDataFile = PlayerData:FindFirstChild(tostring(playerUserId))
+	
+	--print(typeof(sessionData[playerUserId][statName]),typeof(value),statName,sessionData[playerUserId][statName])	
+	assert(typeof(sessionData[playerUserId][statName]) == typeof(value), tostring(player) .. "'s saved value types don't match")
+	if typeof(sessionData[playerUserId][statName]) == "number" then
+		if sessionData[playerUserId][statName] ~= sessionData[playerUserId][statName] + value then --if changed	
+			sessionData[playerUserId][statName] = sessionData[playerUserId][statName] + value
+			
+			if File then 
+				UpdateGUIForFile(tostring(File),PlayerDataFile, player, playerUserId, statName, value)
+			end
+			
+			--Client script data management so exploiters cant handle sensitive data
+			for i,file in pairs (PlayerDataFile:FindFirstChild(File):GetChildren()) do
+				if file:FindFirstChild(statName) then
+					file:FindFirstChild(statName).Value = sessionData[playerUserId][statName]
+				end
+			end
+			
+		elseif special == "Zero" then
+			sessionData[playerUserId][statName] = 0
+		end
+	else --bool and string values
+		sessionData[playerUserId][statName] = value 
+		if typeof(sessionData[playerUserId][statName]) == "boolean" then
+			if string.find(statName, "Discovered") then
+				UpdateTycoonStorage:FireClient(player, tostring(File), statName, value)
+			end
+			--later stat check for data type efficiency
+		end
+	end
+end
+
+local function FindPlayerData(JoinedPlayer)
+	local PlayerDataFile = PlayerData:FindFirstChild(tostring(JoinedPlayer.UserId))
+	local PlayerCash = PlayerDataFile:FindFirstChild("Currency")
+	local playerUserId = game.Players:FindFirstChild(tostring(JoinedPlayer)).UserId
+	
+	local success,data = pcall(function()
+		return PlayerSave:GetAsync(playerUserId) --Get save saved as playerUserId
+	end)
+	
+	if success then
+		--print(success)
+		wait(5) --Allow tycoon to be categorized
+		if data then --load data
+			print("DataStore was Accessed for " .. JoinedPlayer.Name .. " (" .. tostring(JoinedPlayer.UserId) .. ")")
+			sessionData[playerUserId] = data
+			
+			LoadPlayerData(PlayerDataFile,data,JoinedPlayer)
+			
+			SetTycoonPurchases(JoinedPlayer, PlayerCash, playerUserId)
+			
+		else --New player
+			print(tostring(JoinedPlayer) .. " is a new player!")
+			sessionData[playerUserId] = {} --No data, so sessiondata is empty
+			--SetupPlayerData(JoinedPlayer, PlayerDataFile, playerUserId)
+			LoadPlayerData(PlayerDataFile,sessionData[playerUserId],JoinedPlayer)
+			SetTycoonPurchases(JoinedPlayer, PlayerCash, playerUserId)
+		end		
+	else
+		warn("Couldn't Get or Set-Up Player Data For " .. tostring(JoinedPlayer))
+	end		
+end
+
+--local IsThereNewData = false
+local function CheckSaveData(Save)
+	if not Save then
+		return false
+	else
+		return true
+	end
+end
+
+local function ImportSaveData(data,SaveCheck,Folder,Stat)
+	if SaveCheck == false then
+		if typeof(Stat) == "number" then
+			Stat.Value = 0
+		else
+			Stat.Value = false
+		end
+	end
+	for i,v in pairs (Folder:GetChildren()) do
+		if data[tostring(v)] == nil then
+			data[tostring(v)] = Stat.Value --0
+		else
+			v.Value = data[tostring(v)]
+		end
+		--print(v,v.Value,data[tostring(v)])
+	end
+end
+
+function LoadPlayerData(PlayerDataFile,data,JoinedPlayer)
+	print("Loading player data")
+	local playerUserId = game.Players:FindFirstChild(tostring(JoinedPlayer)).UserId
+	local DataMenu = JoinedPlayer.PlayerGui:WaitForChild("DataMenu"):WaitForChild("DataMenu")
+	local InventoryGui = DataMenu.InventoryMenu
+	
+	--Make it so changing the money display value text isn't several times of code (changed function)
+	local PlayerInventory = Instance.new("Folder",PlayerDataFile)
+	PlayerInventory.Name = "Inventory"
+	
+	local TycoonStorageFolder = Instance.new("Folder",PlayerDataFile)
+	TycoonStorageFolder.Name = "TycoonStorage"
+	local TycoonStorageOres = Instance.new("Folder",TycoonStorageFolder)
+	TycoonStorageOres.Name = "TycoonStorageOres"
+	
+	local PlayerExperience = Instance.new("Folder",PlayerDataFile)
+	PlayerExperience.Name = "Experience"
+	
+	local SkillsFolder = Instance.new("Folder",PlayerExperience)
+	SkillsFolder.Name = "Skills"
+	
+	local OresFolder = Instance.new("Folder",PlayerInventory)
+	local OreInventoryMenu = InventoryGui:WaitForChild("OresMenu")
+	OresFolder.Name = "Ores"
+	
+	local RealSkills = game.ReplicatedStorage:WaitForChild("Skills")
+	for i,skill in pairs (RealSkills:GetChildren()) do
+		local Skill = Instance.new("IntValue",SkillsFolder)
+		Skill.Name = tostring(skill)
+		
+		local SavedValue = CheckSaveData(data[tostring(skill)])
+		ImportSaveData(data,SavedValue,SkillsFolder,Skill)
+		--print("Data for " .. tostring(Skill) .. " is " .. tostring(data[tostring(skill)]))
+		UpdateInventory:FireClient(JoinedPlayer, tostring(Skill), SkillsFolder.Name, tostring(data[tostring(Skill)]), nil, "Experience")
+	end
+
+	--Ores w/ Discover values
+	local RealOres = game.ReplicatedStorage:WaitForChild("Ores")
+	for i,ore in pairs (RealOres:GetChildren()) do
+		-- Reason to make interior of this for i,v a function when more data is added?
+		local Ore = Instance.new("IntValue",OresFolder)
+		Ore.Name = tostring(ore)
+		local OreDiscovery = Instance.new("BoolValue",Ore)
+		OreDiscovery.Name = tostring(Ore) .. "Discovered"
+		local TycoonStorageOre = Instance.new("IntValue",TycoonStorageOres)
+		TycoonStorageOre.Name = "TycoonStorage" .. tostring(ore)
+		
+		local SavedValue = CheckSaveData(data[tostring(ore)])
+		ImportSaveData(data,SavedValue,OresFolder,Ore)
+		--print("Data for " .. tostring(Ore) .. " is " .. tostring(data[tostring(Ore)]))
+		UpdateInventory:FireClient(JoinedPlayer, tostring(Ore), OresFolder.Name, tostring(data[tostring(Ore)]), nil,"Inventory")
+
+		local SavedDiscoverValue = CheckSaveData(data[tostring(OreDiscovery)])
+		ImportSaveData(data,SavedDiscoverValue,Ore,OreDiscovery)
+		print("Updating tycoon storage discover value for " .. tostring(Ore) .. " = " .. tostring(data[tostring(OreDiscovery)]))
+		UpdateTycoonStorage:FireClient(JoinedPlayer, OresFolder.Name, tostring(Ore) .. "Discovered", data[tostring(OreDiscovery)])
+		
+		local SavedTycoonStorageValue = CheckSaveData(data[tostring(TycoonStorageOre)])
+		ImportSaveData(data,SavedTycoonStorageValue,TycoonStorageOres,TycoonStorageOre)
+		--print("Data for " .. tostring(data["TycoonStorage" .. tostring(Ore)]) .. " Tycoon Storage")
+	end	
+	local PlayerCash = PlayerDataFile:FindFirstChild("Currency")
+	--Maybe make this a file, and look for cash and premium? 
+	--That would allow for addition of currencies per "alliance" or activity
+	
+	local SavedValue = CheckSaveData(data[tostring("Money")])
+	if SavedValue == false then
+		PlayerCash.Value = 0
+		data[tostring("Money")] = PlayerCash.Value
+	else
+		PlayerCash.Value = PlayerCash.Value + data[tostring("Money")]
+	end
+	print(tostring(JoinedPlayer) .. " has $" .. tostring(data["Money"]))
+end
+
+--[[
+function SetupPlayerData(JoinedPlayer, PlayerDataFile, playerUserId)
+	
+	
+	print("First time setup for player: ".. tostring(JoinedPlayer))
+	local data = sessionData[playerUserId]
+	
+	local PlayerInventory = Instance.new("Folder",PlayerDataFile)
+	PlayerInventory.Name = "Inventory"
+	
+	local PlayerExperience = Instance.new("Folder",PlayerDataFile)
+	PlayerExperience.Name = "Experience"
+	local SkillsFolder = Instance.new("Folder",PlayerExperience)
+	SkillsFolder.Name = "Skills"
+	local RealSkills = game.ReplicatedStorage:WaitForChild("Skills")
+	for i,skill in pairs (RealSkills:GetChildren()) do
+		local Skill = Instance.new("IntValue",SkillsFolder)
+		Skill.Name = tostring(skill)
+		Skill.Value = 0
+	end
+	for i,v in pairs (SkillsFolder:GetChildren()) do --May be able to meld into original i,v loop
+		if data[tostring(v)] == nil then
+			data[tostring(v)] = v.Value
+		end
+	end
+	
+	local RealOres = game.ReplicatedStorage:WaitForChild("Ores")
+	local OresFolder = Instance.new("Folder",PlayerInventory)
+	OresFolder.Name = "Ores"
+	for i,v in pairs (RealOres:GetChildren()) do
+		local Ore = Instance.new("IntValue",OresFolder)
+		Ore.Name = tostring(v)
+		Ore.Value = 0 --Set intvalue to 0
+		local DiscoveredValue = Instance.new("BoolValue",Ore)
+		DiscoveredValue.Name = "Discovered"
+		DiscoveredValue.Value = false
+		
+		if data[tostring(Ore) .. "Discovered"] == nil then
+			data[tostring(Ore) .. "Discovered"] = DiscoveredValue.Value
+		end
+	end
+	for i,Ore in pairs (OresFolder:GetChildren()) do
+		if data[tostring(Ore)] == nil then --This check may not have to be here
+			data[tostring(Ore)] = Ore.Value --set datastore of orevalue equal to intvalue (0)
+		end
+	end		
+end
+]]
+
+function SetTycoonPurchases(JoinedPlayer, PlayerCash, playerUserId)
+	for i = 1,#tycoons,1 do 
+		local PurchaseHandler = require(tycoons[i]:WaitForChild("PurchaseHandler"))
+		local data = sessionData[playerUserId]
+		
+		--Set-up Entrance Save
+		local Entrance = tycoons[i].Entrance.Name
+		if data[Entrance] == nil then
+			print("Setting Entrance to false1")
+			data[Entrance] = false
+		end
+		
+		for key,_ in pairs(PurchaseHandler) do
+			if data[key] == nil then --if a value of the object hasn't been placed in player's sessiondata,
+				--Make one, and set it equal to false (so it can be set to true later)
+				--print(key) --= displays names of items that can be bought (NOT BUTTON NAMES)
+				data[key] = false --Set the objects as not bought
+			end
+		end	
+		
+		Utility:UpdateMoneyDisplay(JoinedPlayer, PlayerStatManager:ConvertShort(PlayerCash.Value))
+	end
+end
+
+function savePlayerData(playerUserId)
+	if sessionData[playerUserId] then --if there is a sessiondata value with the player's userid...
+		local success = pcall(function() --Check to make sure it is saving
+			PlayerSave:SetAsync(playerUserId, sessionData[playerUserId]) --save sessionData[playerUserId] as playerUserId
+			print(playerUserId .. "'s held data was SAVED!")
+			--playerUserId = string (key), and sessionData[playerUserId] = variant (value of given key)
+		end)
+		if not success then
+			warn("Cannot save data for " .. tostring(playerUserId))
+		end
+	end
+end
+
+--[[ (REMOVED BECAUSE SAVED ALL PREVIOUS PLAYER'S DATA AS WELL)
+local function saveAllPlayerData() --maybe make a getchildren statement? and save for all children?
+		for playerUserId, _ in pairs(sessionData) do --Call for every player thats ever been in game
+			savePlayerData(playerUserId) --Save
+			print(playerUserId .. "'s held data was saved!")
+		end
+	end
+]]
+
+function PlayerStatManager:getPlayerData(player)
+	local playerUserId = game.Players:FindFirstChild(tostring(player)).UserId
+	--print(sessionData[playerUserId]) --table: (random code), why?
+	return sessionData[playerUserId] --put in the table the player's user id
+end 
+
+function PlayerStatManager:getStat(player, statName)
+	--Largely used as a stat checker
+	local playerUserId = game.Players:FindFirstChild(tostring(player)).UserId
+	print(sessionData[playerUserId][statName],statName,playerUserId)
+	return sessionData[playerUserId][statName]
+end 
+
+function PlayerStatManager:initiateSaving(player, statName, value)
+	print("Saving Data for player: " .. tostring(player))
+	local playerUserId = game.Players:FindFirstChild(tostring(player)).UserId
+	--if typeof(sessionData[playerUserId][statName]) == "number" and statName ~= "Money" then
+	--sessionData[playerUserId][statName] = sessionData[playerUserId][statName] + value
+	--else
+	sessionData[playerUserId][statName] = value --data["Money"] in FindPlayerData
+	--end
+	
+	print("Money: " .. tostring(sessionData[playerUserId]["Money"]))
+	savePlayerData(playerUserId) --After saving money amount, update datastore for other stats!
+	--Other stats include purhcases, inventory, etc.
+end
+
+game.Players.PlayerAdded:Connect(FindPlayerData)
+
+--Shortens numbers (Change so isn't only one number after decimal, change to at least 2 after)
+function PlayerStatManager:ConvertShort(Filter_Num) --MOVE TO UTILITY?
+	--print(Filter_Num) = money amount player has in total
+	local x = tostring(Filter_Num)
+	--print(x) = money amount player has in total
+	if #x>=10 then
+		local important = (#x-9)
+		return x:sub(0,(important)).."."..(x:sub(#x-7,(#x-7))).."B"
+	elseif #x>=7 then
+		local important = (#x-6)
+		return x:sub(0,(important)).."."..(x:sub(#x-5,(#x-5))).."M"
+		--elseif #x>=4 then
+		--local important = (#x-3)
+		--print(tostring(x:sub(x:sub(#x-2,(#x-2)))))
+		--return x:sub(0,(important)).."."..(x:sub(#x-2,(#x-2))).."K"
+	else
+		return Filter_Num
+	end
+end
+
+return PlayerStatManager
