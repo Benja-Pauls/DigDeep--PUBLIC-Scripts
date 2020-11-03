@@ -22,6 +22,6 @@ the script will no longer see it, but the other players will still be able to se
 
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-For those from Twitter, hello! This is the project's code so far. Please use this as an opportunity to learn and develop your own games!
-If you didn't open this from Twitter, Twitter is this proeject's development log, announcing nightly updates whenever possible on the day's progress.
-If you would like to hear those daily updates, the project's Twitter: https://twitter.com/Benisthedj
+For those who accessed this GitHub from Twitter, I will be updating this GitHub with the "End of Day Update" tweets too (this GitHub is not a replacment for the tweets).
+If you didn't open this from Twitter, Twitter is this project's development log, announcing nightly updates whenever possible on the day's progress.
+If you would like to hear those daily updates, the project's Twitter is https://twitter.com/Benisthedj
