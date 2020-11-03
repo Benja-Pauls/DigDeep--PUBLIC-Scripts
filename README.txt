@@ -22,5 +22,5 @@ LocalScript: Usually found inside the player, it is the only script that can acc
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 For those who accessed this GitHub from Twitter, I will be updating these GitHub scripts with the "End of Day Update" tweets (this GitHub is not a replacment for the tweets).
-If you didn't open this from Twitter, Twitter is this project's development log, announcing nightly updates whenever possible on the day's progress.
+If you didn't access this GitHub through Twitter, Twitter is this project's development log, announcing nightly update summaries whenever possible about the day's progress.
 If you would like to hear those daily updates, the project's Twitter is https://twitter.com/Benisthedj
