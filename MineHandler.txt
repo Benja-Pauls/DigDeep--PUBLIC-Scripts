@@ -1,5 +1,7 @@
 (Script)
 Handles mining, mine generation, and ore generation after ore is mined (generates a new block around mined block that were previously nothing)
+
+Updated (11/2/2020): Now handles cave generation with math.noise, following perlin noise to make nartural looking caves
 ------------------------------------------------------------------------------------------------------------------------------------------------
 
 local PlayerStatManager = require(game.ServerScriptService:WaitForChild("PlayerStatManager"))
@@ -89,10 +91,53 @@ local VectorsMine = {
 	Vector3.new(1,0,-1)
 }
 
+local GCounts = {} --What does GCounts stand for?
+
 function GenerateOre(x,y,z,Override,PresetOre,Default,Effect)
 	if (UsedPositions[PositionKey(x,y,z)] == nil or Override == true) and y > 0 then
 		--local CompactPos = Vector3.new(x,y,z)
+		local Noise = math.noise(x/25,y/15,z/25) --math.noise is a perlin noise calculator, #'s are near each other, hence ability to make "natural" caves
+		print(Noise)
+		--print(tostring(250 % 4)) --% means modulo, or finding the remainder of division between the first & second #
+		local CompactPos = Vector3.new(x,y,z)
 		
+		--Cave Generation
+		if y > 2 and ((Noise >= 0.5) or (Noise <= -0.5)) then --.525?
+			
+			UsedPositions[PositionKey(x,y,z)] = false --Air
+			
+			if Override ~= "Branch" then
+				local Origin = PositionKey(x,y,z)
+				GCounts[Origin] = 0 --Creating table with name of origin, definitive non-changing distinguishable point
+				coroutine.resume(coroutine.create(function()
+					for i,Vec in pairs(VectorsGen) do
+						local NewPos = CompactPos + Vec
+						
+						--Making sure blocks around the origin point haven't been mined also, to count in GCounts
+						if UsedPositions[PositionKey(NewPos.x,NewPos.y,NewPos.z)] == nil then 
+							GCounts[Origin] = GCounts[Origin] + 1
+							GenerateOre(NewPos.x,NewPos.y,NewPos.z,"Branch",Origin)
+							--Branch will start actual cave generation, checking Noise everytime
+							--Noise correlates to awkward shape
+						end
+					end
+				end))
+			else --Generating rest of cave, other than origin's correlates
+				print("Cave is generating!")
+				local Origin = PresetOre --Assigned as Origin from non-branch if statement
+				for i,Vec in pairs(VectorsGen) do
+					local NewPos = CompactPos + Vec
+					if UsedPositions[PositionKey(NewPos.x,NewPos.y,NewPos.z)] == nil then
+						GCounts[Origin] = GCounts[Origin] + 1
+						if GCounts[Origin] % 250 == 0 then --When ~= float, now integer
+							wait()
+						end
+						GenerateOre(NewPos.x,NewPos.y,NewPos.z,"Branch",Origin)
+					end
+				end
+					
+			end
+		end
 		local Ore
 		Ore = DecideOre(y,(Override == "Branch")):Clone()
 		
@@ -230,5 +275,6 @@ local function GenerateMine()
 end
 
 GenerateMine()
+
 
 
