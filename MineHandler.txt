@@ -137,20 +137,21 @@ function GenerateOre(x,y,z,Override,PresetOre,Default,Effect)
 				end
 					
 			end
-		end
-		local Ore
-		Ore = DecideOre(y,(Override == "Branch")):Clone()
+		else
+			local Ore
+			Ore = DecideOre(y,(Override == "Branch")):Clone()
 		
-		for i,v in pairs(Ore:GetChildren()) do --Makes spawns more efficient
-			if v:IsA("StringValue") or v:IsA("NumberValue") or v:IsA("Color3Value") or v:IsA("IntValue") or v:IsA("Folder") then
-				v:Destroy()
+			for i,v in pairs(Ore:GetChildren()) do --Makes spawns more efficient
+				if v:IsA("StringValue") or v:IsA("NumberValue") or v:IsA("Color3Value") or v:IsA("IntValue") or v:IsA("Folder") then
+					v:Destroy()
+				end
 			end
-		end
 		
-		Ore.Parent = workspace.Mine
-		Ore.CFrame = CFrame.new(0+x*7, -5+y*(-7), 0+z*7)
-		UsedPositions[PositionKey(x,y,z)] = Ore
-		return Ore
+			Ore.Parent = workspace.Mine
+			Ore.CFrame = CFrame.new(0+x*7, -5+y*(-7), 0+z*7)
+			UsedPositions[PositionKey(x,y,z)] = Ore
+			return Ore
+		end
 	end		
 end
 
