@@ -37,12 +37,13 @@ local function SelectedItem()
 				ProgressBarClone.ProgressBar.TimeLeft.Size = UDim2.new(Progress,0,1,0)
 				--ProgressBar.Parent.Enabled = true
 			elseif Target:IsA("BasePart") and Target.Reflectance == 0 then
-				wait() --Why does this wait NEED to be here? otherwise, mining repeats
+				wait() --Here to allow for check reflection at 0
 				script.Parent.SelectedOre.Color3 = OriginalSelectOreColor
 				script.Parent.SelectedOre.SurfaceColor3 = OriginalSelectOreColor
 				ProgressBarClone.Enabled = false --(disappear when let go)
 			end
 		end
+		ProgressBarClone.Enabled = false --disappear when not let go, but look away from block
 	end
 end
 
@@ -70,8 +71,6 @@ end)
 
 SelectedItem()
 workspace.CurrentCamera.SelectedItem.Changed:connect(SelectedItem)
-
-
 
 
 
