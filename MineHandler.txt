@@ -6,19 +6,30 @@ Updated (11/2/2020): Now handles cave generation with math.noise, following perl
 
 local PlayerStatManager = require(game.ServerScriptService:WaitForChild("PlayerStatManager"))
 local OriginalOres = game.ReplicatedStorage.Ores:GetChildren()
+local OriginalRegions = game.ReplicatedStorage.MineRegions:GetChildren()
 local PlayerData = game:GetService("ServerStorage"):WaitForChild("PlayerData")
 local TeleportButton = game:GetService("ReplicatedStorage").Events.GUI:WaitForChild("TeleportButton")
 
-local Ores = {}
-for index,Ore in pairs(OriginalOres) do
-	if Ore:IsA("BasePart") then
-		table.insert(Ores,Ore)
+
+local function FillObjectTables(Original, IsA, Table) --Folder Read Setup
+	for index,Object in pairs(Original) do
+		if Object:IsA(IsA) then
+			table.insert(Table,Object)
+		end
 	end
 end
 
-local function GetOreFromId(Id)
-	return Ores[Id]
+local Ores = {}
+local Regions = {}
+
+FillObjectTables(OriginalOres, "BasePart", Ores)
+FillObjectTables(OriginalRegions, "Folder", Regions)
+
+
+local function GetObjectFromId(Object,Id)
+	return Object[Id]
 end
+
 
 local UsedPositions = {} --Check if position is taken up by block
 
@@ -36,34 +47,51 @@ TeleportButton.OnServerEvent:Connect(function(player, button)
 	end
 end)
 
+local function CalculateChance(y,Selection)
+	local MaxDepth, MinDepth = (Selection.MaxDepth.Value > 0 and Selection.MaxDepth.Value) or 9999, (Selection.MinDepth.Value > 0 and Selection.MinDepth.Value) or 1
+	local Range = MaxDepth - MinDepth + 1
+	local MinDistance = y - MinDepth + 1
+	local MaxDistance = MaxDepth - y + 1
+	local MaxRarity, MinRarity = Selection.MaxRarity.Value, Selection.MinRarity.Value
 
-local function DecideOre(y,Cave)
+	--math.ceil means round up
+	local Chance = math.ceil(((MinDistance/Range) * MinRarity + (MaxDistance/Range) * MaxRarity) / 2)
+	if y >= MinDepth and y <= MaxDepth then
+		return Chance
+	end
+end
+
+--Way to meld decide ore and decide region?
+local function DecideSelection(y, Table, RegionSpecific)
 	
 	local Lottery = {}
 	
-	for Index, Ore in pairs(Ores) do
-		local MaxDepth, MinDepth = (Ore.MaxDepth.Value > 0 and Ore.MaxDepth.Value) or 9999, (Ore.MinDepth.Value > 0 and Ore.MinDepth.Value) or 1
-		local Range = MaxDepth - MinDepth + 1
-		local MinDistance = y - MinDepth + 1
-		local MaxDistance = MaxDepth - y + 1
-		local MaxRarity, MinRarity = Ore.MaxRarity.Value, Ore.MinRarity.Value
-		
-		--math.ceil means round up
-		local OreChance = math.ceil(((MinDistance/Range) * MinRarity + (MaxDistance/Range) * MaxRarity) / 2)
-		--This calculation, since average ore won't have MinDistance and MaxDistance = 0, there is a VERY small chance they could spawn on surface
-		--^^Average calculation, bigger range = larger cover area. If cannot spawn at y, min and max dist will result in 0
-		
-		if Ore:FindFirstChild("Cave") == nil or Cave == true then
-			if y >= MinDepth and y <= MaxDepth then
-				for i=1,OreChance do
-					table.insert(Lottery,Index)
+	--Way to include both? Where the region specific ores have a much higher chance? Or keep "specialty" of regions?
+	for Index,Selection in pairs(Table) do --Has to work with region calculation
+		local Chance = CalculateChance(y,Selection)
+		print(Chance)
+		if Chance ~= nil then
+			if not RegionSpecific or RegionSpecific == true then
+				if not Selection:FindFirstChild("RegionSpecial") then
+					for i=1,Chance do
+						table.insert(Lottery,Index)
+					end
+				end
+			else
+				if (Selection:FindFirstChild("RegionSpecial") and not Selection:FindFirstChild("BlockBelow")) or Selection.Name == "Stone" then
+					if Selection:FindFirstChild("RegionSpecial").Value == RegionSpecific then
+						for i=1,Chance do
+							table.insert(Lottery,Index)
+						end
+					end
 				end
 			end
 		end
 	end
 	
 	local Id = Lottery[math.random(1,#Lottery)]
-	return GetOreFromId(Id)
+	
+	return GetObjectFromId(Table,Id)
 end
 
 --Immediate blocks around 0,0,0 (cave/region generation pattern)
@@ -91,51 +119,72 @@ local VectorsMine = {
 	Vector3.new(1,0,-1)
 }
 
-local GCounts = {} --Amount of blocks in generation
+local GCounts = {} --Amount of blocks in generation array
 
-function GenerateOre(x,y,z,Override,PresetOre,Default,Effect)
+local CurrentGeneratingRegion
+function GenerateOre(x,y,z,Override,PresetPoint,Region)
 	if (UsedPositions[PositionKey(x,y,z)] == nil or Override == true) and y > 0 then
-		--local CompactPos = Vector3.new(x,y,z)
+		
 		local Noise = math.noise(x/25,y/15,z/25) --math.noise is a perlin noise calculator, #'s are near each other, hence ability to make "natural" caves
 		print(Noise)
 		--print(tostring(250 % 4)) --% means modulo, or finding the remainder of division between the first & second #
 		local CompactPos = Vector3.new(x,y,z)
 		
-		
-		--have math.random to determine if a region should be generated
-		--math.random(
-		
-		--Figure out if blocks or air (region or region cave)
-		
-		--However, if there was a way to get a region set that spawns the blocks as you mine,
-		--instead of spawning in the entire region (relatively small with a .525 noise calc).
-		--With block regions, maybe have a check where, if the block is above a certain noise,
-		--the usedposition will be false (air) to replicate smaller air pockets
-		
 		--Cave Generation (generates until all blocks are filled, including VectorsGen nearby blocks
-		if y > 2 and ((Noise >= 0.45) or (Noise <= -0.45)) then --.525?
-			print("Got past if statement with Noise: " .. tostring(Noise))
+		if y > 2 and ((Noise >= 0.48) or (Noise <= -0.48)) then --.525?
 			
-			UsedPositions[PositionKey(x,y,z)] = false --Air
+			UsedPositions[PositionKey(x,y,z)] = false
 			
-			if Override ~= "Branch" then --Origin start
+			if Override ~= "Branch" then
+				
 				local Origin = PositionKey(x,y,z)
 				GCounts[Origin] = 0 --Creating table with name of origin, definitive non-changing distinguishable point
+				
+				local Region = DecideSelection(y,Regions)
+				GCounts[Region] = Region
+				print("REGION: " .. tostring(GCounts[Region]))
+				
+				--For setting the cave apart from just a cave, maybe a closer to zero noise value will be used to generate nearby solids?
+				
 				coroutine.resume(coroutine.create(function()
 					for i,Vec in pairs(VectorsGen) do
 						local NewPos = CompactPos + Vec
-						
+
 						if UsedPositions[PositionKey(NewPos.x,NewPos.y,NewPos.z)] == nil then 
 							GCounts[Origin] = GCounts[Origin] + 1
-							GenerateOre(NewPos.x,NewPos.y,NewPos.z,"Branch",Origin)
+							GenerateOre(NewPos.x,NewPos.y,NewPos.z,"Branch",Origin,Region)
 							--Branch will start actual cave generation, checking Noise everytime
 							--Noise correlates to natural shape
+
 						end
 					end
 				end))
-			else --Generating rest of cave, other than origin's correlates
+				
+			else
 				print("Cave is generating!")
-				local Origin = PresetOre --Assigned as Origin from non-branch if statement
+				local Origin = PresetPoint --Assigned as Origin from non-branch if statement
+				
+				--Special structure placement
+				local BelowNoise = math.noise(x/25,(y+1)/15,z/25)
+				local BlockBelow = not (BelowNoise >= 0.48 or BelowNoise <=-0.48)
+				
+				--Read for affiliated region and look through all available blockbelow structures
+				if BlockBelow then
+					for Index,Selection in pairs (game.ReplicatedStorage.Ores:GetChildren()) do
+						if Selection:FindFirstChild("BlockBelow") and Selection:FindFirstChild("RegionSpecial").Value == Region then
+							local SpawnChance = math.random(1,50)
+
+							if SpawnChance >= 49 then
+								local Structure = Selection:Clone()
+
+								Structure.Parent = workspace.Mine
+								Structure.CFrame = CFrame.new(0+x*7, -5+y*(-7), 0+z*7)
+								UsedPositions[PositionKey(x,y,z)] = Structure
+							end
+						end
+					end
+				end
+				
 				for i,Vec in pairs(VectorsGen) do
 					local NewPos = CompactPos + Vec
 					if UsedPositions[PositionKey(NewPos.x,NewPos.y,NewPos.z)] == nil then
@@ -144,23 +193,31 @@ function GenerateOre(x,y,z,Override,PresetOre,Default,Effect)
 							wait()
 						end
 						print(GCounts[Origin])
-						GenerateOre(NewPos.x,NewPos.y,NewPos.z,"Branch",Origin)
+						GenerateOre(NewPos.x,NewPos.y,NewPos.z,"Branch",Origin,Region)
 					end
 				end	
 			end
 			
+			--Why does color revert back to "stock" when you finish region generation? That's good
+			--that it is happening, but why?
+			
 		else
-			local Ore
-			Ore = DecideOre(y,(Override == "Branch")):Clone()
+			local Ore = DecideSelection(y,Ores,Region):Clone()
+			--Ore = DecideOre(y,(Override == "Branch")):Clone()
 
 			for i,v in pairs(Ore:GetChildren()) do --Makes spawns more efficient
 				if v:IsA("StringValue") or v:IsA("NumberValue") or v:IsA("Color3Value") or v:IsA("IntValue") or v:IsA("Folder") then
 					v:Destroy()
 				end
 			end
+			
+			if GCounts[Region] ~= nil then
+				Ore.Color = GCounts[Region]:FindFirstChild("BlockColor").Value
+			end
 
 			Ore.Parent = workspace.Mine
 			Ore.CFrame = CFrame.new(0+x*7, -5+y*(-7), 0+z*7)
+			--Ore.Transparency = math.abs(1*Noise)
 			UsedPositions[PositionKey(x,y,z)] = Ore
 			return Ore
 		end
@@ -233,10 +290,9 @@ function game.ServerStorage.MineOre.OnInvoke(Player,Ore)
 				print("Changing " .. tostring(DiscoverValue) .. " to true")
 				DiscoverValue.Value = true
 				PlayerStatManager:ChangeStat(Player, tostring(Ore) .. "Discovered", true, tostring(OresFolder))
-				--InsertNew TycoonStorage tile for menu
 			end
 		else
-			warn("mined or experience do not equal numbers")
+			warn("mined or experience cannot be saved")
 		end
 		Ore:Destroy()
 	end
@@ -288,6 +344,7 @@ local function GenerateMine()
 end
 
 GenerateMine()
+
 
 
 
