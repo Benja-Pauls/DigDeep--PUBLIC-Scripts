@@ -61,35 +61,57 @@ local function CalculateChance(y,Selection)
 	end
 end
 
---Way to meld decide ore and decide region?
 local function DecideSelection(y, Table, RegionSpecific)
 	
 	local Lottery = {}
 	
 	--Way to include both? Where the region specific ores have a much higher chance? Or keep "specialty" of regions?
 	for Index,Selection in pairs(Table) do --Has to work with region calculation
-		local Chance = CalculateChance(y,Selection)
-		print(Chance)
-		if Chance ~= nil then
-			if not RegionSpecific or RegionSpecific == true then
-				if not Selection:FindFirstChild("RegionSpecial") then
-					for i=1,Chance do
-						table.insert(Lottery,Index)
-					end
-				end
-			else
-				if (Selection:FindFirstChild("RegionSpecial") and not Selection:FindFirstChild("BlockBelow")) or Selection.Name == "Stone" then
-					if Selection:FindFirstChild("RegionSpecial").Value == RegionSpecific then
+		if not Selection:FindFirstChild("SpecialStructure") then
+			local Chance = CalculateChance(y,Selection)
+			--print(Chance)
+			if Chance ~= nil then
+				if not RegionSpecific or RegionSpecific == true then
+					if not Selection:FindFirstChild("RegionSpecial") then
 						for i=1,Chance do
 							table.insert(Lottery,Index)
 						end
 					end
+				elseif RegionSpecific then
+					if Selection:FindFirstChild("RegionSpecial") then
+						if Selection.RegionSpecial.Value == tostring(RegionSpecific) then
+							table.insert(Lottery,Index)
+						end
+					elseif not Selection:FindFirstChild("RegionSpecial") then
+						Chance = Chance/10
+						table.insert(Lottery,Index)
+					end
 				end
+					
+				--[[ (Older only region specific ores script)
+				elseif tostring(Selection) == "Stone" then
+					for i=1,Chance do
+						table.insert(Lottery,Index)
+					end
+				else --managing region specific ores
+					if not Selection:FindFirstChild("SpecialStructure") and Selection:FindFirstChild("RegionSpecial") then
+						if Selection.RegionSpecial.Value == tostring(RegionSpecific) then
+		
+							for i=1,Chance do
+								table.insert(Lottery,Index)
+							end
+						end
+					end
+				end
+				]]
+					
 			end
 		end
 	end
 	
 	local Id = Lottery[math.random(1,#Lottery)]
+	
+	print(GetObjectFromId(Table,Id))
 	
 	return GetObjectFromId(Table,Id)
 end
@@ -126,7 +148,7 @@ function GenerateOre(x,y,z,Override,PresetPoint,Region)
 	if (UsedPositions[PositionKey(x,y,z)] == nil or Override == true) and y > 0 then
 		
 		local Noise = math.noise(x/25,y/15,z/25) --math.noise is a perlin noise calculator, #'s are near each other, hence ability to make "natural" caves
-		print(Noise)
+		--print(Noise)
 		--print(tostring(250 % 4)) --% means modulo, or finding the remainder of division between the first & second #
 		local CompactPos = Vector3.new(x,y,z)
 		
@@ -169,17 +191,23 @@ function GenerateOre(x,y,z,Override,PresetPoint,Region)
 				local BlockBelow = not (BelowNoise >= 0.48 or BelowNoise <=-0.48)
 				
 				--Read for affiliated region and look through all available blockbelow structures
+				
+				
+				--Particular block stuructres, not air or walls (make function later with more criteria)
 				if BlockBelow then
 					for Index,Selection in pairs (game.ReplicatedStorage.Ores:GetChildren()) do
-						if Selection:FindFirstChild("BlockBelow") and Selection:FindFirstChild("RegionSpecial").Value == Region then
-							local SpawnChance = math.random(1,50)
+						if Selection:FindFirstChild("SpecialStructure") and Selection:FindFirstChild("RegionSpecial").Value == tostring(Region) then
+							
+							if Selection.SpecialStructure.Value == "BlockBelow" then
+								local SpawnChance = math.random(1,50)
 
-							if SpawnChance >= 49 then
-								local Structure = Selection:Clone()
+								if SpawnChance >= 49 then
+									local Structure = Selection:Clone()
 
-								Structure.Parent = workspace.Mine
-								Structure.CFrame = CFrame.new(0+x*7, -5+y*(-7), 0+z*7)
-								UsedPositions[PositionKey(x,y,z)] = Structure
+									Structure.Parent = workspace.Mine
+									Structure.CFrame = CFrame.new(0+x*7, -5+y*(-7), 0+z*7)
+									UsedPositions[PositionKey(x,y,z)] = Structure
+								end
 							end
 						end
 					end
@@ -192,7 +220,7 @@ function GenerateOre(x,y,z,Override,PresetPoint,Region)
 						if GCounts[Origin] % 250 == 0 then --Wait every 100
 							wait()
 						end
-						print(GCounts[Origin])
+						--print(GCounts[Origin])
 						GenerateOre(NewPos.x,NewPos.y,NewPos.z,"Branch",Origin,Region)
 					end
 				end	
@@ -344,9 +372,5 @@ local function GenerateMine()
 end
 
 GenerateMine()
-
-
-
-
 
 
