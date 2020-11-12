@@ -1,7 +1,7 @@
 (Script)
 Handles mining, mine generation, and ore generation after ore is mined (generates a new block around mined block that were previously nothing)
 
-Updated (11/2/2020): Now handles cave generation with math.noise, following perlin noise to make nartural looking caves
+Most Recent Update (11/11/2020): Regions now can spawn "structures" growing off the ground and hanging from the ceiling, along with some other code tweaks.
 ------------------------------------------------------------------------------------------------------------------------------------------------
 
 local PlayerStatManager = require(game.ServerScriptService:WaitForChild("PlayerStatManager"))
@@ -13,7 +13,7 @@ local TeleportButton = game:GetService("ReplicatedStorage").Events.GUI:WaitForCh
 
 local function FillObjectTables(Original, IsA, Table) --Folder Read Setup
 	for index,Object in pairs(Original) do
-		if Object:IsA(IsA) then
+		if Object:IsA(IsA) or Object:IsA("Model") then --Chang model to IsA2 or IsaExtra?
 			table.insert(Table,Object)
 		end
 	end
@@ -28,6 +28,12 @@ FillObjectTables(OriginalRegions, "Folder", Regions)
 
 local function GetObjectFromId(Object,Id)
 	return Object[Id]
+end
+
+local function InsertIntoTable(Chance, Table, Index) --Put into Utility script
+	for i=1,Chance do
+		table.insert(Table,Index)
+	end
 end
 
 
@@ -71,20 +77,20 @@ local function DecideSelection(y, Table, RegionSpecific)
 			local Chance = CalculateChance(y,Selection)
 			--print(Chance)
 			if Chance ~= nil then
-				if not RegionSpecific or RegionSpecific == true then
+				if not RegionSpecific or tostring(RegionSpecific) == "true" then
 					if not Selection:FindFirstChild("RegionSpecial") then
-						for i=1,Chance do
-							table.insert(Lottery,Index)
-						end
+						InsertIntoTable(Chance,Lottery,Index)
 					end
 				elseif RegionSpecific then
 					if Selection:FindFirstChild("RegionSpecial") then
 						if Selection.RegionSpecial.Value == tostring(RegionSpecific) then
-							table.insert(Lottery,Index)
+							InsertIntoTable(Chance,Lottery,Index)
 						end
 					elseif not Selection:FindFirstChild("RegionSpecial") then
-						Chance = Chance/10
-						table.insert(Lottery,Index)
+						if Selection.Name ~= "Stone" then
+							Chance = Chance/50
+						end
+						InsertIntoTable(Chance,Lottery,Index)
 					end
 				end
 					
@@ -111,9 +117,40 @@ local function DecideSelection(y, Table, RegionSpecific)
 	
 	local Id = Lottery[math.random(1,#Lottery)]
 	
-	print(GetObjectFromId(Table,Id))
+	--print(GetObjectFromId(Table,Id))
 	
 	return GetObjectFromId(Table,Id)
+end
+
+local function SpawnStructures(x,y,z,Bounds,Region)
+	for Index,Selection in pairs (game.ReplicatedStorage.Ores:GetChildren()) do
+		if Selection:FindFirstChild("SpecialStructure") and Selection:FindFirstChild("RegionSpecial").Value == tostring(Region) then
+			if Selection.SpecialStructure.Value == tostring(Bounds) then
+				
+				local SpawnChance = math.random(1,50)--change so this goes along with their personal rarity calculation
+
+				if SpawnChance >= 48 then 
+
+					local Structure = Selection:Clone()
+					
+					Structure.Parent = workspace.Mine
+					Structure.CFrame = CFrame.new(0+x*7, -5+y*(-7), 0+z*7)
+					
+					if Structure:FindFirstChild("MeshPart") then
+						Structure.MeshPart.CFrame = CFrame.new(0+x*7, -5+y*(-7), 0+z*7)
+						
+						if Structure.MeshPart:FindFirstChild("Offset") then
+							local Offset = Structure.MeshPart.Offset.Value
+							Structure.MeshPart.Position = Structure.MeshPart.Position + Vector3.new(0,Offset.Y,0)
+						end
+					end
+					
+					UsedPositions[PositionKey(x,y,z)] = Structure
+					
+				end
+			end
+		end
+	end
 end
 
 --Immediate blocks around 0,0,0 (cave/region generation pattern)
@@ -183,35 +220,30 @@ function GenerateOre(x,y,z,Override,PresetPoint,Region)
 				end))
 				
 			else
-				print("Cave is generating!")
+				--print("Cave is generating!")
 				local Origin = PresetPoint --Assigned as Origin from non-branch if statement
 				
-				--Special structure placement
-				local BelowNoise = math.noise(x/25,(y+1)/15,z/25)
-				local BlockBelow = not (BelowNoise >= 0.48 or BelowNoise <=-0.48)
+				--Special structure bounds
+				local BelowNoise = math.noise(x/25, (y+1)/15, z/25)
+				local BlockBelow = not (BelowNoise >= 0.48 or BelowNoise <= -0.48)
 				
-				--Read for affiliated region and look through all available blockbelow structures
-				
+				local AboveNoise = math.noise(x/25, (y-1)/15, z/25)
+				local BlockAbove = not (AboveNoise >= 0.48 or AboveNoise <= -0.48)		
+				--if BlockAbove or (y-1)<3 then --2 check in case ceiling is top level of stone
+					--print("OHHHH: " .. tostring(AboveNoise),y)
+				--end
 				
 				--Particular block stuructres, not air or walls (make function later with more criteria)
-				if BlockBelow then
-					for Index,Selection in pairs (game.ReplicatedStorage.Ores:GetChildren()) do
-						if Selection:FindFirstChild("SpecialStructure") and Selection:FindFirstChild("RegionSpecial").Value == tostring(Region) then
-							
-							if Selection.SpecialStructure.Value == "BlockBelow" then
-								local SpawnChance = math.random(1,50)
-
-								if SpawnChance >= 49 then
-									local Structure = Selection:Clone()
-
-									Structure.Parent = workspace.Mine
-									Structure.CFrame = CFrame.new(0+x*7, -5+y*(-7), 0+z*7)
-									UsedPositions[PositionKey(x,y,z)] = Structure
-								end
-							end
-						end
+				if BlockBelow or BlockAbove or (y-1)<3 then
+					local Bounds
+					if BlockBelow then --Way to make more efficient?? Especially with more bounds later?
+						Bounds = "BlockBelow"
+					elseif BlockAbove or (y-1)<3 then
+						Bounds = "BlockAbove"
+						print(BlockAbove)
 					end
-				end
+					SpawnStructures(x,y,z,Bounds,Region)
+				end 
 				
 				for i,Vec in pairs(VectorsGen) do
 					local NewPos = CompactPos + Vec
@@ -240,7 +272,20 @@ function GenerateOre(x,y,z,Override,PresetPoint,Region)
 			end
 			
 			if GCounts[Region] ~= nil then
-				Ore.Color = GCounts[Region]:FindFirstChild("BlockColor").Value
+				local RegionColor = GCounts[Region]:FindFirstChild("BlockColor").Value
+				Ore.Color = RegionColor
+				
+				local AmbientLighting = Instance.new("PointLight",Ore)
+				AmbientLighting.Color = RegionColor
+				
+				if RegionColor.R + RegionColor.G + RegionColor.B <= 250 then
+					AmbientLighting.Brightness = 3.5
+				end
+				
+				if tostring(GCounts[Region]) == "Normal" then
+					AmbientLighting.Brightness = 0.5
+					AmbientLighting.Range = 5
+				end
 			end
 
 			Ore.Parent = workspace.Mine
@@ -372,5 +417,8 @@ local function GenerateMine()
 end
 
 GenerateMine()
+
+
+
 
 
