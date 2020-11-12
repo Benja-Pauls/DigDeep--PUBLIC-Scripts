@@ -11,7 +11,12 @@ local OriginalSelectOreColor = script.Parent.SelectedOre.Color3
 
 local function SelectedItem()
 	if workspace.CurrentCamera.SelectedItem.Value ~= nil then
-		script.Parent.SelectedOre.Adornee = workspace.CurrentCamera.SelectedItem.Value
+		
+		if workspace.CurrentCamera.SelectedItem.Value:FindFirstChild("MeshPart") then --Works because it's an object value
+			script.Parent.SelectedOre.Adornee = workspace.CurrentCamera.SelectedItem.Value:FindFirstChild("MeshPart")
+		else
+			script.Parent.SelectedOre.Adornee = workspace.CurrentCamera.SelectedItem.Value
+		end
 		
 		local OreName = workspace.CurrentCamera.SelectedItem.Value.Name
 		local RealOre = game.ReplicatedStorage.Ores:FindFirstChild(OreName)
@@ -71,6 +76,9 @@ end)
 
 SelectedItem()
 workspace.CurrentCamera.SelectedItem.Changed:connect(SelectedItem)
+
+
+
 
 
 
