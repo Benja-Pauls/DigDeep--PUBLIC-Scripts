@@ -321,6 +321,7 @@ end
 
 function game.ServerStorage.MineOre.OnInvoke(Player,Ore)
 	local RealOre = game.ReplicatedStorage.Ores:FindFirstChild(Ore.Name)
+	local OreColor = RealOre.OreColor.Value
 	if Ore:FindFirstChild("Claimed") == nil then
 		
 		local Hitbox = Ore
@@ -367,7 +368,25 @@ function game.ServerStorage.MineOre.OnInvoke(Player,Ore)
 		else
 			warn("mined or experience cannot be saved")
 		end
+		
+		local OrePosition = Ore.Position
+		
 		Ore:Destroy()
+		
+		coroutine.resume(coroutine.create(function()
+			local LeftoverDust = game.ReplicatedStorage.GuiElements.BlockDestroy:Clone()
+			
+			LeftoverDust.Parent = workspace
+			LeftoverDust.CFrame = CFrame.new(OrePosition)
+			LeftoverDust.Particles.Color = ColorSequence.new(OreColor)
+			LeftoverDust.Particles.Enabled = true
+			wait(0.05)
+			LeftoverDust.Particles.Enabled = false
+			wait(0.5)
+			LeftoverDust:Destroy()
+		end))
+		
+		
 	end
 end
 
@@ -417,6 +436,8 @@ local function GenerateMine()
 end
 
 GenerateMine()
+
+
 
 
 
