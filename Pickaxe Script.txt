@@ -6,6 +6,7 @@ local Player = game.Players.LocalPlayer
 local PlayerCharacterList = workspace:WaitForChild("Players")
 local MiningGui = Player.PlayerGui:WaitForChild("MiningGui")
 local OreLabel = MiningGui:WaitForChild("OreLabel")
+local RegionLabel = MiningGui:WaitForChild("RegionLabel") 
 local CoordLabel = MiningGui:WaitForChild("CoordLabel")
 local MiningGui = Player.PlayerGui:FindFirstChild("MiningGui")
 local HRP = PlayerCharacterList:WaitForChild(tostring(Player)):WaitForChild("HumanoidRootPart")
@@ -24,16 +25,35 @@ local function SelectOre(Ore)
 		if (Ore.Position - HRP.Position).magnitude <= PickaxeStats.Reach * 6.3 then
 			workspace.CurrentCamera.SelectedItem.Value = Ore
 			script.Parent.SetTarget:InvokeServer(Ore)
-			--Selected = true
 			
 			if OreLabel.Visible == false then
 				OreLabel.Visible = true
 			end
 			OreLabel.Text = Ore.Name
+			
+			--Ore color doesn't match no region color
+			if Ore.Color ~= game.ReplicatedStorage.Ores.Stone.Color then
+				
+				local GUIColor
+				local RegionName
+				for i,Region in pairs (game.ReplicatedStorage.MineRegions:GetChildren()) do --Get info and check if region exists
+					if Region.BlockColor.Value == Ore.Color then
+						RegionName = tostring(Region)
+						GUIColor = Region["GUI Info"].GUIColor.Value
+					end
+				end
+				
+				if GUIColor and RegionName then 
+					RegionLabel.Visible = true
+					RegionLabel.Text = RegionName
+					RegionLabel.TextColor3 = GUIColor
+				end
+			else
+				RegionLabel.Visible = false
+			end
 		else
 			Deactivate()
 			Unselect()
-			--MiningGui.ProgressBarBillboardGui.Enabled = false
 			local SelectedOre = MiningGui.SelectedOre
 			SelectedOre.Color3 = OriginalSelectOreColor
 			SelectedOre.SurfaceColor3 = OriginalSelectOreColor
@@ -50,6 +70,7 @@ function Unselect()
 		script.Parent.SetTarget:InvokeServer(nil)
 		--Selected = false
 		MiningGui:WaitForChild("SelectedOre").Adornee = nil
+		MiningGui.OreLabel.Visible = false
 		wait(.5)
 		UnselectDebounce = false
 	end
@@ -141,5 +162,8 @@ script.Parent.Unequipped:Connect(function()
 	Deactivate()
 	Unselect()
 end)
+
+
+
 
 
