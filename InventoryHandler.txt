@@ -11,9 +11,7 @@ local TweenService = game:GetService("TweenService")
 
 local Open = false
 OpenDataMenuButton.Activated:Connect(function()
-	print("Button pressed")
 	if Open == false then
-		print("Open = false")
 		DataMenu.Visible = true
 		Open = true
 		ReadyMenuButtons(DataMenu) --Manage Tabs
@@ -155,12 +153,10 @@ function ManageTiles(Stat, Menu, Value, File, Type)
 		local found = false
 		for i,tile in pairs (Slots) do
 			if tile.DisplayName.Text == tostring(Stat) and looking == true then --Update Tile
-				--local ItemFolderInfo = ItemFolderMenu:FindFirstChild(tostring(Stat))
+				
 				if Value ~= 0 then
-					
-					--tile = slot
 					looking,found = InsertTileInfo(Type, tile, Stat, Value, looking, found, File)
-					--ItemFolderInfo.Value = Value
+
 				else
 					--print("Deleting " .. tostring(tile) .. " because Value is now 0")
 					looking = false
@@ -174,10 +170,10 @@ function ManageTiles(Stat, Menu, Value, File, Type)
 						end
 					end
 					tile:Destroy()
-					--ItemFolderInfo:Destroy()
 				end
 			end
 		end
+		
 		--Make new tile
 		if found == false and Value ~= 0 then
 			--print("Making a new tile: " .. tostring(Stat))
@@ -188,13 +184,10 @@ function ManageTiles(Stat, Menu, Value, File, Type)
 			tile.Parent = Menu
 			
 			local PrevTileY = PreviousTile.Position.Y.Scale
-			tile.Position = UDim2.new(0.025, 0, PrevTileY + .1, 0)
+			tile.Position = UDim2.new(0.025, 0, PrevTileY + .054, 0)
 			
 			looking,found = InsertTileInfo(Type, tile, Stat, Value, looking, found, File)
 			
-			--local NewItem = Instance.new("IntValue",ItemFolderMenu)
-			--NewItem.Name = tostring(Stat)
-			--NewItem.Value = Value
 		end
 	else
 		--First tile to be made for menu
@@ -202,15 +195,11 @@ function ManageTiles(Stat, Menu, Value, File, Type)
 			local FirstSlot = OriginalMaterialSlot:Clone()
 			FirstSlot.Name = "Slot1"
 			FirstSlot.Parent = Menu
-			FirstSlot.Position = UDim2.new(0.028,0,0.036,0)
+			FirstSlot.Position = UDim2.new(0.028,0,0.018,0)
 			
-			--This entire section below this comment is used before, could be put in function named (InsertTileInfo)
 			FirstSlot.DisplayName.Text = tostring(Stat)
 			InsertTileInfo(Type, FirstSlot, Stat, Value, nil, nil, File)
 			
-			--local NewItem = Instance.new("IntValue",ItemFolderMenu)
-			--NewItem.Name = tostring(Stat)
-			--NewItem.Value = Value
 		end
 	end
 end
@@ -354,7 +343,7 @@ local function CountdownDifference(Difference, OriginalProgressBar, Percentage, 
 			--Maybe put countdown popup here to refresh the experience bar?
 			--Level up animation could go here, or in the ShowEXPChange function
 		else
-			print("Percentage: " .. tostring(Percentage))
+			--print("Percentage: " .. tostring(Percentage))
 			LastPercentage = Percentage
 			coroutine.resume(coroutine.create(function()
 				for sec = 1,5,1 do
@@ -508,6 +497,12 @@ UpdateInventory.OnClientEvent:Connect(function(Stat, File, Value, AmountAdded, T
 		ManageTiles(Stat, Slots, Value, File, Type)
 	end
 end)
+
+
+
+
+
+
 
 
 
