@@ -36,8 +36,19 @@ local function InsertIntoTable(Chance, Table, Index) --Put into Utility script
 	end
 end
 
+--local SeedChange (multiply z by this later, changed for each cave generation so caves don't repeat)
+local function CalculateNoise(x,y,z)
+	--Special structure bounds
+	local BelowNoise = math.noise(x/25, (y+1)/15, z/25)
+	local BlockBelow = not (BelowNoise >= 0.48 or BelowNoise <= -0.48)
 
-local UsedPositions = {} --Check if position is taken up by block
+	local AboveNoise = math.noise(x/25, (y-1)/15, z/25)
+	local BlockAbove = not (AboveNoise >= 0.48 or AboveNoise <= -0.48)
+	
+	return BlockBelow,BlockAbove	
+end
+
+local UsedPositions = {} --Used cave block positions table
 
 local function PositionKey(x,y,z)
 	return x..","..y..","..z
@@ -71,11 +82,10 @@ local function DecideSelection(y, Table, RegionSpecific)
 	
 	local Lottery = {}
 	
-	--Way to include both? Where the region specific ores have a much higher chance? Or keep "specialty" of regions?
-	for Index,Selection in pairs(Table) do --Has to work with region calculation
+	for Index,Selection in pairs(Table) do
 		if not Selection:FindFirstChild("SpecialStructure") then
 			local Chance = CalculateChance(y,Selection)
-			--print(Chance)
+
 			if Chance ~= nil then
 				if not RegionSpecific or tostring(RegionSpecific) == "true" then
 					if not Selection:FindFirstChild("RegionSpecial") then
@@ -88,29 +98,11 @@ local function DecideSelection(y, Table, RegionSpecific)
 						end
 					elseif not Selection:FindFirstChild("RegionSpecial") then
 						if Selection.Name ~= "Stone" then
-							Chance = Chance/50
+							Chance = math.ceil(Chance/50)
 						end
 						InsertIntoTable(Chance,Lottery,Index)
 					end
-				end
-					
-				--[[ (Older only region specific ores script)
-				elseif tostring(Selection) == "Stone" then
-					for i=1,Chance do
-						table.insert(Lottery,Index)
-					end
-				else --managing region specific ores
-					if not Selection:FindFirstChild("SpecialStructure") and Selection:FindFirstChild("RegionSpecial") then
-						if Selection.RegionSpecial.Value == tostring(RegionSpecific) then
-		
-							for i=1,Chance do
-								table.insert(Lottery,Index)
-							end
-						end
-					end
-				end
-				]]
-					
+				end				
 			end
 		end
 	end
@@ -123,33 +115,45 @@ local function DecideSelection(y, Table, RegionSpecific)
 end
 
 local function SpawnStructures(x,y,z,Bounds,Region)
+	
+	local Lottery = {}
+	
 	for Index,Selection in pairs (game.ReplicatedStorage.Ores:GetChildren()) do
 		if Selection:FindFirstChild("SpecialStructure") and Selection:FindFirstChild("RegionSpecial").Value == tostring(Region) then
 			if Selection.SpecialStructure.Value == tostring(Bounds) then
-				
-				local SpawnChance = math.random(1,50)--change so this goes along with their personal rarity calculation
-
-				if SpawnChance >= 48 then 
-
-					local Structure = Selection:Clone()
-					
-					Structure.Parent = workspace.Mine
-					Structure.CFrame = CFrame.new(0+x*7, -5+y*(-7), 0+z*7)
-					
-					if Structure:FindFirstChild("MeshPart") then
-						Structure.MeshPart.CFrame = CFrame.new(0+x*7, -5+y*(-7), 0+z*7)
-						
-						if Structure.MeshPart:FindFirstChild("Offset") then
-							local Offset = Structure.MeshPart.Offset.Value
-							Structure.MeshPart.Position = Structure.MeshPart.Position + Vector3.new(0,Offset.Y,0)
-						end
-					end
-					
-					UsedPositions[PositionKey(x,y,z)] = Structure
-					
-				end
+				local Chance = CalculateChance(y,Selection)
+				InsertIntoTable(Chance,Lottery,Index)
 			end
 		end
+	end
+	
+	local Id = Lottery[math.random(1,#Lottery)]
+	local FinalSelection = GetObjectFromId(Ores,Id)
+				
+	local SpawnChance = math.random(1,FinalSelection.MaxRarity.Value)
+		
+	if SpawnChance <= FinalSelection.MaxRarity.Value/FinalSelection["1/SpawnChance"].Value then 
+
+		local Structure = FinalSelection:Clone()
+
+		Structure.Parent = workspace.Mine
+		Structure.CFrame = CFrame.new(0+x*7, -5+y*(-7), 0+z*7)
+
+		if Structure:FindFirstChild("MeshPart") then
+			Structure.MeshPart.CFrame = CFrame.new(0+x*7, -5+y*(-7), 0+z*7)
+
+			--Variance in strucutre spawns
+			local RotationRandom = math.random(1,4)
+			Structure.MeshPart.Rotation = Vector3.new(0, 90*RotationRandom, 0)
+
+			if Structure.MeshPart:FindFirstChild("Offset") then
+				local Offset = Structure.MeshPart.Offset.Value
+				Structure.MeshPart.Position = Structure.MeshPart.Position + Vector3.new(0,Offset.Y,0)
+			end
+		end
+
+		UsedPositions[PositionKey(x,y,z)] = Structure
+
 	end
 end
 
@@ -180,8 +184,9 @@ local VectorsMine = {
 
 local GCounts = {} --Amount of blocks in generation array
 
-local CurrentGeneratingRegion
-function GenerateOre(x,y,z,Override,PresetPoint,Region)
+local ExclaimRegion = game.ReplicatedStorage.Events.GUI.ExclaimRegion
+local HighestYValue = 0
+function GenerateOre(x,y,z,Override,PresetPoint,Region,Player)
 	if (UsedPositions[PositionKey(x,y,z)] == nil or Override == true) and y > 0 then
 		
 		local Noise = math.noise(x/25,y/15,z/25) --math.noise is a perlin noise calculator, #'s are near each other, hence ability to make "natural" caves
@@ -194,13 +199,26 @@ function GenerateOre(x,y,z,Override,PresetPoint,Region)
 			
 			UsedPositions[PositionKey(x,y,z)] = false
 			
+			if y > HighestYValue then
+				HighestYValue = y
+			end
+			print(HighestYValue)
+			
+			--Ambient air here
+			--(How would this be done... random location assignment of block? Otherwise, blocks may interfere with pickaxe mining)
+		
 			if Override ~= "Branch" then
-				
+				HighestYValue = 0
 				local Origin = PositionKey(x,y,z)
 				GCounts[Origin] = 0 --Creating table with name of origin, definitive non-changing distinguishable point
 				
 				local Region = DecideSelection(y,Regions)
 				GCounts[Region] = Region
+				
+				if Player then --Player is true when block is first mined
+					ExclaimRegion:FireClient(Player,Region)
+				end
+				
 				print("REGION: " .. tostring(GCounts[Region]))
 				
 				--For setting the cave apart from just a cave, maybe a closer to zero noise value will be used to generate nearby solids?
@@ -214,24 +232,21 @@ function GenerateOre(x,y,z,Override,PresetPoint,Region)
 							GenerateOre(NewPos.x,NewPos.y,NewPos.z,"Branch",Origin,Region)
 							--Branch will start actual cave generation, checking Noise everytime
 							--Noise correlates to natural shape
-
 						end
 					end
 				end))
 				
+				coroutine.resume(coroutine.create(function() --After the entire mine has been generated, check the true value for highy
+					wait(1)
+					print("The true highest value for y is " .. tostring(HighestYValue))
+					
+					--For liquid generation, how will it be mined? Long mine, where you mine the entire body of liquid, or individual chunks?)
+				end))
+				
 			else
-				--print("Cave is generating!")
 				local Origin = PresetPoint --Assigned as Origin from non-branch if statement
 				
-				--Special structure bounds
-				local BelowNoise = math.noise(x/25, (y+1)/15, z/25)
-				local BlockBelow = not (BelowNoise >= 0.48 or BelowNoise <= -0.48)
-				
-				local AboveNoise = math.noise(x/25, (y-1)/15, z/25)
-				local BlockAbove = not (AboveNoise >= 0.48 or AboveNoise <= -0.48)		
-				--if BlockAbove or (y-1)<3 then --2 check in case ceiling is top level of stone
-					--print("OHHHH: " .. tostring(AboveNoise),y)
-				--end
+				local BlockBelow,BlockAbove = CalculateNoise(x,y,z)	
 				
 				--Particular block stuructres, not air or walls (make function later with more criteria)
 				if BlockBelow or BlockAbove or (y-1)<3 then
@@ -279,7 +294,8 @@ function GenerateOre(x,y,z,Override,PresetPoint,Region)
 				AmbientLighting.Color = RegionColor
 				
 				if RegionColor.R + RegionColor.G + RegionColor.B <= 250 then
-					AmbientLighting.Brightness = 3.5
+					AmbientLighting.Brightness = 5
+					AmbientLighting.Range = 15
 				end
 				
 				if tostring(GCounts[Region]) == "Normal" then
@@ -332,7 +348,30 @@ function game.ServerStorage.MineOre.OnInvoke(Player,Ore)
 		for i,Vector in pairs(VectorsMine) do
 			local NewPos = CompactPos + Vector
 			if UsedPositions[PositionKey(NewPos.x,NewPos.y,NewPos.z)] == nil then
-				GenerateOre(NewPos.x,NewPos.y,NewPos.z,false,nil,nil,nil)
+				GenerateOre(NewPos.x,NewPos.y,NewPos.z,false,nil,nil,Player)
+			end
+		end
+		
+		local BlockBelow,BlockAbove = CalculateNoise(CompactPos.X,CompactPos.Y,CompactPos.Z)
+		
+		--Break connected structures
+		if not BlockBelow or not BlockAbove then
+			local Y
+			if not BlockBelow then
+				Y = CompactPos.Y+1
+			else
+				Y = CompactPos.Y-1
+			end
+			
+			if UsedPositions[PositionKey(CompactPos.X,Y,CompactPos.Z)] ~= false then
+				local ConnectedOre = UsedPositions[PositionKey(CompactPos.X,Y,CompactPos.Z)]
+				if game.ReplicatedStorage.Ores:FindFirstChild(tostring(ConnectedOre)):FindFirstChild("SpecialStructure") then
+					local OrePosition = ConnectedOre.Position
+					local ConnectedOreColor = ConnectedOre.OreColor.Value
+					MakeDustParticles(OrePosition,ConnectedOreColor)
+					UsedPositions[PositionKey(CompactPos.X,Y,CompactPos.Z)]:Destroy()
+					--game.ServerStorage.MineOre:Invoke(Player, UsedPositions[PositionKey(CompactPos.X,Y,CompactPos.Z)])
+				end
 			end
 		end
 		
@@ -373,21 +412,24 @@ function game.ServerStorage.MineOre.OnInvoke(Player,Ore)
 		
 		Ore:Destroy()
 		
-		coroutine.resume(coroutine.create(function()
-			local LeftoverDust = game.ReplicatedStorage.GuiElements.BlockDestroy:Clone()
-			
-			LeftoverDust.Parent = workspace
-			LeftoverDust.CFrame = CFrame.new(OrePosition)
-			LeftoverDust.Particles.Color = ColorSequence.new(OreColor)
-			LeftoverDust.Particles.Enabled = true
-			wait(0.05)
-			LeftoverDust.Particles.Enabled = false
-			wait(0.5)
-			LeftoverDust:Destroy()
-		end))
-		
-		
+		MakeDustParticles(OrePosition,OreColor)
 	end
+end
+
+function MakeDustParticles(OrePosition, OreColor)
+	coroutine.resume(coroutine.create(function()
+		local LeftoverDust = game.ReplicatedStorage.GuiElements.BlockDestroy:Clone()
+
+		--To make the particles look less like they're coming off one source, make multiple small emitters offset from source
+		LeftoverDust.Parent = workspace
+		LeftoverDust.CFrame = CFrame.new(OrePosition)
+		LeftoverDust.Particles.Color = ColorSequence.new(OreColor)
+		LeftoverDust.Particles.Enabled = true
+		wait(0.05)
+		LeftoverDust.Particles.Enabled = false
+		wait(0.5)
+		LeftoverDust:Destroy()
+	end))	
 end
 
 local function GenerateMine()
@@ -436,6 +478,7 @@ local function GenerateMine()
 end
 
 GenerateMine()
+
 
 
 
