@@ -11,11 +11,9 @@ function script.Parent.SetTarget.OnServerInvoke(player,Selection)
 	script.Parent.Target.Value = Selection
 end
 
-local MouseDown = false
-
-
 local PickaxeStats = require(script.Parent:WaitForChild("PickaxeStats"))
 
+local MouseDown = false
 local Debounce = true
 
 --Start mining process, check player for any preventive measure before actually mining ore
@@ -67,7 +65,6 @@ local function StartMining()
 				script.Parent.IsMining.Value = false
 				MouseDown = false
 			end
-			--end
 		else
 			script.Parent.IsMining.Value = false
 		end
@@ -85,8 +82,11 @@ script.Parent.Activation.OnServerEvent:Connect(function(player, State)
 		end
 	end
 end)
+
 tool.Unequipped:Connect(function()
 	MouseDown = false
 	script.Parent.IsMining.Value = false
 end)
+
+
 
