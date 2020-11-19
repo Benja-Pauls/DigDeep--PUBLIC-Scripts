@@ -1,5 +1,7 @@
 (LocalScript)
 Inventory graphical menu handler
+
+11/18: New Tile systems (square tiles; multiple per row. Instead of one horizontally long tile per row)
 -------------------------------------------------------------------------------------------------------------------------------------------------
 
 local Player = game.Players.LocalPlayer
@@ -8,6 +10,12 @@ local DataMenu = script.Parent.DataMenu
 local UpdateInventory = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateInventory")
 local MoveAllBaseScreenUI = game.ReplicatedStorage.Events.GUI.MoveAllBaseScreenUI
 local TweenService = game:GetService("TweenService")
+
+for i,v in pairs (DataMenu:GetChildren()) do
+	if v:IsA("Frame") and tostring(v) ~= "TopTabBar" then
+		v.Visible = false
+	end
+end
 
 local Open = false
 OpenDataMenuButton.Activated:Connect(function()
@@ -31,7 +39,8 @@ MoveAllBaseScreenUI.Event:Connect(function(ChangeTo)
 	end
 end)
 
---------------<|Utility Functions|>----------------------------------------------------
+--------------<|Utility Functions|>-----------------------------------------------------------------------------
+local PageManager = DataMenu.InventoryMenu.PageManager
 
 local MenuAcceptance = true
 function ReadyMenuButtons(Menu)
@@ -51,6 +60,15 @@ function ReadyMenuButtons(Menu)
 						end
 					end
 					ButtonMenu.Visible = true
+					if tostring(Menu) == "InventoryMenu" then
+						print("changing menu's value to buttonmenu")
+						PageManager.Visible = true
+						PageManager.Menu.Value = ButtonMenu
+					else
+						--PageManager.Menu.Value = nil
+						PageManager.Visible = false
+					end
+					PageManager.CurrentPage.Value = 1
 					ReadyMenuButtons(ButtonMenu)
 				end)
 			end
@@ -62,6 +80,48 @@ function ReadyMenuButtons(Menu)
 		--be achieved here?
 	end
 end
+
+PageManager.Previous.Activated:Connect(function()
+	local Menu = PageManager.Menu.Value
+	if PageManager.CurrentPage.Value - 1 == 0 then
+		local HighPage = 0
+		for i,page in pairs (PageManager.Menu.Value:GetChildren()) do
+			local PageNumber = string.gsub(page.Name, "Page", "")
+			if tonumber(PageNumber) > HighPage then
+				HighPage = tonumber(PageNumber)
+			end
+		end
+		Menu:FindFirstChild("Page" .. tostring(HighPage)).Visible = true
+		Menu:FindFirstChild("Page1").Visible = false
+		PageManager.CurrentPage.Value = HighPage
+	else
+		Menu:FindFirstChild("Page" .. tostring(PageManager.CurrentPage.Value-1)).Visible = true
+		Menu:FindFirstChild("Page" .. tostring(PageManager.CurrentPage.Value)).Visible = false
+		PageManager.CurrentPage.Value = PageManager.CurrentPage.Value-1
+	end
+end)
+
+PageManager.Next.Activated:Connect(function()
+	local Menu = PageManager.Menu.Value
+	local HighPage = 0
+	for i,page in pairs (PageManager.Menu.Value:GetChildren()) do
+		if page:IsA("Frame") then
+			local PageNumber = string.gsub(page.Name, "Page", "")
+			if tonumber(PageNumber) > HighPage then
+				HighPage = tonumber(PageNumber)
+			end
+		end
+	end
+	if PageManager.CurrentPage.Value + 1 > HighPage then
+		Menu:FindFirstChild("Page" .. tostring(HighPage)).Visible = false
+		Menu:FindFirstChild("Page1").Visible = true
+		PageManager.CurrentPage.Value = 1
+	else
+		Menu:FindFirstChild("Page" .. tostring(PageManager.CurrentPage.Value+1)).Visible = true
+		Menu:FindFirstChild("Page" .. tostring(PageManager.CurrentPage.Value)).Visible = false
+		PageManager.CurrentPage.Value = PageManager.CurrentPage.Value+1
+	end
+end)
 
 local function GetStatImage(File, Stat)
 	local ImageId
@@ -94,7 +154,7 @@ end
 
 local function InsertTileInfo(Type, tile, Stat, Value, looking, found, File)
 	if Type == "Inventory" then
-		tile.DisplayName.Text = tostring(Stat)
+		tile.StatName.Value = tostring(Stat)
 		tile.Amount.Text = tostring(Value)
 		local ImageId = GetStatImage(File, Stat)
 		tile.Picture.Image = ImageId
@@ -135,73 +195,137 @@ local function InsertTileInfo(Type, tile, Stat, Value, looking, found, File)
 	return looking,found
 end
 
+local function FindStatPage(Stat,Menu)
+	local Pages = Menu:GetChildren()
+	local StorageName = string.gsub(tostring(Menu), "Menu", "")
+	local StatRarity = game.ReplicatedStorage:FindFirstChild(StorageName):FindFirstChild(Stat)["GUI Info"].RarityName.Value
+
+	local Slots
+	local Page
+	local SlotCount = 0
+	local found = false
+	for i,page in pairs (Pages) do	
+		if page.Rarity.Value == StatRarity then
+			print("Found existing page for " .. tostring(StatRarity))
+			
+			for i,slot in pairs (page:GetChildren()) do
+				if slot:IsA("TextButton") then
+					SlotCount = SlotCount + 1
+				end
+			end
+			
+			if SlotCount < 15 then
+				found = true
+				Page = page
+			end
+		end
+	end
+	if found == false then
+		print("Making new page for " .. tostring(StatRarity))
+		local NewPage = game.ReplicatedStorage.GuiElements.InventoryPage:Clone()
+		NewPage.Parent = Menu
+		NewPage.Rarity.Value = StatRarity
+		NewPage.Name = "Page" .. tostring(#Pages+1)
+		Page = NewPage
+	end
+	return StatRarity,Page,SlotCount
+end
+
 function ManageTiles(Stat, Menu, Value, File, Type)
 	--print(Stat,Menu,Value,File,Type) = Stone,OresMenu,2,Ores,Inventory
 	local Value = tonumber(Value)
-	local Slots = Menu:GetChildren()
+	
 	local OriginalMaterialSlot
-	--local DataMenuInfoFolder = script.Parent.Parent:FindFirstChild("DataMenuInformation"):FindFirstChild(tostring(Type))
-	--local ItemFolderMenu = DataMenuInfoFolder:FindFirstChild(tostring(File))
 	if Type == "Inventory" then
 		OriginalMaterialSlot = game.ReplicatedStorage.GuiElements:FindFirstChild("InventoryMaterialSlot")
 	else
 		OriginalMaterialSlot = game.ReplicatedStorage.GuiElements:FindFirstChild("ExperienceSlot")
 	end
 	
-	if #Slots > 0 then
+	local Rarity,Page,SlotCount = FindStatPage(Stat,Menu)
+		
+		
+	if SlotCount > 0 then
 		local looking = true
 		local found = false
-		for i,tile in pairs (Slots) do
-			if tile.DisplayName.Text == tostring(Stat) and looking == true then --Update Tile
-				
-				if Value ~= 0 then
-					looking,found = InsertTileInfo(Type, tile, Stat, Value, looking, found, File)
-
-				else
-					--print("Deleting " .. tostring(tile) .. " because Value is now 0")
-					looking = false
-					found = true
-					local SlotNumber = i
-					for i,tile in pairs (Slots) do
-						if i > SlotNumber then
-							local tileYScale = tile.Position.Y.Scale
-							tile.Position = UDim2.new(0.025, 0, tileYScale - .1, 0)
-							tile.Name = tostring("Slot" .. tostring(i - 1))
+		
+		--Looking to update value of current tile
+		for i,tile in pairs (Page:GetChildren()) do
+			if tile:IsA("TextButton") then
+				if tile.StatName.Value == tostring(Stat) and looking == true then --Update Tile
+					
+					if Value ~= 0 then
+						looking,found = InsertTileInfo(Type, tile, Stat, Value, looking, found, File)--Get rid of looking
+					else --Deleting existing tile because value = 0
+						looking = false
+						found = true
+						local SlotNumber = i
+						
+						for i,tile in pairs (Page:GetChildren()) do
+							if i > SlotNumber then
+								if tile:IsA("TextButton") then
+									tile.Name = tostring("Slot" .. tostring(i - 1))
+									tile.Row.Value = tile.Row.Value - 1
+									tile.Column.Value = tile.Column.Value - 1
+									tile.Position = UDim2.new(0.017+0.196*tile.Column.Value, 0, 0.02+0.298*tile.Row.Value, 0)
+								end
+							end
 						end
+						tile:Destroy()
 					end
-					tile:Destroy()
 				end
 			end
 		end
 		
 		--Make new tile
 		if found == false and Value ~= 0 then
-			--print("Making a new tile: " .. tostring(Stat))
+			print("Making a new tile: " .. tostring(Stat))
 			local tile = OriginalMaterialSlot:Clone()
-			local tileNumber = #Slots + 1
-			local PreviousTile = Menu:FindFirstChild("Slot" .. tostring(#Slots))
-			tile.Name = "Slot" .. tostring(tileNumber)
-			tile.Parent = Menu
+			local PreviousTile = Page:FindFirstChild("Slot" .. tostring(SlotCount))
+			local slotNumber = SlotCount + 1
+			tile.Name = "Slot" .. tostring(slotNumber)
+			
+			if Type == "Inventory" then
+				if (slotNumber-1)%5 == 0 then
+					tile.Row.Value = PreviousTile.Row.Value + 1
+					tile.Column.Value = 0
+				else
+					tile.Row.Value = PreviousTile.Row.Value
+					tile.Column.Value = PreviousTile.Column.Value + 1
+				end
+				
+				tile.Rarity.Value = Rarity
+				tile.Position = UDim2.new(0.017+0.196*tile.Column.Value, 0, 0.02+0.298*tile.Row.Value, 0)
+			end
+			
+			tile.Parent = Page
 			
 			local PrevTileY = PreviousTile.Position.Y.Scale
-			tile.Position = UDim2.new(0.025, 0, PrevTileY + .054, 0)
 			
 			looking,found = InsertTileInfo(Type, tile, Stat, Value, looking, found, File)
-			
+		
 		end
 	else
-		--First tile to be made for menu
-		if Value ~= 0 then
+		
+		--First tile to be made for menu (Change to first tile for page) (function for making a new page to replace canvas function?)
+		if Value ~= 0 then			
 			local FirstSlot = OriginalMaterialSlot:Clone()
 			FirstSlot.Name = "Slot1"
-			FirstSlot.Parent = Menu
-			FirstSlot.Position = UDim2.new(0.028,0,0.018,0)
+			FirstSlot.Parent = Page
 			
-			FirstSlot.DisplayName.Text = tostring(Stat)
+			if Type == "Inventory" then
+				FirstSlot.Row.Value = 0
+				FirstSlot.Column.Value = 0
+				FirstSlot.Rarity.Value = Rarity
+				FirstSlot.Position = UDim2.new(0.017, 0, 0.02, 0)
+			end
+			
+			FirstSlot.StatName.Value = tostring(Stat)
 			InsertTileInfo(Type, FirstSlot, Stat, Value, nil, nil, File)
 			
 		end
 	end
+	--UpdateMenuCanvas(Menu,Slots)
 end
 
 
@@ -244,20 +368,24 @@ local function ManageMaterialPopups(ObjectName, File, AmountAdded, Currency)
 	local ItemPopUp = script.Parent.Parent:FindFirstChild("ItemPopUp")
 	if AmountAdded ~= nil then
 		if AmountAdded ~= 0 then
+			
 			if AmountAdded < 0 then
 				CurrentObject = "Negative" .. tostring(ObjectName)
-			elseif AmountAdded > 0 then --change to just else
+			else
 				CurrentObject = ObjectName
 			end
+			
 			if PrevItem ~= tostring(CurrentObject) then
 				InsertNewMaterialPopUp(ItemPopUp, ObjectName, File, AmountAdded, Currency)
 				PrevItem = tostring(ObjectName)
 				PrevAmount = AmountAdded
+				
 			elseif PrevItem == tostring(CurrentObject) and #ItemPopUp:GetChildren() == 0 then
 				print("Detected that no slot is available, but prev has been mined")
 				InsertNewMaterialPopUp(ItemPopUp, ObjectName, File, AmountAdded, Currency)
 				PrevItem = tostring(ObjectName)
 				PrevAmount = AmountAdded
+				
 			elseif #ItemPopUp:GetChildren() >= 1 then
 				PrevAmount = PrevAmount + AmountAdded
 				
@@ -270,6 +398,7 @@ local function ManageMaterialPopups(ObjectName, File, AmountAdded, Currency)
 						end
 					end
 				end
+				
 				ItemPopUp:FindFirstChild("PopUp" .. tostring(MostRecent)).Amount.Text = tostring(PrevAmount)
 				CountdownPopUp(ItemPopUp, ItemPopUp:FindFirstChild("PopUp" .. tostring(MostRecent)), 5, .2)
 			end
@@ -472,6 +601,7 @@ local function ManageEXPPopUp(Stat, Value, AmountAdded)
 	
 end
 
+-------------------------------------<High-Traffic Functions>-----------------------------------------------------------
 
 UpdateInventory.OnClientEvent:Connect(function(Stat, File, Value, AmountAdded, Type, Currency)
 	local TypeSlots = DataMenu:FindFirstChild(tostring(Type) .. "Menu")
@@ -497,6 +627,12 @@ UpdateInventory.OnClientEvent:Connect(function(Stat, File, Value, AmountAdded, T
 		ManageTiles(Stat, Slots, Value, File, Type)
 	end
 end)
+
+
+
+
+
+
 
 
 
