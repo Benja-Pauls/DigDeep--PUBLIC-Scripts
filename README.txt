@@ -19,7 +19,7 @@ ModuleScript: similar to a class in python, you can access it cleanly from anywh
 LocalScript: Usually found inside the player, it is the only script that can access the value "game.Players.LocalPlayer" 
 (script can edit anything, but it doesn't affect the server. Example: You could turn a model invisible and the player associated with the script will no longer see it, but the other players will still be able to see the model)
 
-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------
 
 For those who accessed this GitHub from Twitter, I will be updating these GitHub scripts with the "End of Day Update" tweets (this GitHub is not a replacment for the tweets).
 If you didn't access this GitHub through Twitter, Twitter is this project's development log, announcing nightly update summaries whenever possible about the day's progress.
