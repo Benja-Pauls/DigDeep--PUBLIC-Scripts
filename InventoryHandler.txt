@@ -3,15 +3,16 @@ Inventory graphical menu handler
 
 11/18: New Tile systems (square tiles; multiple per row. Instead of one horizontally long tile per row)
 11/19: Rarity type of accessed page is now visible in display. Menu changing is now less buggy too.
+11/22: General UI animations, color coordination with rarities, tile can be selected to show additional information
 -------------------------------------------------------------------------------------------------------------------------------------------------
 
 local Player = game.Players.LocalPlayer
 local OpenDataMenuButton = script.Parent.OpenDataMenuButton
 local DataMenu = script.Parent.DataMenu
-local UpdateInventory = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateInventory")
 local MoveAllBaseScreenUI = game.ReplicatedStorage.Events.GUI.MoveAllBaseScreenUI
 local TweenService = game:GetService("TweenService")
 local GuiElements = game.ReplicatedStorage.GuiElements
+local PageManager = DataMenu.PageManager
 
 for i,v in pairs (DataMenu:GetChildren()) do
 	if v:IsA("Frame") and tostring(v) ~= "TopTabBar" then
@@ -28,6 +29,8 @@ OpenDataMenuButton.Activated:Connect(function()
 	elseif Open == true then
 		DataMenu.Visible = false
 		Open = false
+		PageManager.Visible = false
+		DataMenu.ItemViewer.Visible = false
 	end
 end)
 
@@ -42,7 +45,8 @@ MoveAllBaseScreenUI.Event:Connect(function(ChangeTo)
 end)
 
 --------------<|Utility Functions|>-----------------------------------------------------------------------------
-local PageManager = DataMenu.InventoryMenu.PageManager
+local ItemViewerOpen = false
+local PageDebounce = false
 
 local MenuAcceptance = true
 function ReadyMenuButtons(Menu)
@@ -62,8 +66,9 @@ function ReadyMenuButtons(Menu)
 							v.Visible = false
 						end
 					end
+					print(Menu,ButtonMenu)
 					ButtonMenu.Visible = true
-					if tostring(Menu) == "InventoryMenu" then
+					if Menu.Parent == DataMenu then
 						print("changing menu's value to buttonmenu")
 						PageManager.Visible = true
 						PageManager.Menu.Value = ButtonMenu
@@ -74,6 +79,8 @@ function ReadyMenuButtons(Menu)
 						--PageManager.Menu.Value = nil
 						PageManager.Visible = false
 					end
+					DataMenu.ItemViewer.Visible = false
+					ItemViewerOpen = false
 					PageManager.CurrentPage.Value = 1
 					ReadyMenuButtons(ButtonMenu)
 				end)
@@ -126,7 +133,8 @@ function ManagePageInvis(VisiblePage) --Use this in more places than page manage
 			end
 		end
 	end
-
+	VisiblePage.ZIndex -= 1
+	PageDebounce = false
 end
 
 local function CountPages()
@@ -143,64 +151,123 @@ local function CountPages()
 end
 
 function FinalizePageChange(Page)
-	ManagePageInvis(Page)
-
+	PageDebounce = true
 	local RarityName = Page.Rarity.Value
 	if GuiElements.RarityColors:FindFirstChild(RarityName) then
 		local Rarity = GuiElements.RarityColors:FindFirstChild(RarityName)
 		PageManager.PageRarityDisplay.Text = RarityName .. " " .. string.gsub(PageManager.Menu.Value.Name, "Menu", "")
 		PageManager.PageRarityDisplay.TextColor3 = Rarity.Value
 		PageManager.PageRarityDisplay.TextStrokeColor3 = Rarity.TileColor.Value
-		
 		for i,tile in pairs (Page:GetChildren()) do
 			if tile:IsA("TextButton") then
 				tile.BackgroundColor3 = Rarity.TileColor.Value
 			end
 		end
+		local ButtonWidth = 0.33
+		if PageManager.PageRarityDisplay.Visible == false then
+			PageManager.Previous.Size = UDim2.new(ButtonWidth,0,1,0)
+			PageManager.Next.Position = UDim2.new(ButtonWidth + 0.005,0,0,0)
+			PageManager.Next.Size = UDim2.new(ButtonWidth,0,1,0)
+			PageManager.PageRarityDisplay.Visible = true
+		end
+	else
+		--For tiles without rarity distinguishability (no page names)
+		local ButtonWidth = 0.502
+		if PageManager.PageRarityDisplay.Visible == true then
+			PageManager.Previous.Size = UDim2.new(ButtonWidth,0,1,0)
+			PageManager.Next.Position = UDim2.new(ButtonWidth + 0.005,0,0,0)
+			PageManager.Next.Size = UDim2.new(ButtonWidth,0,1,0)
+			PageManager.PageRarityDisplay.Visible = false
+		end
 	end
+	Page.ZIndex += 1
+	Page.Visible = true
+	Page:TweenPosition(UDim2.new(0,0,0,0), "Out", "Quint", .25)
+	wait(.25)
+	ManagePageInvis(Page)
 end
 
+
 PageManager.Previous.Activated:Connect(function()
-	local Menu = PageManager.Menu.Value
-	local NewPage
-	if PageManager.CurrentPage.Value - 1 == 0 then
+	if PageDebounce == false then
 		local HighPage = CountPages()
-		NewPage = Menu:FindFirstChild("Page" .. tostring(HighPage))
-		PageManager.CurrentPage.Value = HighPage
-	else
-		NewPage = Menu:FindFirstChild("Page" .. tostring(PageManager.CurrentPage.Value-1))
-		PageManager.CurrentPage.Value = PageManager.CurrentPage.Value-1
+		local Menu = PageManager.Menu.Value
+		if HighPage ~= 1 then --only one page
+			local NewPage
+			if PageManager.CurrentPage.Value - 1 == 0 then
+				NewPage = Menu:FindFirstChild("Page" .. tostring(HighPage))
+				PageManager.CurrentPage.Value = HighPage
+			else
+				NewPage = Menu:FindFirstChild("Page" .. tostring(PageManager.CurrentPage.Value-1))
+				PageManager.CurrentPage.Value = PageManager.CurrentPage.Value-1
+			end
+			
+			NewPage.Position = UDim2.new(-1,0,0,0)
+			FinalizePageChange(NewPage)
+		else --Bounce effect
+			PageDebounce = true
+			Menu:FindFirstChild("Page1"):TweenPosition(UDim2.new(-.03,0,0,0), "Out", "Quint", .1)
+			wait(.1)
+			Menu:FindFirstChild("Page1"):TweenPosition(UDim2.new(0,0,0,0), "Out" , "Bounce", .25)
+			wait(.25)
+			PageDebounce = false
+		end
 	end
-	FinalizePageChange(NewPage)
 end)
 
 PageManager.Next.Activated:Connect(function()
-	local Menu = PageManager.Menu.Value
-	local HighPage = CountPages()
-	local NewPage
-	if PageManager.CurrentPage.Value + 1 > HighPage then
-		NewPage = Menu:FindFirstChild("Page1")
-		PageManager.CurrentPage.Value = 1
-	else
-		NewPage = Menu:FindFirstChild("Page" .. tostring(PageManager.CurrentPage.Value+1))
-		PageManager.CurrentPage.Value = PageManager.CurrentPage.Value+1
+	if PageDebounce == false then
+		local HighPage = CountPages()
+		local Menu = PageManager.Menu.Value
+		if HighPage ~= 1 then --only one page
+			local NewPage
+			if PageManager.CurrentPage.Value + 1 > HighPage then
+				NewPage = Menu:FindFirstChild("Page1")
+				PageManager.CurrentPage.Value = 1
+			else
+				NewPage = Menu:FindFirstChild("Page" .. tostring(PageManager.CurrentPage.Value+1))
+				PageManager.CurrentPage.Value = PageManager.CurrentPage.Value+1
+			end
+			
+			NewPage.Position = UDim2.new(1,0,0,0)
+			FinalizePageChange(NewPage)
+		else --Bounce effect
+			PageDebounce = true
+			Menu:FindFirstChild("Page1"):TweenPosition(UDim2.new(.03,0,0,0), "Out", "Quint", .1)
+			wait(.1)
+			Menu:FindFirstChild("Page1"):TweenPosition(UDim2.new(0,0,0,0), "Out" , "Bounce", .25)
+			wait(.25)
+			PageDebounce = false
+		end
 	end
-	FinalizePageChange(NewPage)
 end)
 
-local function FindStatPage(Stat,Menu)
+DataMenu.ItemViewer.BackButton.Activated:Connect(function()
+	if DataMenu.ItemViewer.Visible == true then
+		DataMenu.ItemViewer.Visible = false
+		ItemViewerOpen = false
+	end
+end)
+
+local function FindStatPage(Stat,Menu,MaxAmount,RaritySort)
 	local Pages = Menu:GetChildren()
 	local StorageName = string.gsub(tostring(Menu), "Menu", "")
-	local StatRarity = game.ReplicatedStorage:FindFirstChild(StorageName):FindFirstChild(Stat)["GUI Info"].RarityName.Value
-
+	
+	local StatRarity
+	if RaritySort then
+		StatRarity = game.ReplicatedStorage:FindFirstChild(StorageName):FindFirstChild(Stat)["GUI Info"].RarityName.Value
+	else
+		StatRarity = "No Rarity"
+	end
+	
 	local Slots
 	local Page
-	local Over15
+	local Over
 	local SlotCount = 0
 	local found = false
 	for i,page in pairs (Pages) do	
 		if page.Rarity.Value == StatRarity then
-			print("Found existing page for " .. tostring(StatRarity))
+			--print("Found existing page for " .. tostring(StatRarity))
 
 			for i,slot in pairs (page:GetChildren()) do
 				if slot:IsA("TextButton") then
@@ -208,21 +275,21 @@ local function FindStatPage(Stat,Menu)
 				end
 			end
 
-			if SlotCount < 15 then
+			if SlotCount < MaxAmount then
 				found = true
 				Page = page
 			else
-				Over15 = page
+				Over = page
 			end
 		end
 	end
 	if found == false then
-		print("Making new page for " .. tostring(StatRarity))
-		local NewPage = GuiElements.InventoryPage:Clone()
+		--print("Making new page for " .. tostring(StatRarity))
+		local NewPage = GuiElements.MenuPage:Clone()
 		NewPage.Parent = Menu
 		NewPage.Rarity.Value = StatRarity
-		if Over15 then
-			local LastRarityPage = string.gsub(Over15.Name, "Page" , "")
+		if Over then
+			local LastRarityPage = string.gsub(Over.Name, "Page" , "")
 			NewPage.Name = "Page" .. tostring(tonumber(LastRarityPage) + 1)
 		else
 			NewPage.Name = "Page" .. tostring(#Pages+1)
@@ -230,24 +297,28 @@ local function FindStatPage(Stat,Menu)
 		NewPage.Visible = false
 		Page = NewPage
 	end
-	Page.BackgroundColor3 = GuiElements.RarityColors:FindFirstChild(StatRarity).Value
+	
+	if RaritySort then
+		Page.BackgroundColor3 = GuiElements.RarityColors:FindFirstChild(StatRarity).Value
+	end
+	
 	return StatRarity,Page,SlotCount
 end
 
 
 --------------<|Tile Functions|>------------------------------------------------------------------------------------
 
-local function InsertTileInfo(Type, tile, Stat, Value, looking, found, File)
+local function InsertTileInfo(Type, tile, Stat, Value, found, File)
+	local StatInfo
 	if Type == "Inventory" then
+		StatInfo = game.ReplicatedStorage:FindFirstChild(tostring(File)):FindFirstChild(tostring(Stat))
 		tile.StatName.Value = tostring(Stat)
 		tile.Amount.Text = tostring(Value)
 		local ImageId = GetStatImage(File, Stat)
 		tile.Picture.Image = ImageId
-		
-		looking = false
 		found = true
 	elseif Type == "Experience" then
-		local StatInfo = game.ReplicatedStorage:FindFirstChild("Skills"):FindFirstChild(tostring(Stat) .. "Skill")
+		StatInfo = game.ReplicatedStorage:FindFirstChild(tostring(File)):FindFirstChild(tostring(Stat) .. "Skill")
 		local CurrentLevel = 0
 		--Move into Levels value where the value is how many levels, no for in pairs, just 1,amount,1 loop
 		for i,level in pairs (StatInfo.Levels:GetChildren()) do
@@ -272,40 +343,77 @@ local function InsertTileInfo(Type, tile, Stat, Value, looking, found, File)
 		tile.CurrentLevel.Text = tostring(CurrentLevel)
 		
 		local Percentage = tonumber(Value - CurrentLevelEXP.Value) / tonumber(NextLevel.Value - CurrentLevelEXP.Value)
-		ProgressBar.Progress.Size = UDim2.new(0, 408*Percentage, 0, 30)
-		
-		looking = false
+		ProgressBar.Progress.Size = UDim2.new(Percentage, 0, 1, 0)
 		found = true
 	end
-	return looking,found
+	
+	tile.Activated:Connect(function() --What happens when tile is clicked
+		if ItemViewerOpen == false then
+			ItemViewerOpen = true
+			local Menu = DataMenu:FindFirstChild(Type .. "Menu"):FindFirstChild(tostring(File) .. "Menu")
+			local RarityName = StatInfo["GUI Info"].RarityName.Value
+			local Rarity = game.ReplicatedStorage.GuiElements.RarityColors:FindFirstChild(RarityName)
+			
+			local ItemViewerMenu = DataMenu.ItemViewer
+			ItemViewerMenu.ItemImage.BorderColor3 = Rarity.Value
+			ItemViewerMenu.ItemImage.BackgroundColor3 = Rarity.TileColor.Value
+			ItemViewerMenu.ItemImage.Image = StatInfo["GUI Info"].InventoryImage.Value
+			ItemViewerMenu.ItemName.Text = tostring(Stat)
+			ItemViewerMenu.ItemAmount.Text = "You Have: " .. tostring(Value)
+			
+			ItemViewerMenu.ItemRarity.Text = RarityName
+			ItemViewerMenu.ItemRarity.TextColor3 = Rarity.Value
+			ItemViewerMenu.ItemRarity.TextStrokeColor3 = Rarity.TileColor.Value
+			
+			if tile:FindFirstChild("AmountInStorage") then
+				ItemViewerMenu.ItemStorage.Text = "Storage: 0"
+				tile.AmountInStorage.Changed:Connect(function()
+					if ItemViewerMenu.ItemName.Text == tile.StatName.Value then
+						ItemViewerMenu.ItemStorage.Text = "Storage: " .. tostring(tile.AmountInStorage.Value)
+					end
+				end)
+			else
+				ItemViewerMenu.ItemStorage.Text = ""
+			end
+			
+			ItemViewerMenu.Visible = true 
+		end
+	end)
+	
+	return found
 end
 
 function ManageTiles(Stat, Menu, Value, File, Type)
 	--print(Stat,Menu,Value,File,Type) = Stone,OresMenu,2,Ores,Inventory
 	local Value = tonumber(Value)
 	
+	local Rarity
+	local Page
+	local SlotCount
 	local OriginalMaterialSlot
 	if Type == "Inventory" then
 		OriginalMaterialSlot = GuiElements:FindFirstChild("InventoryMaterialSlot")
+		Rarity,Page,SlotCount = FindStatPage(Stat,Menu,15,true)
 	else
 		OriginalMaterialSlot = GuiElements:FindFirstChild("ExperienceSlot")
+		Rarity,Page,SlotCount = FindStatPage(Stat,Menu,4,false)
+		--SlotCount = #Menu:GetChildren()
+		--Page = Menu
 	end
-	
-	local Rarity,Page,SlotCount = FindStatPage(Stat,Menu)		
+	--local Rarity,Page,SlotCount = FindStatPage(Stat,Menu)
+		
 		
 	if SlotCount > 0 then
-		local looking = true
 		local found = false
 		
 		--Looking to update value of current tile
 		for i,tile in pairs (Page:GetChildren()) do
 			if tile:IsA("TextButton") then
-				if tile.StatName.Value == tostring(Stat) and looking == true then --Update Tile
+				if tile.StatName.Value == tostring(Stat) and found == false then --Update Tile
 					
 					if Value ~= 0 then
-						looking,found = InsertTileInfo(Type, tile, Stat, Value, looking, found, File)--Get rid of looking
+						found = InsertTileInfo(Type, tile, Stat, Value, found, File)--Get rid of looking
 					else --Deleting existing tile because value = 0
-						looking = false
 						found = true
 						local SlotNumber = i
 						
@@ -313,9 +421,13 @@ function ManageTiles(Stat, Menu, Value, File, Type)
 							if i > SlotNumber then
 								if tile:IsA("TextButton") then
 									tile.Name = tostring("Slot" .. tostring(i - 1))
-									tile.Row.Value = tile.Row.Value - 1
-									tile.Column.Value = tile.Column.Value - 1
-									tile.Position = UDim2.new(0.017+0.196*tile.Column.Value, 0, 0.02+0.298*tile.Row.Value, 0)
+									if Type == "Inventory" then
+										tile.Row.Value = tile.Row.Value - 1
+										tile.Column.Value = tile.Column.Value - 1
+										tile.Position = UDim2.new(0.017+0.196*tile.Column.Value, 0, 0.02+0.298*tile.Row.Value, 0)
+									else
+										tile.Position = UDim2.new(0.028,0,0.037+((i-1)*0.24),0) --change to do with Column and Row
+									end
 								end
 							end
 						end
@@ -348,14 +460,15 @@ function ManageTiles(Stat, Menu, Value, File, Type)
 				
 				tile.Rarity.Value = Rarity
 				tile.Position = UDim2.new(0.017+0.196*tile.Column.Value, 0, 0.02+0.298*tile.Row.Value, 0)
+			else
+				tile.Position = UDim2.new(0.028,0,0.037+((SlotCount)*0.24),0)
 			end
 			
 			tile.Parent = Page
 			
 			local PrevTileY = PreviousTile.Position.Y.Scale
 			
-			looking,found = InsertTileInfo(Type, tile, Stat, Value, looking, found, File)
-		
+			found = InsertTileInfo(Type, tile, Stat, Value, found, File)
 		end
 	else
 		
@@ -370,14 +483,14 @@ function ManageTiles(Stat, Menu, Value, File, Type)
 				FirstSlot.Column.Value = 0
 				FirstSlot.Rarity.Value = Rarity
 				FirstSlot.Position = UDim2.new(0.017, 0, 0.02, 0)
+			else
+				FirstSlot.Position = UDim2.new(0.028,0,0.037,0)
 			end
 			
 			FirstSlot.StatName.Value = tostring(Stat)
-			InsertTileInfo(Type, FirstSlot, Stat, Value, nil, nil, File)
-			
+			InsertTileInfo(Type, FirstSlot, Stat, Value, nil, File)
 		end
 	end
-	--UpdateMenuCanvas(Menu,Slots)
 end
 
 
@@ -391,9 +504,12 @@ local function InsertNewMaterialPopUp(ItemPopUp, Object, File, AmountAdded, Curr
 	--Move other tiles upward
 	for i,slot in pairs (ItemPopUp:GetChildren()) do
 		--slot.Position = UDim2.new(slot.Position.X.Scale, 0, slot.Position.Y.Scale - .1, 0)
-		slot:TweenPosition(UDim2.new(slot.Position.X.Scale, 0, slot.Position.Y.Scale - .1, 0), "Out", "Quint", .8)
+		slot:TweenPosition(UDim2.new(slot.Position.X.Scale, 0, slot.Position.Y.Scale - .105, 0), "Out", "Quint", .8)
 	end
 	
+	local RealObject = game.ReplicatedStorage:FindFirstChild(tostring(File)):FindFirstChild(tostring(Object))
+	local Rarity = RealObject["GUI Info"].RarityName.Value
+	local RarityFile = game.ReplicatedStorage.GuiElements.RarityColors:FindFirstChild(Rarity)
 	local NewPopUp = OriginalPopUpGUI:Clone()
 	NewPopUp.Parent = ItemPopUp
 	NewPopUp.Amount.Text = tostring(AmountAdded)
@@ -402,6 +518,7 @@ local function InsertNewMaterialPopUp(ItemPopUp, Object, File, AmountAdded, Curr
 	MaterialPopUpAmount = #ItemPopUp:GetChildren()
 	NewPopUp.Name = "PopUp" .. tostring(MaterialPopUpAmount)
 	NewPopUp.Object.Value = tostring(Object)
+	
 	if Currency then
 		print("Detected Currency")
 		NewPopUp.Picture.Image = "rbxgameasset://Images/" .. tostring(Currency)
@@ -409,7 +526,14 @@ local function InsertNewMaterialPopUp(ItemPopUp, Object, File, AmountAdded, Curr
 		local ItemImage = GetStatImage(File, Object)
 		NewPopUp.Picture.Image = ItemImage
 	end
-	NewPopUp:TweenPosition(UDim2.new(0.835, 0,0.835, 0), "Out" , "Quint", .45)
+	
+	NewPopUp.BackgroundColor3 = RarityFile.TileColor.Value
+	NewPopUp.BorderColor3 = RarityFile.Value
+	NewPopUp.CircleBorder.BackgroundColor3 = RarityFile.Value
+	NewPopUp["Round Edge"].BackgroundColor3 = RarityFile.Value
+	NewPopUp["Round Edge"].Inner.BackgroundColor3 = RarityFile.TileColor.Value
+	
+	NewPopUp:TweenPosition(UDim2.new(0.835, 0,0.825, 0), "Out" , "Quint", .45)
 	CountdownPopUp(ItemPopUp, NewPopUp, 5, .2)
 end
 
@@ -655,6 +779,7 @@ end
 
 -------------------------------------<High-Traffic Functions>-----------------------------------------------------------
 
+local UpdateInventory = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateInventory")
 UpdateInventory.OnClientEvent:Connect(function(Stat, File, Value, AmountAdded, Type, Currency)
 	local TypeSlots = DataMenu:FindFirstChild(tostring(Type) .. "Menu")
 	local Slots
@@ -671,7 +796,7 @@ UpdateInventory.OnClientEvent:Connect(function(Stat, File, Value, AmountAdded, T
 	elseif Type == "Experience" then --Later, possibly have tile/pop-up manager handle types
 		
 		--The fact that experience tiles are also unlocked once you get at least one point of exp
-		--would be fun to have a "You've unlocked a new skill!" animated gui
+		--would be fun to have a "You've unlocked a new skill!" animated gui (or levelling up animation)
 		if string.find(tostring(Stat), "Skill") then --Find Skill in string
 			Stat = string.gsub(tostring(Stat), "Skill", "") --Replace Skill with ""
 		end
@@ -679,3 +804,6 @@ UpdateInventory.OnClientEvent:Connect(function(Stat, File, Value, AmountAdded, T
 		ManageTiles(Stat, Slots, Value, File, Type)
 	end
 end)
+
+
+
