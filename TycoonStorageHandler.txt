@@ -189,6 +189,12 @@ UpdateTycoonStorage.OnClientEvent:Connect(function(File, Stat, StatValue, Amount
 	if typeof(StatValue) == "string" then
 		File = string.gsub(File, "TycoonStorage", "")
 		Stat = string.gsub(Stat, "TycoonStorage", "")
+		
+		--Update Inventory Information About Storage
+		if script.Parent.Parent.DataMenu.DataMenu.InventoryMenu:FindFirstChild(File):FindFirstChild(Stat) then
+			local InventoryTile = script.Parent.Parent.DataMenu.DataMenu.InventoryMenu:FindFirstChild(File):FindFirstChild(Stat)
+			InventoryTile.AmountInStorage.Value = StatValue
+		end
 	else
 		Stat = string.gsub(Stat, "Discovered", "")
 		local RarityName = game.ReplicatedStorage:FindFirstChild(tostring(File)):FindFirstChild(tostring(Stat)):FindFirstChild("GUI Info").RarityName.Value
@@ -543,4 +549,6 @@ for i,button in pairs (TycoonStorageGui.ComputerScreen.DataTabSelect:GetChildren
 		SetupTycoonStorageTiles(button)
 	end
 end
+
+
 
