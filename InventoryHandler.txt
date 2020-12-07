@@ -348,30 +348,40 @@ local function InsertTileInfo(Type, tile, Stat, Value, found, File)
 	end
 	
 	tile.Activated:Connect(function() --What happens when tile is clicked
+		print("tile was clicked")
 		if ItemViewerOpen == false then
 			ItemViewerOpen = true
 			local Menu = DataMenu:FindFirstChild(Type .. "Menu"):FindFirstChild(tostring(File) .. "Menu")
-			local RarityName = StatInfo["GUI Info"].RarityName.Value
-			local Rarity = game.ReplicatedStorage.GuiElements.RarityColors:FindFirstChild(RarityName)
-			
 			local ItemViewerMenu = DataMenu.ItemViewer
-			ItemViewerMenu.ItemImage.BorderColor3 = Rarity.Value
-			ItemViewerMenu.ItemImage.BackgroundColor3 = Rarity.TileColor.Value
+			if Type == "Inventory" then
+				local RarityName = StatInfo["GUI Info"].RarityName.Value
+				local Rarity = game.ReplicatedStorage.GuiElements.RarityColors:FindFirstChild(RarityName)
+				
+				ItemViewerMenu.ItemImage.BorderColor3 = Rarity.Value
+				ItemViewerMenu.ItemImage.BackgroundColor3 = Rarity.TileColor.Value
+				ItemViewerMenu.ItemRarity.Text = RarityName
+				ItemViewerMenu.ItemRarity.TextColor3 = Rarity.Value
+				ItemViewerMenu.ItemRarity.TextStrokeColor3 = Rarity.TileColor.Value
+				
+				ItemViewerMenu.ItemAmount.Text = "You Have: " .. tostring(Value)
+			else
+				ItemViewerMenu.ItemRarity.Text = ""
+				
+				ItemViewerMenu.ItemAmount.Text = "Total EXP: " .. tostring(Value)
+			end
+			
 			ItemViewerMenu.ItemImage.Image = StatInfo["GUI Info"].InventoryImage.Value
 			ItemViewerMenu.ItemName.Text = tostring(Stat)
-			ItemViewerMenu.ItemAmount.Text = "You Have: " .. tostring(Value)
-			
-			ItemViewerMenu.ItemRarity.Text = RarityName
-			ItemViewerMenu.ItemRarity.TextColor3 = Rarity.Value
-			ItemViewerMenu.ItemRarity.TextStrokeColor3 = Rarity.TileColor.Value
 			
 			if tile:FindFirstChild("AmountInStorage") then
-				ItemViewerMenu.ItemStorage.Text = "Storage: 0"
-				tile.AmountInStorage.Changed:Connect(function()
-					if ItemViewerMenu.ItemName.Text == tile.StatName.Value then
-						ItemViewerMenu.ItemStorage.Text = "Storage: " .. tostring(tile.AmountInStorage.Value)
-					end
-				end)
+				--look for value inside storage gui, and make sure that the value exists before assigning gui number
+				local Storage = script.Parent.Parent.TycoonStorage.ComputerScreen
+				local StorageItemFile = Storage.ItemsPreview:FindFirstChild(tostring(File))
+				local StorageItem = StorageItemFile:FindFirstChild(StatInfo["GUI Info"].RarityName.Value):FindFirstChild(tostring(Stat))
+				if ItemViewerMenu.ItemName.Text == tile.StatName.Value then
+					print(Stat,tile.StatName.Value)
+					ItemViewerMenu.ItemStorage.Text = "Storage: " .. tostring(StorageItem.AmountInStorage.Value)
+				end
 			else
 				ItemViewerMenu.ItemStorage.Text = ""
 			end
@@ -804,6 +814,3 @@ UpdateInventory.OnClientEvent:Connect(function(Stat, File, Value, AmountAdded, T
 		ManageTiles(Stat, Slots, Value, File, Type)
 	end
 end)
-
-
-
