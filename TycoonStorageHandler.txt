@@ -8,7 +8,6 @@ local LocalLoadTycoon = game.ReplicatedStorage.Events.Tycoon.LocalLoadTycoon
 local MoveAllBaseScreenUI = game.ReplicatedStorage.Events.GUI.MoveAllBaseScreenUI
 local ComputerIsOn = false
 local TweenService = game:GetService("TweenService")
-local PlayerTycoon
 local TycoonComputer
 
 local TycoonStorageGui = script.Parent
@@ -35,7 +34,7 @@ local function ShutDownComputer()
 end
 
 function SetUpCredentials()
-	--Get playeruser id from tycoon owner
+	--Get playeruser id from interacter
 	local PlayerUserId = Player.UserId
 	
 	local stringTime = "%I:%M %p"
@@ -140,29 +139,6 @@ function OpenAffiliatedItemPreview(button)
 	end
 end
 
-
-LocalLoadTycoon.OnClientEvent:Connect(function(tycoon)
-	PlayerTycoon = tycoon
-	TycoonComputer = tycoon:WaitForChild("Essentials"):WaitForChild("Computer")
-	local EGUI = script:FindFirstChild("E GUI")
-	local EGUIClone = EGUI:Clone()
-	--EGUIClone.Name = "E GUI"
-	EGUIClone.Parent = TycoonComputer:FindFirstChild("Laptop")
-	EInteract()
-	--local debounce = false
-	--TycoonComputer.Touched:Connect(function(hit)
-		--local TouchedPlayer = game.Players:GetPlayerFromCharacter(hit.Parent)
-		--if tostring(TouchedPlayer) == tostring(Player) then
-			--if debounce == false then
-				--debounce = true
-				--StartUpComputer()
-				--wait(1)
-				--debounce = false
-			--end
-		--end
-	--end)
-end)
-
 --------------<Current Selection Info>------------------------------------------------------------
 
 local function UpdateSelectionInfo(RarityMenu, tile)
@@ -186,20 +162,16 @@ end
 
 local UpdateTycoonStorage = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateTycoonStorage")
 UpdateTycoonStorage.OnClientEvent:Connect(function(File, Stat, StatValue, AmountAdded)
+	print(StatValue, Stat)
 	if typeof(StatValue) == "string" then
 		File = string.gsub(File, "TycoonStorage", "")
 		Stat = string.gsub(Stat, "TycoonStorage", "")
-		
-		--Update Inventory Information About Storage
-		if script.Parent.Parent.DataMenu.DataMenu.InventoryMenu:FindFirstChild(File):FindFirstChild(Stat) then
-			local InventoryTile = script.Parent.Parent.DataMenu.DataMenu.InventoryMenu:FindFirstChild(File):FindFirstChild(Stat)
-			InventoryTile.AmountInStorage.Value = StatValue
-		end
 	else
 		Stat = string.gsub(Stat, "Discovered", "")
 		local RarityName = game.ReplicatedStorage:FindFirstChild(tostring(File)):FindFirstChild(tostring(Stat)):FindFirstChild("GUI Info").RarityName.Value
 		ItemsPreview:FindFirstChild(tostring(File)):FindFirstChild(RarityName):WaitForChild(tostring(Stat)).Discovered.Value = StatValue
 	end
+	wait() --Allow ItemPreview tiles to be made
 	for i,rarity in pairs (ItemsPreview:FindFirstChild(File):GetChildren()) do
 		if rarity:IsA("TextLabel") then
 			if rarity:FindFirstChild(Stat) then
@@ -474,11 +446,9 @@ local HumanoidRootPart = game.Workspace.Players:WaitForChild(tostring(Player)):W
 function EInteract()
 	UIS.InputBegan:Connect(function(input)
 		if input.KeyCode == Enum.KeyCode.E then
-			print("Pressed E")
 			if Mouse.Target and (Mouse.Target.Position - HumanoidRootPart.Position).magnitude < 20 then
 				if Mouse.Target:IsDescendantOf(TycoonComputer) then
 					TycoonComputer.Laptop:WaitForChild("E GUI").Enabled = false
-					print("Name is computer")
 					local Laptop = Mouse.Target
 					StartUpCutscene()
 					TycoonComputer.Laptop:WaitForChild("E GUI").Enabled = true
@@ -493,7 +463,7 @@ function EInteract()
 		wait(.1)
 		if Mouse.Target then
 			--for i,v in pairs (PlayerTycoon.Essentials:GetChildren()) do
-				if Mouse.Target:IsDescendantOf(TycoonComputer) and (Mouse.Target.Position - HumanoidRootPart.Position).magnitude < 20 then 
+			if Mouse.Target:IsDescendantOf(TycoonComputer) and (Mouse.Target.Position - HumanoidRootPart.Position).magnitude < 20 then
 					if debounce2 == false then
 						debounce2 = true
 						TycoonComputer.Laptop:WaitForChild("E GUI").Enabled = true
@@ -550,5 +520,10 @@ for i,button in pairs (TycoonStorageGui.ComputerScreen.DataTabSelect:GetChildren
 	end
 end
 
+TycoonComputer = workspace:WaitForChild("Computer")
+local EGUI = script:FindFirstChild("E GUI")           
+local EGUIClone = EGUI:Clone()
+EGUIClone.Parent = TycoonComputer:FindFirstChild("Laptop")
 
+EInteract()
 
