@@ -8,14 +8,14 @@ local LocalLoadTycoon = game.ReplicatedStorage.Events.Tycoon.LocalLoadTycoon
 local MoveAllBaseScreenUI = game.ReplicatedStorage.Events.GUI.MoveAllBaseScreenUI
 local ComputerIsOn = false
 local TweenService = game:GetService("TweenService")
-local TycoonComputer
+local HumanoidRootPart = game.Workspace.Players:WaitForChild(tostring(Player)):WaitForChild("HumanoidRootPart")
+local CurrentStorage
 
 local TycoonStorageGui = script.Parent
 local ComputerScreen = TycoonStorageGui.ComputerScreen
 local BackButton = ComputerScreen.Taskbar.BackButton
 local FadeOut = ComputerScreen.FadeOut
 local function StartUpComputer()
-	ComputerIsOn = true
 	ComputerScreen.Visible = true
 	FadeOut.BackgroundTransparency = 0
 	wait(.7)
@@ -28,7 +28,7 @@ local function ShutDownComputer()
 		wait(.02)
 		FadeOut.BackgroundTransparency = FadeOut.BackgroundTransparency - 0.05
 	end
-	TycoonComputer.Laptop:WaitForChild("E GUI").Enabled = false
+	CurrentStorage.InteractedModel:WaitForChild("E GUI").Enabled = false
 	TycoonStorageGui.ComputerScreen.Visible = false
 	ShutDownCutscene()
 end
@@ -75,7 +75,7 @@ function SetUpCredentials()
 		KeyboardSound:Play()
 		PasswordInput:FindFirstChild(tostring(i)).Visible = true
 	end
-	wait(1.5)
+	wait(1)
 	
 	ComputerScreen.DataTabSelect.Visible = true
 	BackButton.Position = UDim2.new(BackButton.Position.X.Scale, 0, 1, 0)
@@ -369,7 +369,7 @@ end
 
 --------------<Tile Management>--------------------------------------------------------------------------------
 
-local AmountPerRow = 2
+local AmountPerRow = 10
 function SetupTycoonStorageTiles(button)
 	ItemsPreview.Visible = false
 	local MenuName = button.Name
@@ -439,42 +439,87 @@ function MoveOtherRaritiesDown(RarityMenu)
 	end
 end
 
+-------------<Storage Depositing>--------------------------------------------------------------------------
+local DepositInventory = game.ReplicatedStorage.Events.GUI:WaitForChild("DepositInventory")
+for i,storage in pairs (game.Workspace.Storages:GetChildren()) do
+	local repeatDebounce = false
+	coroutine.resume(coroutine.create(function()
+		while true do
+			wait(.1)
+			if not repeatDebounce and not ComputerIsOn then
+				if (storage.InteractedModel.Main.Position - HumanoidRootPart.Position).magnitude < 7 then
+					repeatDebounce = true
+					print("The player is close to a storage:" .. tostring(storage))
+					
+					--Delete the tiles from the inventory (or set their amounts to zero)
+					for i,menu in pairs (script.Parent.Parent.DataMenu.DataMenu.InventoryMenu:GetChildren()) do
+						if menu:IsA("Frame") then
+							for i,page in pairs (menu:GetChildren()) do
+								for i,tile in pairs (page:GetChildren()) do
+									if tile:IsA("TextButton") then
+										tile:Destroy()
+									end
+								end
+							end
+						end
+					end
+					
+					local finished = DepositInventory:FireServer(Player)
+					wait(finished)
+					wait(5)
+					repeatDebounce = false
+				end
+			end
+		end
+	end))
+end
+
+
 -------------<E Interaction>---------------------------------------------------------------------------
 local UIS = game:GetService("UserInputService")
 local Mouse = Player:GetMouse()
-local HumanoidRootPart = game.Workspace.Players:WaitForChild(tostring(Player)):WaitForChild("HumanoidRootPart")
+
 function EInteract()
+	local debounce2 = false
 	UIS.InputBegan:Connect(function(input)
-		if input.KeyCode == Enum.KeyCode.E then
-			if Mouse.Target and (Mouse.Target.Position - HumanoidRootPart.Position).magnitude < 20 then
-				if Mouse.Target:IsDescendantOf(TycoonComputer) then
-					TycoonComputer.Laptop:WaitForChild("E GUI").Enabled = false
-					local Laptop = Mouse.Target
-					StartUpCutscene()
-					TycoonComputer.Laptop:WaitForChild("E GUI").Enabled = true
+		if debounce2 == true and not ComputerIsOn then
+			if input.KeyCode == Enum.KeyCode.E then
+				if Mouse.Target and (Mouse.Target.Position - HumanoidRootPart.Position).magnitude < 20 then
+					if Mouse.Target:IsDescendantOf(CurrentStorage) then
+						ComputerIsOn = true
+						CurrentStorage.InteractedModel:WaitForChild("E GUI").Enabled = false
+						local InteractedModel = Mouse.Target
+						StartUpCutscene()
+						CurrentStorage.InteractedModel:WaitForChild("E GUI").Enabled = true
+					end
 				end
 			end
 		end
 	end)
-	
+
 	--Graphical
-	local debounce2 = false
 	while true do
 		wait(.1)
+		
+		if debounce2 == true and CurrentStorage.InteractedModel:WaitForChild("E GUI").Enabled == true then
+			CurrentStorage.InteractedModel:WaitForChild("E GUI").Enabled = false
+			debounce2 = false
+		end
+		
 		if Mouse.Target then
-			--for i,v in pairs (PlayerTycoon.Essentials:GetChildren()) do
-			if Mouse.Target:IsDescendantOf(TycoonComputer) and (Mouse.Target.Position - HumanoidRootPart.Position).magnitude < 20 then
-					if debounce2 == false then
-						debounce2 = true
-						TycoonComputer.Laptop:WaitForChild("E GUI").Enabled = true
-					end
-				else
-					if debounce2 == true and TycoonComputer.Laptop:WaitForChild("E GUI").Enabled == true then
-						TycoonComputer.Laptop:WaitForChild("E GUI").Enabled = false
-						debounce2 = false
+			if (Mouse.Target.Position - HumanoidRootPart.Position).magnitude < 20 then
+				if Mouse.Target:IsDescendantOf(workspace.Storages) then
+					for i,storage in pairs (workspace.Storages:GetChildren()) do
+						if Mouse.Target:IsDescendantOf(storage) then
+							CurrentStorage = storage
+							if debounce2 == false then
+								debounce2 = true
+								CurrentStorage.InteractedModel:WaitForChild("E GUI").Enabled = true
+							end
+						end
 					end
 				end
-			--end
+			end
 		end
 	end
 end
@@ -493,7 +538,7 @@ end
 --VIDEO TUTORIAL:
 --https://www.bing.com/videos/search?q=roblox+2020+cutscene+editor&&view=detail&mid=BEC7BCBD747366BD75C8BEC7BCBD747366BD75C8&rvsmid=E7AB6D6F25AAAC254ED0E7AB6D6F25AAAC254ED0&FORM=VDRVRV
 function StartUpCutscene()
-	local CutsceneFolder = TycoonComputer:FindFirstChild("CutsceneCameras")
+	local CutsceneFolder = CurrentStorage:FindFirstChild("CutsceneCameras")
 	MoveCamera(Camera, CutsceneFolder.Camera1, 1.5, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
 	MoveAllBaseScreenUI:Fire("Hide") --Move "surface screen" tiles away
 	MoveCamera(CutsceneFolder.Camera1, CutsceneFolder.Camera2, .7, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
@@ -502,14 +547,14 @@ function StartUpCutscene()
 end
 
 function ShutDownCutscene()
-	local CutsceneFolder = TycoonComputer:FindFirstChild("CutsceneCameras")
+	local CutsceneFolder = CurrentStorage:FindFirstChild("CutsceneCameras")
 	MoveCamera(CutsceneFolder.Camera2, CutsceneFolder.Camera1, .7, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
 	MoveAllBaseScreenUI:Fire("Show")
 
 	wait(.8)
 	Camera.CameraType = Enum.CameraType.Custom
 	Camera.CameraSubject = game.Players.LocalPlayer.Character:WaitForChild("Humanoid")
-	TycoonComputer.Laptop:WaitForChild("E GUI").Enabled = true
+	CurrentStorage.InteractedModel:WaitForChild("E GUI").Enabled = true
 end
 
 
@@ -520,10 +565,10 @@ for i,button in pairs (TycoonStorageGui.ComputerScreen.DataTabSelect:GetChildren
 	end
 end
 
-TycoonComputer = workspace:WaitForChild("Computer")
-local EGUI = script:FindFirstChild("E GUI")           
-local EGUIClone = EGUI:Clone()
-EGUIClone.Parent = TycoonComputer:FindFirstChild("Laptop")
+local EGUI = script:FindFirstChild("E GUI")               --Possibly move to EInteract function call for organization
+for i,storage in pairs (workspace.Storages:GetChildren()) do
+	local EGUIClone = EGUI:Clone()
+	EGUIClone.Parent = storage:FindFirstChild("InteractedModel")
+end
 
 EInteract()
-
