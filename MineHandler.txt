@@ -1,7 +1,7 @@
 (Script)
 Handles mining, mine generation, and ore generation after ore is mined (generates a new block around mined block that were previously nothing)
 
-Most Recent Update (11/11/2020): Regions now can spawn "structures" growing off the ground and hanging from the ceiling, along with some other code tweaks.
+(11/11/2020): Regions now can spawn "structures" growing off the ground and hanging from the ceiling, along with some other code tweaks.
 ------------------------------------------------------------------------------------------------------------------------------------------------
 
 local PlayerStatManager = require(game.ServerScriptService:WaitForChild("PlayerStatManager"))
@@ -354,6 +354,7 @@ function game.ServerStorage.MineOre.OnInvoke(Player,Ore)
 		
 		local BlockBelow,BlockAbove = CalculateNoise(CompactPos.X,CompactPos.Y,CompactPos.Z)
 		
+		print(BlockBelow,BlockAbove)
 		--Break connected structures
 		if not BlockBelow or not BlockAbove then
 			local Y
@@ -363,7 +364,7 @@ function game.ServerStorage.MineOre.OnInvoke(Player,Ore)
 				Y = CompactPos.Y-1
 			end
 			
-			if UsedPositions[PositionKey(CompactPos.X,Y,CompactPos.Z)] ~= false then
+			if UsedPositions[PositionKey(CompactPos.X,Y,CompactPos.Z)] ~= nil then
 				local ConnectedOre = UsedPositions[PositionKey(CompactPos.X,Y,CompactPos.Z)]
 				if game.ReplicatedStorage.Ores:FindFirstChild(tostring(ConnectedOre)):FindFirstChild("SpecialStructure") then
 					local OrePosition = ConnectedOre.Position
@@ -392,10 +393,10 @@ function game.ServerStorage.MineOre.OnInvoke(Player,Ore)
 			local SkillsFolder = PlayerExperience:WaitForChild("Skills")
 			
 			local CurrentOre = OresFolder:FindFirstChild(Ore.Name)
-			CurrentOre.Value = CurrentOre.Value + 1
+			--CurrentOre.Value = CurrentOre.Value + 1
 			
 			local CurrentSkill = SkillsFolder:FindFirstChild("MiningSkill")
-			CurrentSkill.Value = CurrentSkill.Value + InitialOreExperience
+			--CurrentSkill.Value = CurrentSkill.Value + InitialOreExperience
 			
 			--Change player discovered value if this is first time acquired
 			local DiscoverValue = CurrentOre:FindFirstChild(tostring(Ore) .. "Discovered")
@@ -478,11 +479,6 @@ local function GenerateMine()
 end
 
 GenerateMine()
-
-
-
-
-
 
 
 
