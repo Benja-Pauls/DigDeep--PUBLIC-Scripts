@@ -12,6 +12,7 @@ local DataStoreService = game:GetService("DataStoreService")
 local Utility = require(game.ServerScriptService:WaitForChild("Utility"))
 local UpdateInventory = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateInventory")
 local UpdateTycoonStorage = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateTycoonStorage")
+local DepositInventory = game.ReplicatedStorage.Events.GUI:WaitForChild("DepositInventory")
 
 local PlayerSave = DataStoreService:GetDataStore("Tycoon Test188") --Changing this will change the datastore info is taken from
 
@@ -35,6 +36,7 @@ end
 
 --Change saved stat to new value
 function PlayerStatManager:ChangeStat(player, statName, value, File, InventoryItem, special)
+	print(player)
 	local playerUserId = game.Players:FindFirstChild(tostring(player)).UserId
 	local PlayerDataFile = PlayerData:FindFirstChild(tostring(playerUserId))
 	
@@ -68,6 +70,28 @@ function PlayerStatManager:ChangeStat(player, statName, value, File, InventoryIt
 		end
 	end
 end
+
+DepositInventory.OnServerEvent:Connect(function(Player)
+	local PlayerDataFile = PlayerData:FindFirstChild(tostring(Player.UserId))
+	for i,folder in pairs (PlayerDataFile.Inventory:GetChildren()) do
+		for i,item in pairs (folder:GetChildren()) do
+			local InventoryValue = item.Value --the value of the item is one mor than the actual value
+			print(item, InventoryValue)
+			if InventoryValue > 0 then
+				--Update Inventory
+				PlayerStatManager:ChangeStat(Player, tostring(item), 0, "Inventory", nil, "Zero")
+				item.Value = 0
+				
+				--Update Storage
+				PlayerStatManager:ChangeStat(Player, "TycoonStorage" .. tostring(item), InventoryValue, "TycoonStorage")
+				print(PlayerDataFile.Inventory:FindFirstChild(tostring(folder)):FindFirstChild(tostring(item)).Value)
+				--print(item,item.Value)
+			end
+		end
+	end
+
+	return true
+end)
 
 local function FindPlayerData(JoinedPlayer)
 	local PlayerDataFile = PlayerData:FindFirstChild(tostring(JoinedPlayer.UserId))
@@ -182,11 +206,12 @@ function LoadPlayerData(PlayerDataFile,data,JoinedPlayer)
 
 		local SavedDiscoverValue = CheckSaveData(data[tostring(OreDiscovery)])
 		ImportSaveData(data,SavedDiscoverValue,Ore,OreDiscovery)
-		print("Updating tycoon storage discover value for " .. tostring(Ore) .. " = " .. tostring(data[tostring(OreDiscovery)]))
 		UpdateTycoonStorage:FireClient(JoinedPlayer, OresFolder.Name, tostring(Ore) .. "Discovered", data[tostring(OreDiscovery)])
 		
 		local SavedTycoonStorageValue = CheckSaveData(data[tostring(TycoonStorageOre)])
 		ImportSaveData(data,SavedTycoonStorageValue,TycoonStorageOres,TycoonStorageOre)
+		UpdateTycoonStorage:FireClient(JoinedPlayer, TycoonStorageOres.Name, tostring(TycoonStorageOre), tostring(data[tostring(TycoonStorageOre)]))
+
 		--print("Data for " .. tostring(data["TycoonStorage" .. tostring(Ore)]) .. " Tycoon Storage")
 	end	
 	local PlayerCash = PlayerDataFile:FindFirstChild("Currency")
@@ -202,55 +227,6 @@ function LoadPlayerData(PlayerDataFile,data,JoinedPlayer)
 	end
 	print(tostring(JoinedPlayer) .. " has $" .. tostring(data["Money"]))
 end
-
---[[
-function SetupPlayerData(JoinedPlayer, PlayerDataFile, playerUserId)
-	
-	
-	print("First time setup for player: ".. tostring(JoinedPlayer))
-	local data = sessionData[playerUserId]
-	
-	local PlayerInventory = Instance.new("Folder",PlayerDataFile)
-	PlayerInventory.Name = "Inventory"
-	
-	local PlayerExperience = Instance.new("Folder",PlayerDataFile)
-	PlayerExperience.Name = "Experience"
-	local SkillsFolder = Instance.new("Folder",PlayerExperience)
-	SkillsFolder.Name = "Skills"
-	local RealSkills = game.ReplicatedStorage:WaitForChild("Skills")
-	for i,skill in pairs (RealSkills:GetChildren()) do
-		local Skill = Instance.new("IntValue",SkillsFolder)
-		Skill.Name = tostring(skill)
-		Skill.Value = 0
-	end
-	for i,v in pairs (SkillsFolder:GetChildren()) do --May be able to meld into original i,v loop
-		if data[tostring(v)] == nil then
-			data[tostring(v)] = v.Value
-		end
-	end
-	
-	local RealOres = game.ReplicatedStorage:WaitForChild("Ores")
-	local OresFolder = Instance.new("Folder",PlayerInventory)
-	OresFolder.Name = "Ores"
-	for i,v in pairs (RealOres:GetChildren()) do
-		local Ore = Instance.new("IntValue",OresFolder)
-		Ore.Name = tostring(v)
-		Ore.Value = 0 --Set intvalue to 0
-		local DiscoveredValue = Instance.new("BoolValue",Ore)
-		DiscoveredValue.Name = "Discovered"
-		DiscoveredValue.Value = false
-		
-		if data[tostring(Ore) .. "Discovered"] == nil then
-			data[tostring(Ore) .. "Discovered"] = DiscoveredValue.Value
-		end
-	end
-	for i,Ore in pairs (OresFolder:GetChildren()) do
-		if data[tostring(Ore)] == nil then --This check may not have to be here
-			data[tostring(Ore)] = Ore.Value --set datastore of orevalue equal to intvalue (0)
-		end
-	end		
-end
-]]
 
 function SetTycoonPurchases(JoinedPlayer, PlayerCash, playerUserId)
 	for i = 1,#tycoons,1 do 
@@ -300,8 +276,7 @@ local function saveAllPlayerData() --maybe make a getchildren statement? and sav
 
 function PlayerStatManager:getPlayerData(player)
 	local playerUserId = game.Players:FindFirstChild(tostring(player)).UserId
-	--print(sessionData[playerUserId]) --table: (random code), why?
-	return sessionData[playerUserId] --put in the table the player's user id
+	return sessionData[playerUserId]
 end 
 
 function PlayerStatManager:getStat(player, statName)
