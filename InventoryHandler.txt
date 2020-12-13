@@ -21,11 +21,18 @@ for i,v in pairs (DataMenu:GetChildren()) do
 end
 
 local Open = false
+local InventoryOpens = 0
 OpenDataMenuButton.Activated:Connect(function()
 	if Open == false then
 		DataMenu.Visible = true
 		Open = true
-		ReadyMenuButtons(DataMenu) --Manage Tabs
+		if InventoryOpens == 0 then
+			InventoryOpens = 1
+			ReadyMenuButtons(DataMenu) --Manage Tabs
+		else
+			CleanupMenuTabs(DataMenu)
+		end
+		
 	elseif Open == true then
 		DataMenu.Visible = false
 		Open = false
@@ -47,33 +54,37 @@ end)
 --------------<|Utility Functions|>-----------------------------------------------------------------------------
 local ItemViewerOpen = false
 local PageDebounce = false
+local ButtonPresses = {}
 
 local MenuAcceptance = true
 function ReadyMenuButtons(Menu)
 	if MenuAcceptance == true then
 		MenuAcceptance = false
-		local AmountofButtons = 0
 		for i,button in pairs(Menu:GetChildren()) do
 			if button:IsA("TextButton") and button:FindFirstChild("Menu") then
-				AmountofButtons = AmountofButtons + 1
+				ButtonPresses[button] = 0
 				local AssociatedMenuName = button:FindFirstChild("Menu").Value
 				local ButtonMenu = Menu:FindFirstChild(AssociatedMenuName)
 				ButtonMenu.Visible = false
 				
 				button.Activated:Connect(function()
+					print(tostring(button) .. " has been activated")
 					for i,v in pairs (ButtonMenu.Parent:GetChildren()) do
 						if not v:IsA("TextButton") and not v:FindFirstChild("Menu") and tostring(v) ~= "TopTabBar" then
 							v.Visible = false
 						end
 					end
-					print(Menu,ButtonMenu)
 					ButtonMenu.Visible = true
 					if Menu.Parent == DataMenu then
-						print("changing menu's value to buttonmenu")
-						PageManager.Visible = true
 						PageManager.Menu.Value = ButtonMenu
-						if ButtonMenu:FindFirstChild("Page1") then
-							FinalizePageChange(ButtonMenu.Page1)
+						local PageCount = CountPages()
+						if PageCount > 0 then
+							PageManager.Visible = true
+							if ButtonMenu:FindFirstChild("Page1") then
+								FinalizePageChange(ButtonMenu.Page1)
+							end
+						else --Player has no items of this type
+							print("Menu has no pages!")
 						end
 					else
 						--PageManager.Menu.Value = nil
@@ -82,7 +93,12 @@ function ReadyMenuButtons(Menu)
 					DataMenu.ItemViewer.Visible = false
 					ItemViewerOpen = false
 					PageManager.CurrentPage.Value = 1
-					ReadyMenuButtons(ButtonMenu)
+					if ButtonPresses[button] == 0 then
+						ButtonPresses[button] = 1
+						ReadyMenuButtons(ButtonMenu)
+					else
+						CleanupMenuTabs(ButtonMenu)
+					end
 				end)
 			end
 		end
@@ -91,6 +107,16 @@ function ReadyMenuButtons(Menu)
 	else
 		--cancellation of other menus, way to count this so wait waits for a certain number to
 		--be achieved here?
+	end
+end
+
+function CleanupMenuTabs(Menu)
+	for i,button in pairs(Menu:GetChildren()) do
+		if button:IsA("TextButton") and button:FindFirstChild("Menu") then
+			local AssociatedMenuName = button:FindFirstChild("Menu").Value
+			local ButtonMenu = Menu:FindFirstChild(AssociatedMenuName)
+			ButtonMenu.Visible = false
+		end
 	end
 end
 
@@ -137,7 +163,7 @@ function ManagePageInvis(VisiblePage) --Use this in more places than page manage
 	PageDebounce = false
 end
 
-local function CountPages()
+function CountPages()
 	local HighPage = 0
 	for i,page in pairs (PageManager.Menu.Value:GetChildren()) do
 		if page:IsA("Frame") then
@@ -279,21 +305,69 @@ local function FindStatPage(Stat,Menu,MaxAmount,RaritySort)
 				found = true
 				Page = page
 			else
-				Over = page
+				Over = page --Too many tiles on rarity page
 			end
 		end
 	end
+	
 	if found == false then
-		--print("Making new page for " .. tostring(StatRarity))
 		local NewPage = GuiElements.MenuPage:Clone()
-		NewPage.Parent = Menu
 		NewPage.Rarity.Value = StatRarity
-		if Over then
+		if Over then --Group Page With Rarity
 			local LastRarityPage = string.gsub(Over.Name, "Page" , "")
 			NewPage.Name = "Page" .. tostring(tonumber(LastRarityPage) + 1)
+			
+		elseif not Over and StatRarity ~= "No Rarity" then --No Page of Rarity Exists, Must Sort Rarities by Order
+			--Sort by rarity
+			local HighestLowerRarityPage = 0
+			
+			local RarityOrder = GuiElements.RarityColors:FindFirstChild(StatRarity).Order.Value
+			if RarityOrder > 1 then
+				for i,rarity in pairs (GuiElements.RarityColors:GetChildren()) do
+					if rarity.Order.Value < RarityOrder then
+						for i,page in pairs (Pages) do
+							if page:IsA("Frame") then
+								if page.Rarity.Value == tostring(rarity) then
+									local PageNumber = string.gsub(page.Name, "Page" , "")
+									if HighestLowerRarityPage < tonumber(PageNumber) then
+										HighestLowerRarityPage = tonumber(PageNumber)
+									end
+								end
+							end
+						end
+					end
+				end
+
+				if HighestLowerRarityPage ~= 0 then
+					for i,page in pairs (Pages) do
+						if page:IsA("Frame") then
+							local PageNumber = string.gsub(page.Name, "Page", "")
+							if tonumber(PageNumber) >= HighestLowerRarityPage+1 then
+								page.Name = "Page" .. tostring(tonumber(PageNumber)+1)
+							end
+						end
+					end
+					NewPage.Name = "Page" .. tostring(HighestLowerRarityPage+1)
+				else
+					NewPage.Name = "Page1"
+				end
+				
+			else --Common
+				if #Pages > 0 then
+					for i,page in pairs (Pages) do
+						if page:IsA("Frame") then
+							print(page)
+							local PageNumber = string.gsub(page.Name, "Page", "")
+							page.Name = "Page" .. tostring(tonumber(PageNumber)+1)
+						end
+					end
+				end
+				NewPage.Name = "Page1"
+			end
 		else
-			NewPage.Name = "Page" .. tostring(#Pages+1)
+			NewPage.Name = "Page1"
 		end
+		NewPage.Parent = Menu
 		NewPage.Visible = false
 		Page = NewPage
 	end
@@ -379,7 +453,6 @@ local function InsertTileInfo(Type, tile, Stat, Value, found, File)
 				local StorageItemFile = Storage.ItemsPreview:FindFirstChild(tostring(File))
 				local StorageItem = StorageItemFile:FindFirstChild(StatInfo["GUI Info"].RarityName.Value):FindFirstChild(tostring(Stat))
 				if ItemViewerMenu.ItemName.Text == tile.StatName.Value then
-					print(Stat,tile.StatName.Value)
 					ItemViewerMenu.ItemStorage.Text = "Storage: " .. tostring(StorageItem.AmountInStorage.Value)
 				end
 			else
@@ -403,6 +476,7 @@ function ManageTiles(Stat, Menu, Value, File, Type)
 	local OriginalMaterialSlot
 	if Type == "Inventory" then
 		OriginalMaterialSlot = GuiElements:FindFirstChild("InventoryMaterialSlot")
+		print("Page being associated with item: " .. tostring(Stat))
 		Rarity,Page,SlotCount = FindStatPage(Stat,Menu,15,true)
 	else
 		OriginalMaterialSlot = GuiElements:FindFirstChild("ExperienceSlot")
@@ -410,7 +484,6 @@ function ManageTiles(Stat, Menu, Value, File, Type)
 		--SlotCount = #Menu:GetChildren()
 		--Page = Menu
 	end
-	--local Rarity,Page,SlotCount = FindStatPage(Stat,Menu)
 		
 		
 	if SlotCount > 0 then
@@ -530,7 +603,6 @@ local function InsertNewMaterialPopUp(ItemPopUp, Object, File, AmountAdded, Curr
 	NewPopUp.Object.Value = tostring(Object)
 	
 	if Currency then
-		print("Detected Currency")
 		NewPopUp.Picture.Image = "rbxgameasset://Images/" .. tostring(Currency)
 	else
 		local ItemImage = GetStatImage(File, Object)
@@ -800,9 +872,9 @@ UpdateInventory.OnClientEvent:Connect(function(Stat, File, Value, AmountAdded, T
 	if Type == "Inventory" then
 		ManageMaterialPopups(Stat, File, AmountAdded, Currency)
 		
-		if Currency == nil then	
-			ManageTiles(Stat, Slots, Value, File, Type)
-		end
+		--if Currency == nil then	
+			--ManageTiles(Stat, Slots, Value, File, Type)
+		--end
 	elseif Type == "Experience" then --Later, possibly have tile/pop-up manager handle types
 		
 		--The fact that experience tiles are also unlocked once you get at least one point of exp
@@ -811,6 +883,12 @@ UpdateInventory.OnClientEvent:Connect(function(Stat, File, Value, AmountAdded, T
 			Stat = string.gsub(tostring(Stat), "Skill", "") --Replace Skill with ""
 		end
 		ManageEXPPopUp(Stat, Value, AmountAdded)
+		--ManageTiles(Stat, Slots, Value, File, Type)
+	end
+	if Currency == nil and tonumber(Value) ~= 0 then
+		print("DataMenu tile for " .. tostring(Stat) .. " has value of " .. tostring(Value))
 		ManageTiles(Stat, Slots, Value, File, Type)
 	end
 end)
+
+--ReadyMenuButtons(DataMenu) --Manage Tabs
