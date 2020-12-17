@@ -19,7 +19,6 @@ local PlayerSave = DataStoreService:GetDataStore("Tycoon Test188") --Changing th
 local sessionData = {}
 
 local function UpdateGUIForFile(DataTabName, PlayerDataFile, player, playerUserId, statName, value)
-	--print(DataTabName)
 	local DataTab = PlayerDataFile:FindFirstChild(DataTabName) --Example: (UserId).Experience
 	for i,file in pairs (DataTab:GetChildren()) do
 		if file:FindFirstChild(tostring(statName)) then --DataTab:FindFirstChild(file):FindFirstChild(statName)?
@@ -36,7 +35,6 @@ end
 
 --Change saved stat to new value
 function PlayerStatManager:ChangeStat(player, statName, value, File, InventoryItem, special)
-	print(player)
 	local playerUserId = game.Players:FindFirstChild(tostring(player)).UserId
 	local PlayerDataFile = PlayerData:FindFirstChild(tostring(playerUserId))
 	
@@ -279,12 +277,24 @@ function PlayerStatManager:getPlayerData(player)
 	return sessionData[playerUserId]
 end 
 
-function PlayerStatManager:getStat(player, statName)
-	--Largely used as a stat checker
+function PlayerStatManager:getStat(player, statName) --Stat Check
 	local playerUserId = game.Players:FindFirstChild(tostring(player)).UserId
 	print(sessionData[playerUserId][statName],statName,playerUserId)
 	return sessionData[playerUserId][statName]
 end 
+
+function PlayerStatManager:getStatForType(player, Type) --For Amount in Inventory Bag Checking
+	local playerUserId = game.Players:FindFirstChild(tostring(player)).UserId
+	local TypeSaveFolder = game.ServerStorage.PlayerData:FindFirstChild(tostring(playerUserId)).Inventory:FindFirstChild(Type)
+	
+	if TypeSaveFolder then
+		local Amount = 0
+		for i,statData in pairs (TypeSaveFolder:GetChildren()) do
+			Amount = Amount + statData.Value
+		end
+		return Amount
+	end
+end
 
 function PlayerStatManager:initiateSaving(player, statName, value)
 	print("Saving Data for player: " .. tostring(player))
@@ -323,3 +333,4 @@ function PlayerStatManager:ConvertShort(Filter_Num) --MOVE TO UTILITY?
 end
 
 return PlayerStatManager
+
