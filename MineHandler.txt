@@ -127,33 +127,31 @@ local function SpawnStructures(x,y,z,Bounds,Region)
 		end
 	end
 	
-	local Id = Lottery[math.random(1,#Lottery)]
-	local FinalSelection = GetObjectFromId(Ores,Id)
-				
-	local SpawnChance = math.random(1,FinalSelection.MaxRarity.Value)
-		
-	if SpawnChance <= FinalSelection.MaxRarity.Value/FinalSelection["1/SpawnChance"].Value then 
+	if #Lottery > 0 then
+		local Id = Lottery[math.random(1,#Lottery)]
+		local FinalSelection = GetObjectFromId(Ores,Id)
+					
+		local SpawnChance = math.random(1,FinalSelection.MaxRarity.Value)
 
-		local Structure = FinalSelection:Clone()
+		if SpawnChance <= FinalSelection.MaxRarity.Value/FinalSelection["1/SpawnChance"].Value then 
+			local Structure = FinalSelection:Clone()
 
-		Structure.Parent = workspace.Mine
-		Structure.CFrame = CFrame.new(0+x*7, -5+y*(-7), 0+z*7)
+			Structure.Parent = workspace.Mine
+			Structure.CFrame = CFrame.new(0+x*7, -5+y*(-7), 0+z*7)
 
-		if Structure:FindFirstChild("MeshPart") then
-			Structure.MeshPart.CFrame = CFrame.new(0+x*7, -5+y*(-7), 0+z*7)
+			if Structure:FindFirstChild("MeshPart") then
+				Structure.MeshPart.CFrame = CFrame.new(0+x*7, -5+y*(-7), 0+z*7)
 
-			--Variance in strucutre spawns
-			local RotationRandom = math.random(1,4)
-			Structure.MeshPart.Rotation = Vector3.new(0, 90*RotationRandom, 0)
-
-			if Structure.MeshPart:FindFirstChild("Offset") then
-				local Offset = Structure.MeshPart.Offset.Value
-				Structure.MeshPart.Position = Structure.MeshPart.Position + Vector3.new(0,Offset.Y,0)
+				--Variance in strucutre spawns
+				local RotationRandom = math.random(1,4)
+				Structure.MeshPart.Rotation = Vector3.new(0, 90*RotationRandom, 0)
+				if Structure.MeshPart:FindFirstChild("Offset") then
+					local Offset = Structure.MeshPart.Offset.Value
+					Structure.MeshPart.Position = Structure.MeshPart.Position + Vector3.new(0,Offset.Y,0)
+				end
 			end
+			UsedPositions[PositionKey(x,y,z)] = Structure
 		end
-
-		UsedPositions[PositionKey(x,y,z)] = Structure
-
 	end
 end
 
@@ -202,7 +200,6 @@ function GenerateOre(x,y,z,Override,PresetPoint,Region,Player)
 			if y > HighestYValue then
 				HighestYValue = y
 			end
-			print(HighestYValue)
 			
 			--Ambient air here
 			--(How would this be done... random location assignment of block? Otherwise, blocks may interfere with pickaxe mining)
@@ -249,13 +246,13 @@ function GenerateOre(x,y,z,Override,PresetPoint,Region,Player)
 				local BlockBelow,BlockAbove = CalculateNoise(x,y,z)	
 				
 				--Particular block stuructres, not air or walls (make function later with more criteria)
+
 				if BlockBelow or BlockAbove or (y-1)<3 then
 					local Bounds
 					if BlockBelow then --Way to make more efficient?? Especially with more bounds later?
 						Bounds = "BlockBelow"
 					elseif BlockAbove or (y-1)<3 then
 						Bounds = "BlockAbove"
-						print(BlockAbove)
 					end
 					SpawnStructures(x,y,z,Bounds,Region)
 				end 
@@ -267,7 +264,6 @@ function GenerateOre(x,y,z,Override,PresetPoint,Region,Player)
 						if GCounts[Origin] % 250 == 0 then --Wait every 100
 							wait()
 						end
-						--print(GCounts[Origin])
 						GenerateOre(NewPos.x,NewPos.y,NewPos.z,"Branch",Origin,Region)
 					end
 				end	
@@ -334,86 +330,95 @@ local function DestroyOre(Ore)
 	Ore:Destroy() --Destroy Ore after all has been prepared
 end
 ]]
+--local CheckItemAmount = game.ReplicatedStorage.Events.GUI.CheckItemTypeAmount
 
 function game.ServerStorage.MineOre.OnInvoke(Player,Ore)
 	local RealOre = game.ReplicatedStorage.Ores:FindFirstChild(Ore.Name)
 	local OreColor = RealOre.OreColor.Value
-	if Ore:FindFirstChild("Claimed") == nil then
-		
-		local Hitbox = Ore
-		local CompactPos = Vector3.new(0 + Hitbox.Position.X/7,(Hitbox.Position.Y - -5)/(-7),Hitbox.Position.Z/7)
-		
-		UsedPositions[PositionKey(CompactPos.X,CompactPos.Y,CompactPos.Z)] = false
-		
-		for i,Vector in pairs(VectorsMine) do
-			local NewPos = CompactPos + Vector
-			if UsedPositions[PositionKey(NewPos.x,NewPos.y,NewPos.z)] == nil then
-				GenerateOre(NewPos.x,NewPos.y,NewPos.z,false,nil,nil,Player)
-			end
-		end
-		
-		local BlockBelow,BlockAbove = CalculateNoise(CompactPos.X,CompactPos.Y,CompactPos.Z)
-		
-		print(BlockBelow,BlockAbove)
-		--Break connected structures
-		if not BlockBelow or not BlockAbove then
-			local Y
-			if not BlockBelow then
-				Y = CompactPos.Y+1
-			else
-				Y = CompactPos.Y-1
-			end
+	
+	local TypeAmount = PlayerStatManager:getStatForType(Player, "Ores")
+	--This only checks the value of one item, and, since the save hasn't been updated, it is one less than the amount
+	--in the player's inventory that would happen if they mined (so the current state of that item)
+	
+	if TypeAmount < 10 then --this will be a PSM:GetStat for the bag's max capacity
+		if Ore:FindFirstChild("Claimed") == nil then
 			
-			if UsedPositions[PositionKey(CompactPos.X,Y,CompactPos.Z)] ~= nil then
-				local ConnectedOre = UsedPositions[PositionKey(CompactPos.X,Y,CompactPos.Z)]
-				if game.ReplicatedStorage.Ores:FindFirstChild(tostring(ConnectedOre)):FindFirstChild("SpecialStructure") then
-					local OrePosition = ConnectedOre.Position
-					local ConnectedOreColor = ConnectedOre.OreColor.Value
-					MakeDustParticles(OrePosition,ConnectedOreColor)
-					UsedPositions[PositionKey(CompactPos.X,Y,CompactPos.Z)]:Destroy()
-					--game.ServerStorage.MineOre:Invoke(Player, UsedPositions[PositionKey(CompactPos.X,Y,CompactPos.Z)])
+			local Hitbox = Ore
+			local CompactPos = Vector3.new(0 + Hitbox.Position.X/7,(Hitbox.Position.Y - -5)/(-7),Hitbox.Position.Z/7)
+			
+			UsedPositions[PositionKey(CompactPos.X,CompactPos.Y,CompactPos.Z)] = false
+			
+			for i,Vector in pairs(VectorsMine) do
+				local NewPos = CompactPos + Vector
+				if UsedPositions[PositionKey(NewPos.x,NewPos.y,NewPos.z)] == nil then
+					GenerateOre(NewPos.x,NewPos.y,NewPos.z,false,nil,nil,Player)
 				end
 			end
-		end
-		
-		--Add Ore to inventory
-		local mined = PlayerStatManager:getStat(Player, Ore.Name)
-		local experience = PlayerStatManager:getStat(Player, "MiningSkill")
-		print(typeof(mined),typeof(experience))
-		if typeof(mined) == "number" and typeof(experience) == "number" then
-			PlayerStatManager:ChangeStat(Player, Ore.Name, 1, "Inventory", true)
 			
-			local InitialOreExperience = RealOre.Experience.Value
-			PlayerStatManager:ChangeStat(Player, "MiningSkill", InitialOreExperience, "Experience", true)
+			local BlockBelow,BlockAbove = CalculateNoise(CompactPos.X,CompactPos.Y,CompactPos.Z)
 			
-			local PlayerDataFile = PlayerData:WaitForChild(tostring(Player.UserId))
-			local PlayerInventory = PlayerDataFile:WaitForChild("Inventory")
-			local PlayerExperience = PlayerDataFile:WaitForChild("Experience")
-			local OresFolder = PlayerInventory:WaitForChild("Ores")
-			local SkillsFolder = PlayerExperience:WaitForChild("Skills")
-			
-			local CurrentOre = OresFolder:FindFirstChild(Ore.Name)
-			--CurrentOre.Value = CurrentOre.Value + 1
-			
-			local CurrentSkill = SkillsFolder:FindFirstChild("MiningSkill")
-			--CurrentSkill.Value = CurrentSkill.Value + InitialOreExperience
-			
-			--Change player discovered value if this is first time acquired
-			local DiscoverValue = CurrentOre:FindFirstChild(tostring(Ore) .. "Discovered")
-			if DiscoverValue.Value == false then
-				print("Changing " .. tostring(DiscoverValue) .. " to true")
-				DiscoverValue.Value = true
-				PlayerStatManager:ChangeStat(Player, tostring(Ore) .. "Discovered", true, tostring(OresFolder))
+			--Break connected structures
+			if not BlockBelow or not BlockAbove then
+				local Y
+				if not BlockBelow then
+					Y = CompactPos.Y+1
+				else
+					Y = CompactPos.Y-1
+				end
+				
+				if UsedPositions[PositionKey(CompactPos.X,Y,CompactPos.Z)] ~= false then
+					local ConnectedOre = UsedPositions[PositionKey(CompactPos.X,Y,CompactPos.Z)]
+					if game.ReplicatedStorage.Ores:FindFirstChild(tostring(ConnectedOre)):FindFirstChild("SpecialStructure") then
+						local OrePosition = ConnectedOre.Position
+						local ConnectedOreColor = ConnectedOre.OreColor.Value
+						MakeDustParticles(OrePosition,ConnectedOreColor)
+						UsedPositions[PositionKey(CompactPos.X,Y,CompactPos.Z)]:Destroy()
+						--game.ServerStorage.MineOre:Invoke(Player, UsedPositions[PositionKey(CompactPos.X,Y,CompactPos.Z)])
+					end
+				end
 			end
-		else
-			warn("mined or experience cannot be saved")
+			
+			--Add Ore to inventory
+			local mined = PlayerStatManager:getStat(Player, Ore.Name)
+			local experience = PlayerStatManager:getStat(Player, "MiningSkill")
+			--print(typeof(mined),typeof(experience))
+			if typeof(mined) == "number" and typeof(experience) == "number" then
+				PlayerStatManager:ChangeStat(Player, Ore.Name, 1, "Inventory", true)
+				
+				local InitialOreExperience = RealOre.Experience.Value
+				PlayerStatManager:ChangeStat(Player, "MiningSkill", InitialOreExperience, "Experience", true)
+				
+				local PlayerDataFile = PlayerData:WaitForChild(tostring(Player.UserId))
+				local PlayerInventory = PlayerDataFile:WaitForChild("Inventory")
+				local PlayerExperience = PlayerDataFile:WaitForChild("Experience")
+				local OresFolder = PlayerInventory:WaitForChild("Ores")
+				local SkillsFolder = PlayerExperience:WaitForChild("Skills")
+				
+				local CurrentOre = OresFolder:FindFirstChild(Ore.Name)
+				--CurrentOre.Value = CurrentOre.Value + 1
+				
+				local CurrentSkill = SkillsFolder:FindFirstChild("MiningSkill")
+				--CurrentSkill.Value = CurrentSkill.Value + InitialOreExperience
+				
+				--Change player discovered value if this is first time acquired
+				local DiscoverValue = CurrentOre:FindFirstChild(tostring(Ore) .. "Discovered")
+				if DiscoverValue.Value == false then
+					print("Changing " .. tostring(DiscoverValue) .. " to true")
+					DiscoverValue.Value = true
+					PlayerStatManager:ChangeStat(Player, tostring(Ore) .. "Discovered", true, tostring(OresFolder))
+				end
+			else
+				warn("mined or experience cannot be saved")
+			end
+			
+			local OrePosition = Ore.Position
+			
+			Ore:Destroy()
+			
+			MakeDustParticles(OrePosition,OreColor)
 		end
-		
-		local OrePosition = Ore.Position
-		
-		Ore:Destroy()
-		
-		MakeDustParticles(OrePosition,OreColor)
+	else
+		--Notify player that their inventory is full and they should sell/deposit their items 
 	end
 end
 
