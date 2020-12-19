@@ -63,7 +63,6 @@ function SetUpCredentials()
 		PasswordInput:FindFirstChild(tostring(i)).Visible = false
 	end
 	for t = 1,20,1 do
-		print(FadeOut.BackgroundTransparency)
 		wait(.02)
 		FadeOut.BackgroundTransparency = FadeOut.BackgroundTransparency + 0.05
 	end
@@ -162,7 +161,6 @@ end
 
 local UpdateTycoonStorage = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateTycoonStorage")
 UpdateTycoonStorage.OnClientEvent:Connect(function(File, Stat, StatValue, AmountAdded)
-	print(StatValue, Stat)
 	if typeof(StatValue) == "string" then
 		File = string.gsub(File, "TycoonStorage", "")
 		Stat = string.gsub(Stat, "TycoonStorage", "")
@@ -441,13 +439,13 @@ end
 
 -------------<Storage Depositing>--------------------------------------------------------------------------
 local DepositInventory = game.ReplicatedStorage.Events.GUI:WaitForChild("DepositInventory")
-for i,storage in pairs (game.Workspace.Storages:GetChildren()) do
+for i,storage in pairs (game.Workspace.Storages.Deposits:GetChildren()) do
 	local repeatDebounce = false
 	coroutine.resume(coroutine.create(function()
 		while true do
 			wait(.1)
 			if not repeatDebounce and not ComputerIsOn then
-				if (storage.InteractedModel.Main.Position - HumanoidRootPart.Position).magnitude < 7 then
+				if (storage.InteractedModel:WaitForChild("Main").Position - HumanoidRootPart.Position).magnitude < 7 then
 					repeatDebounce = true
 					print("The player is close to a storage:" .. tostring(storage))
 					
@@ -508,8 +506,8 @@ function EInteract()
 		
 		if Mouse.Target then
 			if (Mouse.Target.Position - HumanoidRootPart.Position).magnitude < 20 then
-				if Mouse.Target:IsDescendantOf(workspace.Storages) then
-					for i,storage in pairs (workspace.Storages:GetChildren()) do
+				if Mouse.Target:IsDescendantOf(workspace.Storages.Computers) then
+					for i,storage in pairs (workspace.Storages.Computers:GetChildren()) do
 						if Mouse.Target:IsDescendantOf(storage) then
 							CurrentStorage = storage
 							if debounce2 == false then
@@ -566,7 +564,7 @@ for i,button in pairs (TycoonStorageGui.ComputerScreen.DataTabSelect:GetChildren
 end
 
 local EGUI = script:FindFirstChild("E GUI")               --Possibly move to EInteract function call for organization
-for i,storage in pairs (workspace.Storages:GetChildren()) do
+for i,storage in pairs (workspace.Storages.Computers:GetChildren()) do
 	local EGUIClone = EGUI:Clone()
 	EGUIClone.Parent = storage:FindFirstChild("InteractedModel")
 end
