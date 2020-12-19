@@ -68,6 +68,7 @@ function ReadyMenuButtons(Menu)
 				ButtonMenu.Visible = false
 				
 				button.Activated:Connect(function()
+					DataMenu.InventoryMenu.EmptyNotifier.Visible = false
 					print(tostring(button) .. " has been activated")
 					for i,v in pairs (ButtonMenu.Parent:GetChildren()) do
 						if not v:IsA("TextButton") and not v:FindFirstChild("Menu") and tostring(v) ~= "TopTabBar" then
@@ -85,6 +86,7 @@ function ReadyMenuButtons(Menu)
 							end
 						else --Player has no items of this type
 							print("Menu has no pages!")
+							DataMenu.InventoryMenu.EmptyNotifier.Visible = true
 						end
 					else
 						--PageManager.Menu.Value = nil
@@ -379,6 +381,17 @@ local function FindStatPage(Stat,Menu,MaxAmount,RaritySort)
 	return StatRarity,Page,SlotCount
 end
 
+local DepositInventory = game.ReplicatedStorage.Events.GUI.DepositInventory
+DepositInventory.OnClientEvent:Connect(function()
+	for i,menu in pairs (DataMenu.InventoryMenu:GetChildren()) do
+		if menu:IsA("Frame") then
+			for i,page in pairs (menu:GetChildren()) do
+				page:Destroy()
+			end
+		end
+	end
+end)
+
 
 --------------<|Tile Functions|>------------------------------------------------------------------------------------
 
@@ -476,7 +489,7 @@ function ManageTiles(Stat, Menu, Value, File, Type)
 	local OriginalMaterialSlot
 	if Type == "Inventory" then
 		OriginalMaterialSlot = GuiElements:FindFirstChild("InventoryMaterialSlot")
-		print("Page being associated with item: " .. tostring(Stat))
+		print("Page being associated with item: " .. tostring(Stat) .. " worth " .. tostring(Value))
 		Rarity,Page,SlotCount = FindStatPage(Stat,Menu,15,true)
 	else
 		OriginalMaterialSlot = GuiElements:FindFirstChild("ExperienceSlot")
