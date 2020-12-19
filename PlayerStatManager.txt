@@ -57,6 +57,10 @@ function PlayerStatManager:ChangeStat(player, statName, value, File, InventoryIt
 			
 		elseif special == "Zero" then
 			sessionData[playerUserId][statName] = 0
+			
+			if tostring(File) == "Inventory" then
+				
+			end
 		end
 	else --bool and string values
 		sessionData[playerUserId][statName] = value 
@@ -83,7 +87,9 @@ DepositInventory.OnServerEvent:Connect(function(Player)
 				--Update Storage
 				PlayerStatManager:ChangeStat(Player, "TycoonStorage" .. tostring(item), InventoryValue, "TycoonStorage")
 				print(PlayerDataFile.Inventory:FindFirstChild(tostring(folder)):FindFirstChild(tostring(item)).Value)
-				--print(item,item.Value)
+				
+				--Call Inventory to Wipe Previous Pages and Tiles
+				DepositInventory:FireClient(Player)
 			end
 		end
 	end
@@ -333,4 +339,3 @@ function PlayerStatManager:ConvertShort(Filter_Num) --MOVE TO UTILITY?
 end
 
 return PlayerStatManager
-
