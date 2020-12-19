@@ -337,10 +337,14 @@ function game.ServerStorage.MineOre.OnInvoke(Player,Ore)
 	local OreColor = RealOre.OreColor.Value
 	
 	local TypeAmount = PlayerStatManager:getStatForType(Player, "Ores")
+	
+	--local BagName = 
+	local BagLevel --= PlayerStatManager:getStat()
+	
 	--This only checks the value of one item, and, since the save hasn't been updated, it is one less than the amount
 	--in the player's inventory that would happen if they mined (so the current state of that item)
 	
-	if TypeAmount < 10 then --this will be a PSM:GetStat for the bag's max capacity
+	if TypeAmount < 100 then --this will be a PSM:GetStat for the bag's max capacity
 		if Ore:FindFirstChild("Claimed") == nil then
 			
 			local Hitbox = Ore
@@ -366,7 +370,7 @@ function game.ServerStorage.MineOre.OnInvoke(Player,Ore)
 					Y = CompactPos.Y-1
 				end
 				
-				if UsedPositions[PositionKey(CompactPos.X,Y,CompactPos.Z)] ~= false then
+				if UsedPositions[PositionKey(CompactPos.X,Y,CompactPos.Z)] ~= false and UsedPositions[PositionKey(CompactPos.X,Y,CompactPos.Z)] ~= nil then
 					local ConnectedOre = UsedPositions[PositionKey(CompactPos.X,Y,CompactPos.Z)]
 					if game.ReplicatedStorage.Ores:FindFirstChild(tostring(ConnectedOre)):FindFirstChild("SpecialStructure") then
 						local OrePosition = ConnectedOre.Position
@@ -484,6 +488,3 @@ local function GenerateMine()
 end
 
 GenerateMine()
-
-
-
