@@ -63,9 +63,6 @@ game.Players.PlayerAdded:connect(function(player)
 	end
 	local PlayerDataFile = PlayerData:FindFirstChild(player.UserId)
 	
-	local currency = Instance.new("NumberValue",PlayerDataFile)
-	currency.Name = "Currency"
-	local PlayerCash = PlayerDataFile:FindFirstChild("Currency")
 	local isOwner = Instance.new("ObjectValue",PlayerDataFile)
 	isOwner.Name = "OwnsTycoon"
 	
