@@ -5,7 +5,6 @@ Inventory graphical menu handler
 11/19: Rarity type of accessed page is now visible in display. Menu changing is now less buggy too.
 11/22: General UI animations, color coordination with rarities, tile can be selected to show additional information
 -------------------------------------------------------------------------------------------------------------------------------------------------
-
 local Player = game.Players.LocalPlayer
 local OpenDataMenuButton = script.Parent.OpenDataMenuButton
 local DataMenu = script.Parent.DataMenu
@@ -381,7 +380,7 @@ local function FindStatPage(Stat,Menu,MaxAmount,RaritySort)
 	return StatRarity,Page,SlotCount
 end
 
-local DepositInventory = game.ReplicatedStorage.Events.GUI.DepositInventory
+local DepositInventory = game.ReplicatedStorage.Events.Utility.DepositInventory
 DepositInventory.OnClientEvent:Connect(function()
 	for i,menu in pairs (DataMenu.InventoryMenu:GetChildren()) do
 		if menu:IsA("Frame") then
@@ -507,9 +506,9 @@ function ManageTiles(Stat, Menu, Value, File, Type)
 			if tile:IsA("TextButton") then
 				if tile.StatName.Value == tostring(Stat) and found == false then --Update Tile
 					
-					if Value ~= 0 then
+					if Value > 0 then
 						found = InsertTileInfo(Type, tile, Stat, Value, found, File)--Get rid of looking
-					else --Deleting existing tile because value = 0
+					else --Deleting existing tile because value = 0 or zeroed from storage transaction 
 						found = true
 						local SlotNumber = i
 						
@@ -538,7 +537,7 @@ function ManageTiles(Stat, Menu, Value, File, Type)
 		end
 		
 		--Make new tile
-		if found == false and Value ~= 0 then
+		if found == false and Value > 0 then
 			print("Making a new tile: " .. tostring(Stat))
 			local tile = OriginalMaterialSlot:Clone()
 			local PreviousTile = Page:FindFirstChild("Slot" .. tostring(SlotCount))
@@ -603,6 +602,7 @@ local function InsertNewMaterialPopUp(ItemPopUp, Object, File, AmountAdded, Curr
 		slot:TweenPosition(UDim2.new(slot.Position.X.Scale, 0, slot.Position.Y.Scale - .105, 0), "Out", "Quint", .8)
 	end
 	
+	print(File, Object)
 	local RealObject = game.ReplicatedStorage:FindFirstChild(tostring(File)):FindFirstChild(tostring(Object))
 	local Rarity = RealObject["GUI Info"].RarityName.Value
 	local RarityFile = game.ReplicatedStorage.GuiElements.RarityColors:FindFirstChild(Rarity)
@@ -615,12 +615,12 @@ local function InsertNewMaterialPopUp(ItemPopUp, Object, File, AmountAdded, Curr
 	NewPopUp.Name = "PopUp" .. tostring(MaterialPopUpAmount)
 	NewPopUp.Object.Value = tostring(Object)
 	
-	if Currency then
-		NewPopUp.Picture.Image = "rbxgameasset://Images/" .. tostring(Currency)
-	else
-		local ItemImage = GetStatImage(File, Object)
-		NewPopUp.Picture.Image = ItemImage
+	if Currency then --just shows player the amount of cash they lost/gained (skipped tile management)
+		--possibly give money their own popup color or shape?
 	end
+	
+	local ItemImage = GetStatImage(File, Object)
+	NewPopUp.Picture.Image = ItemImage
 	
 	NewPopUp.BackgroundColor3 = RarityFile.TileColor.Value
 	NewPopUp.BorderColor3 = RarityFile.Value
@@ -898,7 +898,7 @@ UpdateInventory.OnClientEvent:Connect(function(Stat, File, Value, AmountAdded, T
 		ManageEXPPopUp(Stat, Value, AmountAdded)
 		--ManageTiles(Stat, Slots, Value, File, Type)
 	end
-	if Currency == nil and tonumber(Value) ~= 0 then
+	if Currency == nil then
 		print("DataMenu tile for " .. tostring(Stat) .. " has value of " .. tostring(Value))
 		ManageTiles(Stat, Slots, Value, File, Type)
 	end
