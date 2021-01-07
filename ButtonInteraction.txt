@@ -10,7 +10,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local HumanoidRootPart = game.Workspace.Players:WaitForChild(tostring(Player)):WaitForChild("HumanoidRootPart")
 local Mouse = Player:GetMouse()
-local PressButton = ReplicatedStorage.Events.Tycoon.PressButton
+local PressButton = ReplicatedStorage.Events.Utility.PressButton
 local LocalLoadTycoon = ReplicatedStorage.Events.Tycoon.LocalLoadTycoon
 local UIS = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
@@ -32,9 +32,9 @@ LocalLoadTycoon.OnClientEvent:Connect(function(tycoon)
 local function GetStatImage(File, Stat)
 	local ImageId
 	if Stat.Name then
-		ImageId = game.ReplicatedStorage:FindFirstChild(tostring(File)):FindFirstChild(Stat.Name).InventoryImage.Value
+		ImageId = game.ReplicatedStorage:FindFirstChild(tostring(File)):FindFirstChild(Stat.Name)["GUI Info"].InventoryImage.Value
 	else
-		ImageId = game.ReplicatedStorage:FindFirstChild(tostring(File)):FindFirstChild(Stat).InventoryImage.Value
+		ImageId = game.ReplicatedStorage:FindFirstChild(tostring(File)):FindFirstChild(Stat)["GUI Info"].InventoryImage.Value
 	end
 	return ImageId
 end
