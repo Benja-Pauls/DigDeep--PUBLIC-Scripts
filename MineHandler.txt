@@ -1,7 +1,6 @@
 (Script)
 Handles mining, mine generation, and ore generation after ore is mined (generates a new block around mined block that were previously nothing)
 
-(11/11/2020): Regions now can spawn "structures" growing off the ground and hanging from the ceiling, along with some other code tweaks.
 ------------------------------------------------------------------------------------------------------------------------------------------------
 
 local PlayerStatManager = require(game.ServerScriptService:WaitForChild("PlayerStatManager"))
