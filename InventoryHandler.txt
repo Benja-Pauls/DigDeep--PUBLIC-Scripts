@@ -1,9 +1,6 @@
 (LocalScript)
 Inventory graphical menu handler
 
-11/18: New Tile systems (square tiles; multiple per row. Instead of one horizontally long tile per row)
-11/19: Rarity type of accessed page is now visible in display. Menu changing is now less buggy too.
-11/22: General UI animations, color coordination with rarities, tile can be selected to show additional information
 -------------------------------------------------------------------------------------------------------------------------------------------------
 local Player = game.Players.LocalPlayer
 local OpenDataMenuButton = script.Parent.OpenDataMenuButton
