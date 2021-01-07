@@ -1,7 +1,6 @@
 (Script)
 Entrance to everyone's business, the door you have to go through in order to purchase any plot/structure
 -----------------------------------------------------------------------------------------------------------------------------------------------
-
 local PlayerStatManager = require(game.ServerScriptService:WaitForChild("PlayerStatManager"))
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -73,7 +72,7 @@ ClaimTycoon.OnServerEvent:Connect(function(player,tycoon)
 		
 		local PlayerData = game.ServerStorage:FindFirstChild("PlayerData")
 		local PlayerDataFile = PlayerData:FindFirstChild(tostring(player.UserId))
-		local PlayerCash = PlayerDataFile:FindFirstChild("Currency")
+		local PlayerCash = PlayerDataFile:FindFirstChild("Currencies"):FindFirstChild("Currency")
 		local ownstycoon = PlayerDataFile:FindFirstChild("OwnsTycoon")
 		if PlayerCash.Value >= script.Parent.Parent.Price.Value then
 			if tycoon:WaitForChild("Owner").Value == nil then
