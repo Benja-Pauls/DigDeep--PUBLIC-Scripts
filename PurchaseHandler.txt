@@ -1,13 +1,14 @@
 (ModuleScript)
 Handles the processes that happen when the player tries to purchase something
+
 ------------------------------------------------------------------------------------------------------------------------------------------------
 
 local Objects = {}
 local TeamColor = script.Parent:WaitForChild("TeamColor").Value
-local Money = script.Parent.CurrencyToCollect
+local CollectibleCash = script.Parent.CurrencyToCollect
 local Debris = game:GetService('Debris')
 local SoundEffects = require(game.ServerScriptService.Utility.SoundEffects)
-local PressButton = game:GetService("ReplicatedStorage").Events.Tycoon.PressButton
+local PressButton = game:GetService("ReplicatedStorage").Events.Utility.PressButton
 local Purchases = game.ReplicatedStorage:WaitForChild("TycoonPurchases")
 local PlayerStatManager = require(game.ServerScriptService:FindFirstChild("PlayerStatManager"))
 local PlayerData = game.ServerStorage:FindFirstChild("PlayerData")
@@ -40,18 +41,18 @@ local function CheckDependencies(Dependencies)
 			CompletedDependencies = CompletedDependencies + 1
 		end
 	end
-	
+
 	return CompletedDependencies
 end
 
-local function HandleDropMaterials(Drop)
+local function HandleDropMaterials(Drop) --Update Tycoon Storage for drop's worth
 	local Tycoon = script.Parent
 	local Player = Tycoon:FindFirstChild("Owner").Value
 	if Drop:FindFirstChild("Materials") then
 		for i,file in pairs (Drop.Materials:GetChildren()) do
 			for i,material in pairs (file:GetChildren()) do
 				PlayerStatManager:ChangeStat(Player, "TycoonStorage" .. tostring(material), material.Value, "TycoonStorage")
-				
+
 				PlayerStatManager:ChangeStat(Player,tostring(material) .. "Discovered", true, tostring(file))
 			end
 		end
@@ -67,16 +68,16 @@ for i,v in pairs(script.Parent.Essentials:GetChildren()) do
 				HandleDropMaterials(Part)
 				local TerminalLevels = script.Parent.Essentials.TerminalLevel:GetChildren()
 				if #TerminalLevels == 1 then --Can make this more efficient, value check for <=
-					if Part.Cash.Value + Money.Value <= 100 then
-						Money.Value = Money.Value + Part.Cash.Value
+					if Part.Cash.Value + CollectibleCash.Value <= 100 then
+						CollectibleCash.Value = CollectibleCash.Value + Part.Cash.Value
 						Debris:AddItem(Part,0.1)
 					else
 						Debris:AddItem(Part,0.1)
 					end
 				end
 				if #TerminalLevels == 2 then
-					if Part.Cash.Value + Money.Value <= 200 then
-						Money.Value = Money.Value + Part.Cash.Value
+					if Part.Cash.Value + CollectibleCash.Value <= 200 then
+						CollectibleCash.Value = CollectibleCash.Value + Part.Cash.Value
 						Debris:AddItem(Part,0.1)
 					else
 						Debris:AddItem(Part,0.1)
@@ -96,7 +97,7 @@ coroutine.resume(coroutine.create(function()
 			wait(1)
 			--attempt to index nil with WaitForChild
 			for i,v in pairs(Givers:GetChildren()) do
-			debounce = false
+				debounce = false
 				v.Touched:connect(function(hit)
 					local player = game.Players:GetPlayerFromCharacter(hit.Parent)
 					if player ~= nil then
@@ -107,19 +108,19 @@ coroutine.resume(coroutine.create(function()
 										debounce = true 
 										v.BrickColor = BrickColor.new("Bright red")
 										local PlayerDataFile = PlayerData:FindFirstChild(tostring(player.UserId))
-										local Cash = PlayerDataFile:FindFirstChild("Currency")
-										if Cash ~= nil then 
+										local PlayerCash = PlayerDataFile:FindFirstChild("Currencies"):FindFirstChild("Currency")
+										if PlayerCash ~= nil then 
 											local ListedPlayer = game.Players:FindFirstChild(tostring(player))
 											if ListedPlayer ~= nil then
 												PlaySound(v, SoundEffects.Tycoon.Collect) 
-												Cash.Value = Cash.Value + Money.Value 
-												
-												Utility:UpdateMoneyDisplay(hit.Parent.Name, Cash.Value)
-												if Money.Value ~= 0 then
-													UpdateInventory:FireClient(player, "Money", nil, nil, Money.Value, "Inventory", "Money1")
-												end	
-													
-												Money.Value = 0 
+												PlayerCash.Value = PlayerCash.Value + CollectibleCash.Value --add dropper cash to player cash
+
+												Utility:UpdateMoneyDisplay(hit.Parent.Name, PlayerCash.Value)
+												if CollectibleCash.Value ~= 0 then
+													UpdateInventory:FireClient(player, "Money", "Currencies", nil, CollectibleCash.Value, "Inventory", "Money1")
+												end	 --FIRST NIL IS THE NAME OF THE FILE, PUT SOMETHING TO CORRELATE WITH THAT OR FIGURE OUT
+
+												CollectibleCash.Value = 0 
 												wait(1)
 												v.BrickColor = BrickColor.new("Sea green")
 												debounce = false 
@@ -149,31 +150,36 @@ end
 
 local function GetPlayer(WantedPlayer)
 	local Players = game.Players:GetChildren()
+	local lookingForPlayer = true
 	for i,v in pairs(Players) do
 		if tostring(v.UserId) == WantedPlayer then
+			lookingForPlayer = false
 			return v
-		else
-			warn("Something went wrong, cannot find player")
 		end
+	end
+	if lookingForPlayer == true then
+		warn("Something went wrong, cannot find player")
 	end
 end
 
-local function CheckMaterialCosts(Inventory, Button)
+local function CheckMaterialCosts(Inventory, Storage, Button)
 	local AllMaterialsCount = 0
 	local AffordabilityCount = 0
 	if Button:FindFirstChild("MaterialPrice") then
 		local DataGroups = Button.MaterialPrice:GetChildren()
-		for i,group in pairs (DataGroups) do
-			local currentGroup = Inventory:FindFirstChild(tostring(group))
-			for i,material in pairs (group:GetChildren()) do
+		for i,typeGroup in pairs (DataGroups) do
+			local currentInventoryGroup = Inventory:FindFirstChild(tostring(typeGroup))
+			local currentStorageGroup = Storage:FindFirstChild("TycoonStorage" .. tostring(typeGroup))
+			for i,material in pairs (typeGroup:GetChildren()) do
 				AllMaterialsCount = AllMaterialsCount + 1
 				local cost = material.Value
-				if currentGroup:FindFirstChild(tostring(material)).Value >= cost then
+				local sum = currentInventoryGroup:FindFirstChild(tostring(material)).Value + currentStorageGroup:FindFirstChild("TycoonStorage" .. tostring(material)).Value
+				if sum >= cost then
 					AffordabilityCount = AffordabilityCount + 1
 				end
 			end
 		end
-		
+
 		if AllMaterialsCount == AffordabilityCount then
 			return true
 		else
@@ -189,35 +195,45 @@ function Purchase(Table, Material)
 	local cost = Table[1]
 	local item = Table[2]
 	local stat = Table[3] 
-	
-	local Player = GetPlayer(stat.Parent.Name)
-	
+
 	if Material then
 		local Menu = Material.Parent
+		local Player = GetPlayer(stat.Parent.Name)
 		--print(cost) --5
 		--print(item) --Terminal1
 		--print(stat) --Inventory
-		
+
 		for i,menu in pairs (stat:GetChildren()) do
 			if menu == stat:FindFirstChild(tostring(Menu)) then
 				for i,v in pairs(menu:GetChildren()) do
 					if v.Name == tostring(Material) then
 						print(tostring(v) .. "'s value has been subtracted by " .. tostring(cost))
 						v.Value = v.Value - cost
-						--UpdateInventory:FireClient(Player, tostring(v), tostring(menu), v.Value, -cost, tostring(stat))
-						
+
 						PlayerStatManager:ChangeStat(Player, v.Name, -cost, tostring(stat), true)
 						--PlayerStatManager is updated here because mats only updated when "harvested" otherwise
+						
+						if v.Value < 0 then --replace inventory with storage
+							local PlayerDataFile = stat.Parent
+							local PlayerStorage = PlayerDataFile:FindFirstChild("TycoonStorage")
+							local MaterialStorage = PlayerStorage:FindFirstChild("TycoonStorage" .. tostring(Menu))
+
+							--Zero inventory material
+							--Subtract the absolute value of the material's previous value
+							PlayerStatManager:ChangeStat(Player, "TycoonStorage" .. v.Name, v.Value, tostring(PlayerStorage), true)
+							PlayerStatManager:ChangeStat(Player, v.Name, 0, tostring(stat), true, "Zero")
+						end
 					end
 				end
 			end
 		end	
 	else
+		local Player = GetPlayer(stat.Parent.Parent.Name)
 		stat.Value = stat.Value - cost
 		Utility:UpdateMoneyDisplay(Player, stat.Value)
-		UpdateInventory:FireClient(Player, "Money", nil, nil, -cost, "Inventory", "Money1")
+		UpdateInventory:FireClient(Player, "Money", "Currencies", nil, -cost, "Inventory", "Money1")
 	end
-	
+
 	--Objects[item.Object.Value] is created in for _,v in pairs (script.Parent.Buttons:GetChildren())
 	--Position Replicated Storage Object Clone to true position
 	if Objects[item.Object.Value]:FindFirstChild("Root") ~= nil then
@@ -227,16 +243,16 @@ function Purchase(Table, Material)
 		local ModelPosition = item:FindFirstChild("PrimaryPartPosition")
 		MovedModel.PrimaryPart.Orientation = ModelPosition.Orientation
 		MovedModel:SetPrimaryPartCFrame(CFrame.new(ModelPosition.Position))
-	
+
 		item.PrimaryPartPosition:Destroy()
 		MovedModel.PrimaryPart:Destroy()
 	end
-	
+
 	if script.Parent.PurchasedObjects:FindFirstChild(tostring(Objects[item.Object.Value])) == nil then
 		--Shouldn't I clone it, does it get rid of it from file?
 		Objects[item.Object.Value].Parent = script.Parent.PurchasedObjects
 	end
-	
+
 	if item.Visible.Value == true then	
 		local ButtonParts = item.Model:GetChildren()
 		item.Visible.Value = false
@@ -270,7 +286,7 @@ for _,v in pairs(script.Parent.Buttons:GetChildren()) do
 			else
 				error("Button "..tostring(v).." doesn't have a valid object!")
 			end
-			
+
 			if v:FindFirstChild("Dependencies") then
 				v.CanCollide = false
 				v:WaitForChild("Visible").Value = false
@@ -283,7 +299,7 @@ for _,v in pairs(script.Parent.Buttons:GetChildren()) do
 						wait(3)
 						local Dependencies = v.Dependencies
 						local DependencyAmount = v.Dependencies:GetChildren()
-						
+
 						local FulfilledDependencies = CheckDependencies(Dependencies)
 						if FulfilledDependencies == #DependencyAmount then
 							repeating = false
@@ -294,17 +310,18 @@ for _,v in pairs(script.Parent.Buttons:GetChildren()) do
 			else
 				v:WaitForChild("Visible").Value = true --WaitForChild is there for now, not all buttons have it yet
 			end
-			
+
 			PressButton.OnServerEvent:Connect(function(player, target)
 				if target.CanCollide == true then
 					if player ~= nil then
 						if script.Parent.Owner.Value == player then
-							
+
 							local PlayerDataFile = PlayerData:FindFirstChild(tostring(player.UserId))
 							if PlayerDataFile ~= nil then 
-								local PlayerCash = PlayerDataFile:FindFirstChild("Currency")
+								local PlayerCash = PlayerDataFile:FindFirstChild("Currencies"):FindFirstChild("Currency")
 								local PlayerInventory = PlayerDataFile:FindFirstChild("Inventory")
-								local MaterialCostCheck = CheckMaterialCosts(PlayerInventory, target)
+								local PlayerStorage = PlayerDataFile:FindFirstChild("TycoonStorage")
+								local MaterialCostCheck = CheckMaterialCosts(PlayerInventory, PlayerStorage, target)
 								
 								--If it's a gamepass button
 								if (v:FindFirstChild('Gamepass')) and (v.Gamepass.Value >= 1) then
@@ -313,35 +330,37 @@ for _,v in pairs(script.Parent.Buttons:GetChildren()) do
 									else
 										game:GetService('MarketplaceService'):PromptPurchase(player,v.Gamepass.Value)
 									end
-										
-								--If it's a devproduct button
+
+									--If it's a devproduct button
 								elseif (v:FindFirstChild('DevProduct')) and (v.DevProduct.Value >= 1) then
 									game:GetService('MarketplaceService'):PromptProductPurchase(player,v.DevProduct.Value)
-											
-								--Normal Button, player can afford it
+
+									--Normal Button, player can afford it
 								elseif PlayerCash.Value >= target.Price.Value and MaterialCostCheck == nil then
 									Purchase({[1] = target.Price.Value,[2] = target,[3] = PlayerCash})
 									PlaySound(target, SoundEffects.Tycoon.Purchase)
-									
+
 								elseif PlayerCash.Value >= target.Price.Value and MaterialCostCheck == true then
 									local DataGroups = target.MaterialPrice:GetChildren()
-									for i,group in pairs (DataGroups) do
-										local currentGroup = PlayerInventory:FindFirstChild(tostring(group))
-										for i,material in pairs (group:GetChildren()) do
+									for i,typeGroup in pairs (DataGroups) do
+										local currentInventoryGroup = PlayerInventory:FindFirstChild(tostring(typeGroup))
+										for i,material in pairs (typeGroup:GetChildren()) do
 											local cost = material.Value
-											Purchase({[1] = cost, [2] = target, [3] = PlayerInventory}, material)
-											wait(.51) --Delay between purchases to successfully stack material popups
 											
+											Purchase({[1] = cost, [2] = target, [3] = PlayerInventory}, material)
+											--extra ",material" at end to say what specifically in the [3]'s menu that's affected)
+											wait(.51) --Delay between purchases to successfully stack material popups
+
 										end
 									end
 									Purchase({[1] = target.Price.Value,[2] = target,[3] = PlayerCash})
 									PlaySound(target, SoundEffects.Tycoon.Purchase)
-									
-									
+
+
 									--put another for only materials required to purchase "buttons"
 									--Make more efficient, remove elseifs or decrease the amount of elseifs
-									
-								--If the player can't afford it
+
+									--If the player can't afford it
 								else
 									print("Cannot afford")
 									local CashWarning = game.Players:FindFirstChild(tostring(player)).PlayerGui.ButtonHandler.Menu.CashWarning
@@ -351,7 +370,7 @@ for _,v in pairs(script.Parent.Buttons:GetChildren()) do
 									CashWarning.Visible = false
 								end
 							else
-								print("This player doesn't have an affiliated DataStore")
+								warn(tostring(player) .. " doesn't have an affiliated DataStore!")
 							end
 						end
 					end
@@ -360,5 +379,5 @@ for _,v in pairs(script.Parent.Buttons:GetChildren()) do
 		end
 	end)
 end
-	
+
 return Objects
