@@ -1,5 +1,6 @@
 (Script)
 Responsible for autosaving (at bottom, will probably be moved), and purchase management (called buttons)
+
 ----------------------------------------------------------------------------------------------------------------------------------------
 
 local PlayerStatManager = require(game.ServerScriptService:WaitForChild("PlayerStatManager"))
@@ -19,7 +20,7 @@ local ClaimTycoon = game:GetService("ReplicatedStorage").Events.Tycoon.ClaimTyco
 
 local allObjects = {}
 
---Hide buttons (purchases) from previous games
+--Hide buttons from previous games
 local function hideButton(name,buttons)
 	local allButtons = buttons:GetChildren() 
 	local item 
@@ -177,7 +178,7 @@ while wait(59) do
 		for i = 1,#allPlayers,1 do
 			if allPlayers[i] ~= nil then
 				local PlayerDataFile = PlayerData:FindFirstChild(tostring(allPlayers[i].UserId))
-				local PlayerMoney = PlayerDataFile:FindFirstChild("Currency")
+				local PlayerMoney = PlayerDataFile:FindFirstChild("Currencies"):FindFirstChild("Currency")
 				if PlayerMoney then 
 					PlayerStatManager:initiateSaving(allPlayers[i], "Money", PlayerMoney.Value)
 					 --Initiate saving process by saving player money, saving data is in function
