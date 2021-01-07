@@ -1,5 +1,6 @@
 (LocalScript)
 Visuals for data menu associated with items inside of the tycoon's (business) storage
+
 -----------------------------------------------------------------------------------------------------------------------------------------------
 
 local Players = game:GetService("Players")
@@ -102,7 +103,6 @@ function OpenDataTabScreen() --Problem, with every time it opens: repeats button
 	for i,button in pairs (DataTabSelect:GetChildren()) do
 		if button:IsA("ImageButton") then --and tostring(button) ~= "ShutDown" then
 			button.Activated:Connect(function()
-				print(tostring(button) .. " has been pressed")
 				BeepSound:Play()
 				OpenAffiliatedItemPreview(button)
 			end)
@@ -223,7 +223,6 @@ function ReadySelectionMenu(Menu)
 end
 
 SelectionMenu.NextItem.Activated:Connect(function()
-	print("Calling next item button activation")
 	MoveToTile(CurrentMenu, 1)
 end)
 
@@ -237,6 +236,14 @@ end)
 
 SelectionMenu.PrevRarity.Activated:Connect(function()
 	MoveToTile(CurrentMenu, nil, "Previous")
+end)
+
+local SellItem = game.ReplicatedStorage.Events.Utility.SellItem
+SelectionMenu.SellItem.Activated:Connect(function()
+	local ItemName = SelectionMenu.CurrentSelection.Value
+	local ItemAmount = tonumber(SelectionMenu.Amount.Text)
+	local ItemInfo = game.ReplicatedStorage:FindFirstChild(tostring(CurrentMenu)):FindFirstChild(ItemName)
+	SellItem:FireServer(ItemInfo, ItemAmount)
 end)
 
 BackButton.Activated:Connect(function()
@@ -262,7 +269,6 @@ local function ChangeToTileInMenu(Menu, CurrentSelection, SeekedSlotValue)
 			end
 		end
 	end
-	print("Changing to tile in menu function has been called", SeekedSlotValue, Menu)
 	for i,tile in pairs (Menu:GetChildren()) do
 		if tile:IsA("Frame") then
 			if tile.SlotNumber.Value == SeekedSlotValue then
@@ -425,7 +431,6 @@ function SetupTycoonStorageTiles(button)
 end
 
 function MoveOtherRaritiesDown(RarityMenu)
-	print("Move rarities down was called")
 	local Menu = RarityMenu.Parent
 	local DisplayOrderValue = RarityMenu.DisplayOrder.Value
 	for i,rarity in pairs (Menu:GetChildren()) do
@@ -438,7 +443,7 @@ function MoveOtherRaritiesDown(RarityMenu)
 end
 
 -------------<Storage Depositing>--------------------------------------------------------------------------
-local DepositInventory = game.ReplicatedStorage.Events.GUI:WaitForChild("DepositInventory")
+local DepositInventory = game.ReplicatedStorage.Events.Utility:WaitForChild("DepositInventory")
 for i,storage in pairs (game.Workspace.Storages.Deposits:GetChildren()) do
 	local repeatDebounce = false
 	coroutine.resume(coroutine.create(function()
