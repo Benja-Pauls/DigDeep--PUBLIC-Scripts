@@ -12,9 +12,10 @@ local DataStoreService = game:GetService("DataStoreService")
 local Utility = require(game.ServerScriptService:WaitForChild("Utility"))
 local UpdateInventory = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateInventory")
 local UpdateTycoonStorage = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateTycoonStorage")
-local DepositInventory = game.ReplicatedStorage.Events.GUI:WaitForChild("DepositInventory")
+local DepositInventory = game.ReplicatedStorage.Events.Utility:WaitForChild("DepositInventory")
+local SellItem = game.ReplicatedStorage.Events.Utility:WaitForChild("SellItem")
 
-local PlayerSave = DataStoreService:GetDataStore("Tycoon Test188") --Changing this will change the datastore info is taken from
+local PlayerSave = DataStoreService:GetDataStore("Tycoon Test190") --Changing this will change the datastore info is taken from
 
 local sessionData = {}
 
@@ -34,32 +35,32 @@ local function UpdateGUIForFile(DataTabName, PlayerDataFile, player, playerUserI
 end
 
 --Change saved stat to new value
-function PlayerStatManager:ChangeStat(player, statName, value, File, InventoryItem, special)
+function PlayerStatManager:ChangeStat(player, statName, value, File, Currency, special)
 	local playerUserId = game.Players:FindFirstChild(tostring(player)).UserId
 	local PlayerDataFile = PlayerData:FindFirstChild(tostring(playerUserId))
 	
 	--print(typeof(sessionData[playerUserId][statName]),typeof(value),statName,sessionData[playerUserId][statName])	
 	assert(typeof(sessionData[playerUserId][statName]) == typeof(value), tostring(player) .. "'s saved value types don't match")
 	if typeof(sessionData[playerUserId][statName]) == "number" then
-		if sessionData[playerUserId][statName] ~= sessionData[playerUserId][statName] + value then --if changed	
-			sessionData[playerUserId][statName] = sessionData[playerUserId][statName] + value
+		if sessionData[playerUserId][statName] ~= sessionData[playerUserId][statName] + value or special then --if changed	
+			if special == "Zero" then
+				print("Zeroing " .. tostring(statName))
+				sessionData[playerUserId][statName] = 0
+			else
+				sessionData[playerUserId][statName] = sessionData[playerUserId][statName] + value
+			end
+			print(tostring(statName) .. "'s new value is: " .. tostring(sessionData[playerUserId][statName]))
 			
 			if File then 
 				UpdateGUIForFile(tostring(File),PlayerDataFile, player, playerUserId, statName, value)
 			end
 			
 			--Client script data management so exploiters cant handle sensitive data
+			--Updating where data is stored in ServerStorage (viewed by server scripts)
 			for i,file in pairs (PlayerDataFile:FindFirstChild(File):GetChildren()) do
 				if file:FindFirstChild(statName) then
 					file:FindFirstChild(statName).Value = sessionData[playerUserId][statName]
 				end
-			end
-			
-		elseif special == "Zero" then
-			sessionData[playerUserId][statName] = 0
-			
-			if tostring(File) == "Inventory" then
-				
 			end
 		end
 	else --bool and string values
@@ -72,6 +73,13 @@ function PlayerStatManager:ChangeStat(player, statName, value, File, InventoryIt
 		end
 	end
 end
+
+SellItem.OnServerEvent:Connect(function(Player, Item, Amount)
+	local ItemWorth = tonumber(Item.CurrencyValue.Value)
+	local SellAmount = Amount*ItemWorth
+	
+	PlayerStatManager:ChangeStat(Player, "Money", SellAmount, "Inventory", "Money1")
+end)
 
 DepositInventory.OnServerEvent:Connect(function(Player)
 	local PlayerDataFile = PlayerData:FindFirstChild(tostring(Player.UserId))
@@ -99,7 +107,7 @@ end)
 
 local function FindPlayerData(JoinedPlayer)
 	local PlayerDataFile = PlayerData:FindFirstChild(tostring(JoinedPlayer.UserId))
-	local PlayerCash = PlayerDataFile:FindFirstChild("Currency")
+	--local PlayerCash = PlayerDataFile:FindFirstChild("Currencies"):FindFirstChild("Currency")
 	local playerUserId = game.Players:FindFirstChild(tostring(JoinedPlayer)).UserId
 	
 	local success,data = pcall(function()
@@ -113,7 +121,7 @@ local function FindPlayerData(JoinedPlayer)
 			print("DataStore was Accessed for " .. JoinedPlayer.Name .. " (" .. tostring(JoinedPlayer.UserId) .. ")")
 			sessionData[playerUserId] = data
 			
-			LoadPlayerData(PlayerDataFile,data,JoinedPlayer)
+			local PlayerCash = LoadPlayerData(PlayerDataFile,data,JoinedPlayer)
 			
 			SetTycoonPurchases(JoinedPlayer, PlayerCash, playerUserId)
 			
@@ -121,7 +129,7 @@ local function FindPlayerData(JoinedPlayer)
 			print(tostring(JoinedPlayer) .. " is a new player!")
 			sessionData[playerUserId] = {} --No data, so sessiondata is empty
 			--SetupPlayerData(JoinedPlayer, PlayerDataFile, playerUserId)
-			LoadPlayerData(PlayerDataFile,sessionData[playerUserId],JoinedPlayer)
+			local PlayerCash = LoadPlayerData(PlayerDataFile,sessionData[playerUserId],JoinedPlayer)
 			SetTycoonPurchases(JoinedPlayer, PlayerCash, playerUserId)
 		end		
 	else
@@ -165,6 +173,9 @@ function LoadPlayerData(PlayerDataFile,data,JoinedPlayer)
 	--Make it so changing the money display value text isn't several times of code (changed function)
 	local PlayerInventory = Instance.new("Folder",PlayerDataFile)
 	PlayerInventory.Name = "Inventory"
+	local OresFolder = Instance.new("Folder",PlayerInventory)
+	local OreInventoryMenu = InventoryGui:WaitForChild("OresMenu")
+	OresFolder.Name = "Ores"
 	
 	local TycoonStorageFolder = Instance.new("Folder",PlayerDataFile)
 	TycoonStorageFolder.Name = "TycoonStorage"
@@ -176,10 +187,6 @@ function LoadPlayerData(PlayerDataFile,data,JoinedPlayer)
 	
 	local SkillsFolder = Instance.new("Folder",PlayerExperience)
 	SkillsFolder.Name = "Skills"
-	
-	local OresFolder = Instance.new("Folder",PlayerInventory)
-	local OreInventoryMenu = InventoryGui:WaitForChild("OresMenu")
-	OresFolder.Name = "Ores"
 	
 	local RealSkills = game.ReplicatedStorage:WaitForChild("Skills")
 	for i,skill in pairs (RealSkills:GetChildren()) do
@@ -218,7 +225,11 @@ function LoadPlayerData(PlayerDataFile,data,JoinedPlayer)
 
 		--print("Data for " .. tostring(data["TycoonStorage" .. tostring(Ore)]) .. " Tycoon Storage")
 	end	
-	local PlayerCash = PlayerDataFile:FindFirstChild("Currency")
+	local CurrencyFolder = Instance.new("Folder",PlayerDataFile)
+	CurrencyFolder.Name = "Currencies"
+	local UniversalCurrency = Instance.new("NumberValue",CurrencyFolder)
+	UniversalCurrency.Name = "Currency"
+	local PlayerCash = CurrencyFolder:FindFirstChild("Currency")
 	--Maybe make this a file, and look for cash and premium? 
 	--That would allow for addition of currencies per "alliance" or activity
 	
@@ -230,6 +241,8 @@ function LoadPlayerData(PlayerDataFile,data,JoinedPlayer)
 		PlayerCash.Value = PlayerCash.Value + data[tostring("Money")]
 	end
 	print(tostring(JoinedPlayer) .. " has $" .. tostring(data["Money"]))
+	
+	return PlayerCash
 end
 
 function SetTycoonPurchases(JoinedPlayer, PlayerCash, playerUserId)
