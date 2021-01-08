@@ -23,12 +23,20 @@ local function UpdateGUIForFile(DataTabName, PlayerDataFile, player, playerUserI
 	local DataTab = PlayerDataFile:FindFirstChild(DataTabName) --Example: (UserId).Experience
 	for i,file in pairs (DataTab:GetChildren()) do
 		if file:FindFirstChild(tostring(statName)) then --DataTab:FindFirstChild(file):FindFirstChild(statName)?
-			local amount = sessionData[playerUserId][statName]
-			local added = value
+			local total = sessionData[playerUserId][statName]
+			local amountAdded = value
+			
 			if tostring(DataTabName) == "Inventory" or tostring(DataTabName) == "Experience" then
-				UpdateInventory:FireClient(player, statName, tostring(file), tostring(amount), added, tostring(DataTab))
+				UpdateInventory:FireClient(player, statName, tostring(file), tostring(total), amountAdded, tostring(DataTab))
+				
 			elseif tostring(DataTabName) == "TycoonStorage" then
-				UpdateTycoonStorage:FireClient(player, tostring(file), statName, tostring(amount), added)
+				UpdateTycoonStorage:FireClient(player, tostring(file), statName, tostring(total), amountAdded)
+				
+			elseif tostring(DataTabName) == "Currencies" then
+				local RScurrency = game.ReplicatedStorage.Currencies:FindFirstChild(statName)
+				Utility:UpdateMoneyDisplay(player, PlayerStatManager:ConvertShort(total))
+				UpdateInventory:FireClient(player, statName, tostring(DataTab), nil, amountAdded, "Inventory", RScurrency.Value)
+				--(put inventory for parameter so popup shows up; otherwise, leave nil.)
 			end
 		end
 	end
@@ -78,7 +86,10 @@ SellItem.OnServerEvent:Connect(function(Player, Item, Amount)
 	local ItemWorth = tonumber(Item.CurrencyValue.Value)
 	local SellAmount = Amount*ItemWorth
 	
-	PlayerStatManager:ChangeStat(Player, "Money", SellAmount, "Inventory", "Money1")
+	print("Selling " .. tostring(Amount) .. " " .. tostring(Item) .. "'s for $" .. tostring(SellAmount))
+	
+	PlayerStatManager:ChangeStat(Player, "Currency", SellAmount, "Currencies", true) --Update Currency
+	PlayerStatManager:ChangeStat(Player, "TycoonStorage" .. tostring(Item), -Amount, "TycoonStorage")
 end)
 
 DepositInventory.OnServerEvent:Connect(function(Player)
@@ -227,20 +238,22 @@ function LoadPlayerData(PlayerDataFile,data,JoinedPlayer)
 	end	
 	local CurrencyFolder = Instance.new("Folder",PlayerDataFile)
 	CurrencyFolder.Name = "Currencies"
-	local UniversalCurrency = Instance.new("NumberValue",CurrencyFolder)
-	UniversalCurrency.Name = "Currency"
-	local PlayerCash = CurrencyFolder:FindFirstChild("Currency")
+	local UniversalCurrency = Instance.new("Folder",CurrencyFolder)
+	UniversalCurrency.Name = "UniversalCurrencies"
+	local Currency = Instance.new("NumberValue",UniversalCurrency)
+	Currency.Name = "Currency"
+	local PlayerCash = UniversalCurrency:FindFirstChild("Currency")
 	--Maybe make this a file, and look for cash and premium? 
 	--That would allow for addition of currencies per "alliance" or activity
 	
-	local SavedValue = CheckSaveData(data[tostring("Money")])
+	local SavedValue = CheckSaveData(data[tostring("Currency")])
 	if SavedValue == false then
 		PlayerCash.Value = 0
-		data[tostring("Money")] = PlayerCash.Value
+		data[tostring("Currency")] = PlayerCash.Value
 	else
-		PlayerCash.Value = PlayerCash.Value + data[tostring("Money")]
+		PlayerCash.Value = PlayerCash.Value + data[tostring("Currency")]
 	end
-	print(tostring(JoinedPlayer) .. " has $" .. tostring(data["Money"]))
+	print(tostring(JoinedPlayer) .. " has $" .. tostring(data["Currency"]))
 	
 	return PlayerCash
 end
@@ -318,13 +331,13 @@ end
 function PlayerStatManager:initiateSaving(player, statName, value)
 	print("Saving Data for player: " .. tostring(player))
 	local playerUserId = game.Players:FindFirstChild(tostring(player)).UserId
-	--if typeof(sessionData[playerUserId][statName]) == "number" and statName ~= "Money" then
+	--if typeof(sessionData[playerUserId][statName]) == "number" and statName ~= "Currency" then
 	--sessionData[playerUserId][statName] = sessionData[playerUserId][statName] + value
 	--else
-	sessionData[playerUserId][statName] = value --data["Money"] in FindPlayerData
+	sessionData[playerUserId][statName] = value --data["Currency"] in FindPlayerData
 	--end
 	
-	print("Money: " .. tostring(sessionData[playerUserId]["Money"]))
+	print("Money: " .. tostring(sessionData[playerUserId]["Currency"]))
 	savePlayerData(playerUserId) --After saving money amount, update datastore for other stats!
 	--Other stats include purhcases, inventory, etc.
 end
