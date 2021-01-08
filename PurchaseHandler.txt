@@ -108,7 +108,7 @@ coroutine.resume(coroutine.create(function()
 										debounce = true 
 										v.BrickColor = BrickColor.new("Bright red")
 										local PlayerDataFile = PlayerData:FindFirstChild(tostring(player.UserId))
-										local PlayerCash = PlayerDataFile:FindFirstChild("Currencies"):FindFirstChild("Currency")
+										local PlayerCash = PlayerDataFile:FindFirstChild("Currencies"):FindFirstChild("UniversalCurrencies"):FindFirstChild("Currency")
 										if PlayerCash ~= nil then 
 											local ListedPlayer = game.Players:FindFirstChild(tostring(player))
 											if ListedPlayer ~= nil then
@@ -117,8 +117,8 @@ coroutine.resume(coroutine.create(function()
 
 												Utility:UpdateMoneyDisplay(hit.Parent.Name, PlayerCash.Value)
 												if CollectibleCash.Value ~= 0 then
-													UpdateInventory:FireClient(player, "Money", "Currencies", nil, CollectibleCash.Value, "Inventory", "Money1")
-												end	 --FIRST NIL IS THE NAME OF THE FILE, PUT SOMETHING TO CORRELATE WITH THAT OR FIGURE OUT
+													UpdateInventory:FireClient(player, "Currency", "Currencies", nil, CollectibleCash.Value, "Inventory", "Money1")
+												end	
 
 												CollectibleCash.Value = 0 
 												wait(1)
@@ -149,6 +149,7 @@ local function PrepButton(Button, Parts)
 end
 
 local function GetPlayer(WantedPlayer)
+	print("WANTED PLAYER: " .. tostring(WantedPlayer))
 	local Players = game.Players:GetChildren()
 	local lookingForPlayer = true
 	for i,v in pairs(Players) do
@@ -195,7 +196,7 @@ function Purchase(Table, Material)
 	local cost = Table[1]
 	local item = Table[2]
 	local stat = Table[3] 
-
+	
 	if Material then
 		local Menu = Material.Parent
 		local Player = GetPlayer(stat.Parent.Name)
@@ -227,11 +228,11 @@ function Purchase(Table, Material)
 				end
 			end
 		end	
-	else
-		local Player = GetPlayer(stat.Parent.Parent.Name)
+	else --Currency
+		local Player = GetPlayer(stat.Parent.Parent.Parent.Name)
 		stat.Value = stat.Value - cost
 		Utility:UpdateMoneyDisplay(Player, stat.Value)
-		UpdateInventory:FireClient(Player, "Money", "Currencies", nil, -cost, "Inventory", "Money1")
+		UpdateInventory:FireClient(Player, "Currency", "Currencies", nil, -cost, "Inventory", "Money1")
 	end
 
 	--Objects[item.Object.Value] is created in for _,v in pairs (script.Parent.Buttons:GetChildren())
@@ -318,7 +319,7 @@ for _,v in pairs(script.Parent.Buttons:GetChildren()) do
 
 							local PlayerDataFile = PlayerData:FindFirstChild(tostring(player.UserId))
 							if PlayerDataFile ~= nil then 
-								local PlayerCash = PlayerDataFile:FindFirstChild("Currencies"):FindFirstChild("Currency")
+								local PlayerCash = PlayerDataFile:FindFirstChild("Currencies"):FindFirstChild("UniversalCurrencies"):FindFirstChild("Currency")
 								local PlayerInventory = PlayerDataFile:FindFirstChild("Inventory")
 								local PlayerStorage = PlayerDataFile:FindFirstChild("TycoonStorage")
 								local MaterialCostCheck = CheckMaterialCosts(PlayerInventory, PlayerStorage, target)
@@ -350,7 +351,6 @@ for _,v in pairs(script.Parent.Buttons:GetChildren()) do
 											Purchase({[1] = cost, [2] = target, [3] = PlayerInventory}, material)
 											--extra ",material" at end to say what specifically in the [3]'s menu that's affected)
 											wait(.51) --Delay between purchases to successfully stack material popups
-
 										end
 									end
 									Purchase({[1] = target.Price.Value,[2] = target,[3] = PlayerCash})
@@ -360,8 +360,7 @@ for _,v in pairs(script.Parent.Buttons:GetChildren()) do
 									--put another for only materials required to purchase "buttons"
 									--Make more efficient, remove elseifs or decrease the amount of elseifs
 
-									--If the player can't afford it
-								else
+								else --If the player can't afford it
 									print("Cannot afford")
 									local CashWarning = game.Players:FindFirstChild(tostring(player)).PlayerGui.ButtonHandler.Menu.CashWarning
 									CashWarning.Visible = true
