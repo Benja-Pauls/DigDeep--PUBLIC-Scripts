@@ -485,7 +485,7 @@ function ManageTiles(Stat, Menu, Value, File, Type)
 	local OriginalMaterialSlot
 	if Type == "Inventory" then
 		OriginalMaterialSlot = GuiElements:FindFirstChild("InventoryMaterialSlot")
-		print("Page being associated with item: " .. tostring(Stat) .. " worth " .. tostring(Value))
+		--print("Page being associated with item: " .. tostring(Stat) .. " worth " .. tostring(Value))
 		Rarity,Page,SlotCount = FindStatPage(Stat,Menu,15,true)
 	else
 		OriginalMaterialSlot = GuiElements:FindFirstChild("ExperienceSlot")
@@ -599,7 +599,7 @@ local function InsertNewMaterialPopUp(ItemPopUp, Object, File, AmountAdded, Curr
 		slot:TweenPosition(UDim2.new(slot.Position.X.Scale, 0, slot.Position.Y.Scale - .105, 0), "Out", "Quint", .8)
 	end
 	
-	print(File, Object)
+	--print(File, Object)
 	local RealObject = game.ReplicatedStorage:FindFirstChild(tostring(File)):FindFirstChild(tostring(Object))
 	local Rarity = RealObject["GUI Info"].RarityName.Value
 	local RarityFile = game.ReplicatedStorage.GuiElements.RarityColors:FindFirstChild(Rarity)
@@ -874,10 +874,6 @@ end
 local UpdateInventory = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateInventory")
 UpdateInventory.OnClientEvent:Connect(function(Stat, File, Value, AmountAdded, Type, Currency)
 	local TypeSlots = DataMenu:FindFirstChild(tostring(Type) .. "Menu")
-	local Slots
-	if File then
-		Slots = TypeSlots:FindFirstChild(File .. "Menu") or TypeSlots:FindFirstChild(File)
-	end
 	
 	if Type == "Inventory" then
 		ManageMaterialPopups(Stat, File, AmountAdded, Currency)
@@ -896,9 +892,16 @@ UpdateInventory.OnClientEvent:Connect(function(Stat, File, Value, AmountAdded, T
 		--ManageTiles(Stat, Slots, Value, File, Type)
 	end
 	if Currency == nil then
-		print("DataMenu tile for " .. tostring(Stat) .. " has value of " .. tostring(Value))
-		ManageTiles(Stat, Slots, Value, File, Type)
+		if File then
+			local Slots
+			Slots = TypeSlots:FindFirstChild(File .. "Menu") or TypeSlots:FindFirstChild(File)
+			--print("DataMenu tile for " .. tostring(Stat) .. " has value of " .. tostring(Value))
+			ManageTiles(Stat, Slots, Value, File, Type)
+		else
+			warn("No File associated with non-currency inventory update. Stat Name: " .. tostring(Stat))
+		end
 	end
 end)
 
 --ReadyMenuButtons(DataMenu) --Manage Tabs
+
