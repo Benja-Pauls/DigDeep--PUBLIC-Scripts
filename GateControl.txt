@@ -72,7 +72,7 @@ ClaimTycoon.OnServerEvent:Connect(function(player,tycoon)
 		
 		local PlayerData = game.ServerStorage:FindFirstChild("PlayerData")
 		local PlayerDataFile = PlayerData:FindFirstChild(tostring(player.UserId))
-		local PlayerCash = PlayerDataFile:FindFirstChild("Currencies"):FindFirstChild("Currency")
+		local PlayerCash = PlayerDataFile:FindFirstChild("Currencies"):FindFirstChild("UniversalCurrencies"):FindFirstChild("Currency")
 		local ownstycoon = PlayerDataFile:FindFirstChild("OwnsTycoon")
 		if PlayerCash.Value >= script.Parent.Parent.Price.Value then
 			if tycoon:WaitForChild("Owner").Value == nil then
