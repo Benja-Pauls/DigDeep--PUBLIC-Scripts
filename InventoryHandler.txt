@@ -449,6 +449,9 @@ local function InsertTileInfo(Type, tile, Stat, Value, found, File)
 				ItemViewerMenu.ItemRarity.TextStrokeColor3 = Rarity.TileColor.Value
 				
 				ItemViewerMenu.ItemAmount.Text = "You Have: " .. tostring(Value)
+				ItemViewerMenu.ItemWorth.Text = "Worth: " .. tostring(StatInfo.CurrencyValue.Value)
+				ItemViewerMenu.ItemDescription.Text = StatInfo["GUI Info"].Description.Value
+				
 			else
 				ItemViewerMenu.ItemRarity.Text = ""
 				
@@ -458,6 +461,7 @@ local function InsertTileInfo(Type, tile, Stat, Value, found, File)
 			ItemViewerMenu.ItemImage.Image = StatInfo["GUI Info"].InventoryImage.Value
 			ItemViewerMenu.ItemName.Text = tostring(Stat)
 			
+			--[[
 			if tile:FindFirstChild("AmountInStorage") then
 				--look for value inside storage gui, and make sure that the value exists before assigning gui number
 				local Storage = script.Parent.Parent.TycoonStorage.ComputerScreen
@@ -469,6 +473,7 @@ local function InsertTileInfo(Type, tile, Stat, Value, found, File)
 			else
 				ItemViewerMenu.ItemStorage.Text = ""
 			end
+			]]
 			
 			ItemViewerMenu.Visible = true 
 		end
