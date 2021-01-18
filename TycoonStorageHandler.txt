@@ -14,6 +14,7 @@ local CurrentStorage
 
 local TycoonStorageGui = script.Parent
 local ComputerScreen = TycoonStorageGui.ComputerScreen
+local SelectionMenu = TycoonStorageGui.ComputerScreen.SelectionMenu
 local BackButton = ComputerScreen.Taskbar.BackButton
 local FadeOut = ComputerScreen.FadeOut
 local function StartUpComputer()
@@ -31,6 +32,8 @@ local function ShutDownComputer()
 	end
 	CurrentStorage.InteractedModel:WaitForChild("E GUI").Enabled = false
 	TycoonStorageGui.ComputerScreen.Visible = false
+	SelectionMenu.Visible = false
+	
 	ShutDownCutscene()
 end
 
@@ -89,7 +92,6 @@ function SetUpCredentials()
 	OpenDataTabScreen()
 end
 
-local SelectionMenu = TycoonStorageGui.ComputerScreen.SelectionMenu
 local ItemsPreview = TycoonStorageGui.ComputerScreen.ItemsPreview
 local DataTabSelect = TycoonStorageGui.ComputerScreen.DataTabSelect
 function OpenDataTabScreen() --Problem, with every time it opens: repeats button press
@@ -143,7 +145,12 @@ end
 local function UpdateSelectionInfo(RarityMenu, tile)
 	local Menu = RarityMenu.Parent
 	local ItemInformation = game.ReplicatedStorage:FindFirstChild(tostring(Menu)):FindFirstChild(tostring(tile))
-	if tile.Discovered.Value == true then
+	local Discovered = tile.Discovered.Value
+	
+	SelectionMenu.Amount.Visible = Discovered
+	SelectionMenu.SelectItem.Visible = Discovered
+	
+	if Discovered == true then
 		SelectionMenu.Picture.Image = ItemInformation["GUI Info"].InventoryImage.Value
 		SelectionMenu:FindFirstChild("Name").Text = tostring(tile)
 		SelectionMenu.Amount.Text = tostring(tile.AmountInStorage.Value)
@@ -155,7 +162,6 @@ local function UpdateSelectionInfo(RarityMenu, tile)
 	else
 		SelectionMenu:FindFirstChild("Name").Text = "[Locked]"
 		SelectionMenu.Picture.Image = "rbxgameasset://Images/lock2"
-		SelectionMenu.Amount.Text = "0"
 	end
 end
 
@@ -238,12 +244,22 @@ SelectionMenu.PrevRarity.Activated:Connect(function()
 	MoveToTile(CurrentMenu, nil, "Previous")
 end)
 
+local SellMenu = ComputerScreen.SelectionMenu.SellMenu
 local SellItem = game.ReplicatedStorage.Events.Utility.SellItem
-SelectionMenu.SellItem.Activated:Connect(function()
+
+SelectionMenu.SelectItem.Activated:Connect(function()
 	local ItemName = SelectionMenu.CurrentSelection.Value
 	local ItemAmount = tonumber(SelectionMenu.Amount.Text)
+	SellMenu.MaxAmount.Value = ItemAmount
 	local ItemInfo = game.ReplicatedStorage:FindFirstChild(tostring(CurrentMenu)):FindFirstChild(ItemName)
-	SellItem:FireServer(ItemInfo, ItemAmount)
+	SellMenu.SelectedItem.Value = ItemInfo
+	
+	SellMenu.Visible = true	
+	SellMenu.SnapAmount.Value = math.ceil(SellMenu.SliderBar.AbsoluteSize.X/(ItemAmount)) --+1 for 0th
+	
+	CalculateSliderPosition()
+	
+	--Perhaps a neat GUI animation to show the amount of money gained?
 end)
 
 BackButton.Activated:Connect(function()
@@ -370,6 +386,61 @@ function MoveToTile(Menu, amount, RaritySkip)
 	end
 end
 
+
+--------------<Slider Interaction>-----------------------------------------------------------------------------
+
+local sliderBar = SellMenu.SliderBar
+local slider = sliderBar:WaitForChild("Slider")
+local Mouse = game.Players.LocalPlayer:GetMouse()
+local selectedAmount = SellMenu.SelectedAmount
+
+local movingSlider = false
+
+slider.MouseButton1Down:Connect(function()
+	movingSlider = true
+end)
+slider.MouseButton1Up:Connect(function()
+	movingSlider = false
+end)
+Mouse.Button1Up:Connect(function()
+	movingSlider = false
+end)
+
+if SelectionMenu.Visible == true then
+	Mouse.Move:Connect(function()
+		if movingSlider == true then
+			CalculateSliderPosition()
+		end
+	end)
+end
+
+local snapAmount
+local amountToSell
+function CalculateSliderPosition(bool)
+	snapAmount = SellMenu.SnapAmount.Value
+	local xOffset = math.floor((Mouse.X - sliderBar.AbsolutePosition.X) / snapAmount) * snapAmount
+	local xOffsetClamped = math.clamp(xOffset, 0, sliderBar.AbsoluteSize.X - slider.AbsoluteSize.X) --pos, min, max
+
+	local sliderPosNew = UDim2.new(0, xOffsetClamped, slider.Position.Y.Scale, 0) --Snap slider bar in place
+	slider.Position = sliderPosNew
+
+	local roundedAbsSize = math.ceil(sliderBar.AbsoluteSize.X / snapAmount) * snapAmount
+	local roundedOffsetClamped = (xOffsetClamped / snapAmount) * snapAmount --highest amount slider can achieve
+	local Percentage = roundedOffsetClamped / roundedAbsSize
+	
+	amountToSell = math.ceil(Percentage*SellMenu.MaxAmount.Value)
+	
+	print(Percentage, amountToSell)
+	selectedAmount.Text = tostring(amountToSell)
+	
+end
+
+SellMenu.SellItem.Activated:Connect(function()
+	local ItemInfo = SellMenu.SelectedItem.Value
+	local ItemAmount = amountToSell
+	SellItem:FireServer(ItemInfo, ItemAmount)
+	SellMenu.Visible = false
+end)
 
 --------------<Tile Management>--------------------------------------------------------------------------------
 
