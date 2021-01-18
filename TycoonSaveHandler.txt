@@ -178,9 +178,9 @@ while wait(59) do
 		for i = 1,#allPlayers,1 do
 			if allPlayers[i] ~= nil then
 				local PlayerDataFile = PlayerData:FindFirstChild(tostring(allPlayers[i].UserId))
-				local PlayerMoney = PlayerDataFile:FindFirstChild("Currencies"):FindFirstChild("Currency")
+				local PlayerMoney = PlayerDataFile:FindFirstChild("Currencies"):FindFirstChild("UniversalCurrencies"):FindFirstChild("Currency")
 				if PlayerMoney then 
-					PlayerStatManager:initiateSaving(allPlayers[i], "Money", PlayerMoney.Value)
+					PlayerStatManager:initiateSaving(allPlayers[i], "Currency", PlayerMoney.Value)
 					 --Initiate saving process by saving player money, saving data is in function
 				end
 			end
