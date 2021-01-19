@@ -148,12 +148,15 @@ local function UpdateSelectionInfo(RarityMenu, tile)
 	local Discovered = tile.Discovered.Value
 	
 	SelectionMenu.Amount.Visible = Discovered
+	SelectionMenu.UnitPrice.Visible = Discovered
 	SelectionMenu.SelectItem.Visible = Discovered
+	SelectionMenu.Hint.Visible = not Discovered
 	
 	if Discovered == true then
 		SelectionMenu.Picture.Image = ItemInformation["GUI Info"].InventoryImage.Value
 		SelectionMenu:FindFirstChild("Name").Text = tostring(tile)
 		SelectionMenu.Amount.Text = tostring(tile.AmountInStorage.Value)
+		SelectionMenu.UnitPrice.Text = tostring(ItemInformation.CurrencyValue.Value)
 		tile.AmountInStorage.Changed:Connect(function()
 			if tostring(tile) == SelectionMenu.CurrentSelection.Value then
 				SelectionMenu.Amount.Text = tostring(tile.AmountInStorage.Value)
@@ -162,6 +165,7 @@ local function UpdateSelectionInfo(RarityMenu, tile)
 	else
 		SelectionMenu:FindFirstChild("Name").Text = "[Locked]"
 		SelectionMenu.Picture.Image = "rbxgameasset://Images/lock2"
+		SelectionMenu.Hint.Text = "Hint: " .. tostring(ItemInformation["GUI Info"])
 	end
 end
 
@@ -206,14 +210,24 @@ function ReadySelectionMenu(Menu)
 	
 	for i,item in pairs (Menu.Common:GetChildren()) do
 		if item:IsA("Frame") then
-			if item.SlotNumber.Value == 1 then --Select first common item
+			if item.SlotNumber.Value == 1 then --Select first common item (for first menu open, tiles never switched yet)
+				local Discovered = item.Discovered.Value
+				local ItemInformation = game.ReplicatedStorage:FindFirstChild(tostring(Menu)):FindFirstChild(tostring(item))
+				
 				item.BorderSizePixel = 4
 				item.BorderColor3 = Color3.fromRGB(0, 170, 255)
 				SelectionMenu.CurrentSelection.Value = tostring(item)
 				SelectionMenu.CurrentRarity.Value = "Common"
-				if item.Discovered.Value == true then
+				
+				SelectionMenu:FindFirstChild("Name").Visible = Discovered
+				SelectionMenu.UnitPrice.Visible = Discovered
+				SelectionMenu.Hint.Visible = not Discovered
+				
+				if Discovered then
 					SelectionMenu:FindFirstChild("Name").Text = tostring(item)
-					SelectionMenu.Picture.Image = game.ReplicatedStorage:FindFirstChild(tostring(Menu)):FindFirstChild(tostring(item))["GUI Info"].InventoryImage.Value
+					SelectionMenu.Picture.Image = ItemInformation["GUI Info"].InventoryImage.Value
+					SelectionMenu.UnitPrice.Text = tostring(ItemInformation.CurrencyValue.Value)
+					
 					while SelectionMenu.CurrentSelection.Value == tostring(item) do
 						SelectionMenu.Amount.Text = tostring(item.AmountInStorage.Value)
 						wait()
@@ -221,7 +235,7 @@ function ReadySelectionMenu(Menu)
 				else
 					SelectionMenu:FindFirstChild("Name").Text = "[LOCKED]"
 					SelectionMenu.Picture.Image = "rbxgameasset://Images/lock1"
-					SelectionMenu.Amount.Text = ""
+					SelectionMenu.Hint.Text = "Hint: " .. tostring(ItemInformation["GUI Info"])
 				end
 			end
 		end
@@ -258,13 +272,12 @@ SelectionMenu.SelectItem.Activated:Connect(function()
 	SellMenu.SnapAmount.Value = math.ceil(SellMenu.SliderBar.AbsoluteSize.X/(ItemAmount)) --+1 for 0th
 	
 	CalculateSliderPosition()
-	
-	--Perhaps a neat GUI animation to show the amount of money gained?
 end)
 
 BackButton.Activated:Connect(function()
 	ItemsPreview.Visible = false
 	SelectionMenu.Visible = false
+	SelectionMenu.SellMenu.Visible = false
 	BackButton:TweenPosition(UDim2.new(BackButton.Position.X.Scale, 0, 1, 0), "Out", "Quint", 0.5)
 end)
 
@@ -429,10 +442,9 @@ function CalculateSliderPosition(bool)
 	local Percentage = roundedOffsetClamped / roundedAbsSize
 	
 	amountToSell = math.ceil(Percentage*SellMenu.MaxAmount.Value)
-	
-	print(Percentage, amountToSell)
+
 	selectedAmount.Text = tostring(amountToSell)
-	
+	SellMenu.CashValue.Text = tostring(SellMenu.SelectedItem.Value.CurrencyValue.Value*amountToSell)
 end
 
 SellMenu.SellItem.Activated:Connect(function()
@@ -440,7 +452,14 @@ SellMenu.SellItem.Activated:Connect(function()
 	local ItemAmount = amountToSell
 	SellItem:FireServer(ItemInfo, ItemAmount)
 	SellMenu.Visible = false
+	
+	--Sell GUI animation to show how much $ player got
 end)
+
+SellMenu.ExitButton.Activated:Connect(function()
+	SellMenu.Visible = false
+end)
+
 
 --------------<Tile Management>--------------------------------------------------------------------------------
 
@@ -540,7 +559,15 @@ for i,storage in pairs (game.Workspace.Storages.Deposits:GetChildren()) do
 					
 					local finished = DepositInventory:FireServer(Player)
 					wait(finished)
-					wait(5)
+					
+					--notify player that they deposited their inventory
+					TycoonStorageGui.DepositNotify.Visible = true
+					TycoonStorageGui.DepositNotify:TweenPosition(UDim2.new(0.358,0,0.85,0), "Out", "Quint", 1)
+					wait(1)
+					TycoonStorageGui.DepositNotify:TweenPosition(UDim2.new(0.358,0,1.1,0), "In", "Quint", 1.5)
+					wait(3)
+					TycoonStorageGui.DepositNotify.Visible = false
+					
 					repeatDebounce = false
 				end
 			end
