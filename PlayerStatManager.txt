@@ -96,8 +96,8 @@ DepositInventory.OnServerEvent:Connect(function(Player)
 	local PlayerDataFile = PlayerData:FindFirstChild(tostring(Player.UserId))
 	for i,folder in pairs (PlayerDataFile.Inventory:GetChildren()) do
 		for i,item in pairs (folder:GetChildren()) do
-			local InventoryValue = item.Value --the value of the item is one mor than the actual value
-			print(item, InventoryValue)
+			local InventoryValue = item.Value --the value of the item is one more than the actual value
+			--print(item, InventoryValue)
 			if InventoryValue > 0 then
 				--Update Inventory
 				PlayerStatManager:ChangeStat(Player, tostring(item), 0, "Inventory", nil, "Zero")
