@@ -86,18 +86,19 @@ local function DecideSelection(y, Table, RegionSpecific)
 			local Chance = CalculateChance(y,Selection)
 
 			if Chance ~= nil then
-				if not RegionSpecific or tostring(RegionSpecific) == "true" then
+				if not RegionSpecific then --Ore generated is NOT in region
 					if not Selection:FindFirstChild("RegionSpecial") then
 						InsertIntoTable(Chance,Lottery,Index)
 					end
-				elseif RegionSpecific then
+					
+				else --Ore generated is in region
 					if Selection:FindFirstChild("RegionSpecial") then
 						if Selection.RegionSpecial.Value == tostring(RegionSpecific) then
 							InsertIntoTable(Chance,Lottery,Index)
 						end
-					elseif not Selection:FindFirstChild("RegionSpecial") then
+					else
 						if Selection.Name ~= "Stone" then
-							Chance = math.ceil(Chance/50)
+							Chance = math.ceil(Chance/50) --Non-region ores, other than stone, are less likely to spawn in regions
 						end
 						InsertIntoTable(Chance,Lottery,Index)
 					end
@@ -117,6 +118,7 @@ local function SpawnStructures(x,y,z,Bounds,Region)
 	
 	local Lottery = {}
 	
+	--Randomly select structures that can spawn in region
 	for Index,Selection in pairs (game.ReplicatedStorage.Ores:GetChildren()) do
 		if Selection:FindFirstChild("SpecialStructure") and Selection:FindFirstChild("RegionSpecial").Value == tostring(Region) then
 			if Selection.SpecialStructure.Value == tostring(Bounds) then
@@ -126,7 +128,7 @@ local function SpawnStructures(x,y,z,Bounds,Region)
 		end
 	end
 	
-	if #Lottery > 0 then
+	if #Lottery > 0 then --if something can spawn
 		local Id = Lottery[math.random(1,#Lottery)]
 		local FinalSelection = GetObjectFromId(Ores,Id)
 					
@@ -188,22 +190,22 @@ function GenerateOre(x,y,z,Override,PresetPoint,Region,Player)
 		
 		local Noise = math.noise(x/25,y/15,z/25) --math.noise is a perlin noise calculator, #'s are near each other, hence ability to make "natural" caves
 		--print(Noise)
-		--print(tostring(250 % 4)) --% means modulo, or finding the remainder of division between the first & second #
+		--print(tostring(250 % 4)) --% means modulo, finding the remainder of division between the first & second #
 		local CompactPos = Vector3.new(x,y,z)
 		
-		--Cave Generation (generates until all blocks are filled, including VectorsGen nearby blocks
+		--Cave Generation (generates until all blocks are "taken", including VectorsGen nearby blocks)
 		if y > 2 and ((Noise >= 0.48) or (Noise <= -0.48)) then --.525?
 			
 			UsedPositions[PositionKey(x,y,z)] = false
 			
-			if y > HighestYValue then
-				HighestYValue = y
+			if y > HighestYValue then --highest y value, lowest point in cave
+				HighestYValue = y 
 			end
 			
-			--Ambient air here
+			--Ambient air here (fog, mist?)
 			--(How would this be done... random location assignment of block? Otherwise, blocks may interfere with pickaxe mining)
 		
-			if Override ~= "Branch" then
+			if Override ~= "Branch" then --If not a branch of a cave's source block, start cave generation
 				HighestYValue = 0
 				local Origin = PositionKey(x,y,z)
 				GCounts[Origin] = 0 --Creating table with name of origin, definitive non-changing distinguishable point
@@ -211,13 +213,13 @@ function GenerateOre(x,y,z,Override,PresetPoint,Region,Player)
 				local Region = DecideSelection(y,Regions)
 				GCounts[Region] = Region
 				
-				if Player then --Player is true when block is first mined
+				if Player then --Player is not nil when source block is first mined (function, later, doesn't signifiy)
 					ExclaimRegion:FireClient(Player,Region)
 				end
 				
 				print("REGION: " .. tostring(GCounts[Region]))
 				
-				--For setting the cave apart from just a cave, maybe a closer to zero noise value will be used to generate nearby solids?
+				--For setting the region apart from just a cave, maybe a closer to zero noise value will be used to generate nearby solids?
 				
 				coroutine.resume(coroutine.create(function()
 					for i,Vec in pairs(VectorsGen) do
@@ -232,23 +234,26 @@ function GenerateOre(x,y,z,Override,PresetPoint,Region,Player)
 					end
 				end))
 				
-				coroutine.resume(coroutine.create(function() --After the entire mine has been generated, check the true value for highy
+				coroutine.resume(coroutine.create(function() --After the entire mine has been generated, check the true value for high
 					wait(1)
 					print("The true highest value for y is " .. tostring(HighestYValue))
 					
 					--For liquid generation, how will it be mined? Long mine, where you mine the entire body of liquid, or individual chunks?)
 				end))
 				
-			else
+				
+			else --Generating ores in region
 				local Origin = PresetPoint --Assigned as Origin from non-branch if statement
 				
 				local BlockBelow,BlockAbove = CalculateNoise(x,y,z)	
 				
-				--Particular block stuructres, not air or walls (make function later with more criteria)
-
+				--Make function for calculating structure bounds since more bound requirements will have to be
+				--met before something can be chance calculated
+				
+				--Particular block stuructres, not air or walls
 				if BlockBelow or BlockAbove or (y-1)<3 then
 					local Bounds
-					if BlockBelow then --Way to make more efficient?? Especially with more bounds later?
+					if BlockBelow then 
 						Bounds = "BlockBelow"
 					elseif BlockAbove or (y-1)<3 then
 						Bounds = "BlockAbove"
@@ -266,12 +271,9 @@ function GenerateOre(x,y,z,Override,PresetPoint,Region,Player)
 						GenerateOre(NewPos.x,NewPos.y,NewPos.z,"Branch",Origin,Region)
 					end
 				end	
-			end
+			end		
 			
-			--Why does color revert back to "stock" when you finish region generation? That's good
-			--that it is happening, but why?
-			
-		else
+		else --not cave, only generate ore (if in region is signified)
 			local Ore = DecideSelection(y,Ores,Region):Clone()
 			--Ore = DecideOre(y,(Override == "Branch")):Clone()
 
@@ -340,10 +342,8 @@ function game.ServerStorage.MineOre.OnInvoke(Player,Ore)
 	--local BagName = 
 	local BagLevel --= PlayerStatManager:getStat()
 	
-	--This only checks the value of one item, and, since the save hasn't been updated, it is one less than the amount
-	--in the player's inventory that would happen if they mined (so the current state of that item)
 	
-	if TypeAmount < 100 then --this will be a PSM:GetStat for the bag's max capacity
+	if TypeAmount < 100 then --this will later be a PSM:GetStat for the bag's max capacity
 		if Ore:FindFirstChild("Claimed") == nil then
 			
 			local Hitbox = Ore
