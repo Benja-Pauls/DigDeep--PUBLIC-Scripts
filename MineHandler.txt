@@ -2,7 +2,6 @@
 Handles mining, mine generation, and ore generation after ore is mined (generates a new block around mined block that were previously nothing)
 
 ------------------------------------------------------------------------------------------------------------------------------------------------
-
 local PlayerStatManager = require(game.ServerScriptService:WaitForChild("PlayerStatManager"))
 local OriginalOres = game.ReplicatedStorage.Ores:GetChildren()
 local OriginalRegions = game.ReplicatedStorage.MineRegions:GetChildren()
@@ -35,39 +34,46 @@ local function InsertIntoTable(Chance, Table, Index) --Put into Utility script
 	end
 end
 
-local function IfNoiseAcceptable(Noise, BoundsName, y, Ceiling)
+local function NoiseAcceptable(Noise, BoundsName, y, Ceiling)
 	local Bounds
 	local NoiseCheck = Noise >= 0.48 or Noise <= -0.48
 	
 	if not NoiseCheck and not Ceiling then
 		Bounds = BoundsName
 	elseif Ceiling then
-		if not NoiseCheck or (y-Ceiling)<3 then
+		if not NoiseCheck or (y-1)<Ceiling then
 			Bounds = BoundsName
 		end
 	end
-		
+	
+	--print("Returning: " .. tostring(Bounds))
 	return Bounds
 end
 
 --local SeedChange (multiply z by this later, changed for each cave generation so caves don't repeat)
 local function CalculateNoise(x,y,z)
-	
 	local Bounds
-	
 	local BelowNoise = math.noise(x/25, (y+1)/15, z/25)
 	local TwoBelowNoise = math.noise(x/25, (y+2)/15, z/25)
-	Bounds = IfNoiseAcceptable(BelowNoise, "BlockBelow", y) --Needs block below to spawn
-	Bounds = IfNoiseAcceptable(TwoBelowNoise, "Block2Below", y)
+	
+	if NoiseAcceptable(BelowNoise, "BlockBelow", y) then
+		Bounds = NoiseAcceptable(BelowNoise, "BlockBelow", y) --Needs block below to spawn
+	end
+	--if NoiseAcceptable(TwoBelowNoise, "Block2Below", y) then
+		--Bounds = NoiseAcceptable(TwoBelowNoise, "Block2Below", y) --Needs block 2 below to spawn
+	--end
 	
 	local AboveNoise = math.noise(x/25, (y-1)/15, z/25)
 	local TwoAboveNoise = math.noise(x/25, (y-2)/15, z/25)
-	Bounds = IfNoiseAcceptable(AboveNoise, "BlockAbove", y, 1) --Needs block above to spawn
-	Bounds = IfNoiseAcceptable(TwoAboveNoise, "Block2Above", y, 2) --Needs block 2 above to spawn
 	
-	if Bounds == "Block2Above" then
-		print("Block2Above")
+	if NoiseAcceptable(AboveNoise, "BlockAbove", y, 3) then
+		Bounds = NoiseAcceptable(AboveNoise, "BlockAbove", y, 3) --Needs block above to spawn
 	end
+	--if NoiseAcceptable(TwoAboveNoise, "Block2Above", y, 4) then
+		--print("BLOCK2ABOVE")
+		--Bounds = NoiseAcceptable(TwoAboveNoise, "Block2Above", y, 4) --Needs block 2 above to spawn
+		--print("BOUNDS: " .. tostring(Bounds))
+	--end
 	
 	return Bounds
 end
@@ -303,7 +309,7 @@ function GenerateOre(x,y,z,Override,PresetPoint,Region,Player)
 				local AmbientLighting = Instance.new("PointLight",Ore)
 				AmbientLighting.Color = RegionColor
 
-				print(GCounts[Region], RegionColor.R, RegionColor.G, RegionColor.B, RegionColor.R + RegionColor.G + RegionColor.B)
+				--print(GCounts[Region], RegionColor.R, RegionColor.G, RegionColor.B, RegionColor.R + RegionColor.G + RegionColor.B)
 				if RegionColor.R + RegionColor.G + RegionColor.B <= 1 then
 					AmbientLighting.Brightness = 5
 					AmbientLighting.Range = 15
@@ -393,7 +399,7 @@ function game.ServerStorage.MineOre.OnInvoke(Player,Ore)
 						local ConnectedOreColor = ConnectedOre.OreColor.Value
 						MakeDustParticles(OrePosition,ConnectedOreColor)
 						UsedPositions[PositionKey(CompactPos.X,Y,CompactPos.Z)]:Destroy()
-						--game.ServerStorage.MineOre:Invoke(Player, UsedPositions[PositionKey(CompactPos.X,Y,CompactPos.Z)])
+						game.ServerStorage.MineOre:Invoke(Player, UsedPositions[PositionKey(CompactPos.X,Y,CompactPos.Z)])
 					end
 				end
 			end
@@ -504,4 +510,3 @@ local function GenerateMine()
 end
 
 GenerateMine()
-
