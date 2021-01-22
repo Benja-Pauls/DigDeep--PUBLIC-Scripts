@@ -6,51 +6,72 @@ local MiningGui = script.Parent
 local OreLabel = MiningGui:WaitForChild("OreLabel")
 local ProgressBar = script.Parent:WaitForChild("ProgressBarBillboardGui")
 local ExclaimRegion = game.ReplicatedStorage.Events.GUI.ExclaimRegion
+local Ores = game.ReplicatedStorage.Ores
 
 repeat wait() until workspace.CurrentCamera.SelectedItem ~= nil
+
+coroutine.resume(coroutine.create(function()
+	while true do
+		wait()
+		print(workspace.CurrentCamera.SelectedItem.Value)
+	end
+end))
 
 local OriginalSelectOreColor = script.Parent.SelectedOre.Color3
 
 local function SelectedItem()
 	if workspace.CurrentCamera.SelectedItem.Value ~= nil then
 		
-		if workspace.CurrentCamera.SelectedItem.Value:FindFirstChild("MeshPart") then --Works because it's an object value
-			script.Parent.SelectedOre.Adornee = workspace.CurrentCamera.SelectedItem.Value:FindFirstChild("MeshPart")
-		else
+		--(Cannot have mouse.target be meshpart since it's a descendant of targetfiltered part)
+		--if workspace.CurrentCamera.SelectedItem.Value:IsA("MeshPart") then --Works because it's an object value
+			--script.Parent.SelectedOre.Adornee = workspace.CurrentCamera.SelectedItem.Value:FindFirstChild("MeshPart")
+		--elseif workspace.CurrentCamera.SelectedItem.Value:FindFirstChild("MeshPart") then
+			--script.Parent.SelectedOre.Adornee = nil
+		--else
 			script.Parent.SelectedOre.Adornee = workspace.CurrentCamera.SelectedItem.Value
-		end
+		--end
 		
-		local OreName = workspace.CurrentCamera.SelectedItem.Value.Name
-		local RealOre = game.ReplicatedStorage.Ores:FindFirstChild(OreName)
-	
-		OreLabel.TextColor3 = RealOre.OreColor.Value or RealOre.Parent.OreColor.Value
+		local SelectedOre = workspace.CurrentCamera.SelectedItem.Value	
+		local RealOre = Ores:FindFirstChild(SelectedOre.Name)
 
-		local Target = workspace.CurrentCamera.SelectedItem.Value
-		local ProgressBarClone = ProgressBar:Clone()
-		ProgressBarClone.Parent = Target
-		ProgressBarClone.Adornee = Target
-		ProgressBarClone.ProgressBar.TimeLeft.BackgroundColor3 = RealOre.OreColor.Value
+		--if SelectedOre:IsA("MeshPart") then --Select special shape
+			--RealOre = Ores:FindFirstChild(SelectedOre.Parent.Name)
+		--elseif SelectedOre:FindFirstChild("MeshPart") then --Special shape, but not looking at it
+			--RealOre = nil
+		--else --No special shape, select 7x7x7 box
+			--RealOre = Ores:FindFirstChild(SelectedOre.Name)
+		--end
 		
-		while Target == workspace.CurrentCamera.SelectedItem.Value do
-			wait()
-			if Target:IsA("BasePart") and Target.Reflectance > 0 then --and Target:FindFirstChild("Owner")
-				ProgressBarClone.Enabled = true
-				local Progress = Target.Reflectance
-				
-				--Maybe set it at start to ore color, then switch it to blue when not interacted
-				script.Parent.SelectedOre.Color3 = Color3.new(0.7 - (Progress * 0.7),1,1 - (Progress * 0.7))
-				script.Parent.SelectedOre.SurfaceColor3 = Color3.new(0.7 - (Progress * 0.7),1,1 - (Progress * 0.6))
+		if RealOre then
+			OreLabel.TextColor3 = RealOre.OreColor.Value or RealOre.Parent.OreColor.Value
 
-				ProgressBarClone.ProgressBar.TimeLeft.Size = UDim2.new(Progress,0,1,0)
-				--ProgressBar.Parent.Enabled = true
-			elseif Target:IsA("BasePart") and Target.Reflectance == 0 then
-				wait() --Here to allow for check reflection at 0
-				script.Parent.SelectedOre.Color3 = OriginalSelectOreColor
-				script.Parent.SelectedOre.SurfaceColor3 = OriginalSelectOreColor
-				ProgressBarClone.Enabled = false --disappear when let go
+			local Target = workspace.CurrentCamera.SelectedItem.Value
+			local ProgressBarClone = ProgressBar:Clone()
+			ProgressBarClone.Parent = Target
+			ProgressBarClone.Adornee = Target
+			ProgressBarClone.ProgressBar.TimeLeft.BackgroundColor3 = RealOre.OreColor.Value
+			
+			while Target == workspace.CurrentCamera.SelectedItem.Value do
+				wait()
+				if Target:IsA("BasePart") and Target.Reflectance > 0 then --and Target:FindFirstChild("Owner")
+					ProgressBarClone.Enabled = true
+					local Progress = Target.Reflectance
+					
+					--Maybe set it at start to ore color, then switch it to blue when not interacted
+					script.Parent.SelectedOre.Color3 = Color3.new(0.7 - (Progress * 0.7),1,1 - (Progress * 0.7))
+					script.Parent.SelectedOre.SurfaceColor3 = Color3.new(0.7 - (Progress * 0.7),1,1 - (Progress * 0.6))
+
+					ProgressBarClone.ProgressBar.TimeLeft.Size = UDim2.new(Progress,0,1,0)
+					--ProgressBar.Parent.Enabled = true
+				elseif Target:IsA("BasePart") and Target.Reflectance == 0 then
+					wait() --Here to allow for check reflection at 0
+					script.Parent.SelectedOre.Color3 = OriginalSelectOreColor
+					script.Parent.SelectedOre.SurfaceColor3 = OriginalSelectOreColor
+					ProgressBarClone.Enabled = false --disappear when let go
+				end
 			end
+			ProgressBarClone.Enabled = false --disappear when not let go, but look away from block
 		end
-		ProgressBarClone.Enabled = false --disappear when not let go, but look away from block
 	end
 end
 
@@ -101,19 +122,6 @@ end)
 
 SelectedItem()
 workspace.CurrentCamera.SelectedItem.Changed:connect(SelectedItem)
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
