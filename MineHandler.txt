@@ -169,17 +169,26 @@ local function SpawnStructures(x,y,z,Bounds,Region)
 			local Structure = FinalSelection:Clone()
 
 			Structure.Parent = workspace.Mine
-			Structure.CFrame = CFrame.new(0+x*7, -5+y*(-7), 0+z*7)
+			if Structure:IsA("Model") then
+				Structure:SetPrimaryPartCFrame(CFrame.new(0+x*7, -5+y*(-7), 0+z*7))
+			else
+				Structure.CFrame = CFrame.new(0+x*7, -5+y*(-7), 0+z*7)
+			end
 
-			if Structure:FindFirstChild("MeshPart") then
-				Structure.MeshPart.CFrame = CFrame.new(0+x*7, -5+y*(-7), 0+z*7)
+			if Structure:FindFirstChild("Target") then
+				--Structure.MeshPart.CFrame = CFrame.new(0+x*7, -5+y*(-7), 0+z*7)
 
 				--Variance in strucutre spawns
 				local RotationRandom = math.random(1,4)
-				Structure.MeshPart.Rotation = Vector3.new(0, 90*RotationRandom, 0)
-				if Structure.MeshPart:FindFirstChild("Offset") then
-					local Offset = Structure.MeshPart.Offset.Value
-					Structure.MeshPart.Position = Structure.MeshPart.Position + Vector3.new(0,Offset.Y,0)
+				Structure.Target.Rotation = Vector3.new(0, 90*RotationRandom, 0)
+				if Structure.Target:FindFirstChild("Offset") then
+					local Offset = Structure.Target.Offset.Value
+					for i,childPart in pairs(Structure.Target:GetChildren()) do
+						if childPart:IsA("MeshPart") or childPart:IsA("Part") then
+							childPart.Position = Structure.Target.Position + Vector3.new(0,Offset.Y,0)
+						end
+					end
+					Structure.Target.Position = Structure.Target.Position + Vector3.new(0,Offset.Y,0)
 				end
 			end
 			UsedPositions[PositionKey(x,y,z)] = Structure
@@ -325,8 +334,13 @@ function GenerateOre(x,y,z,Override,PresetPoint,Region,Player)
 			end
 
 			Ore.Parent = workspace.Mine
-			Ore.CFrame = CFrame.new(0+x*7, -5+y*(-7), 0+z*7)
+			if Ore:IsA("Model") then
+				Ore:SetPrimaryPartCFrame(CFrame.new(0+x*7, -5+y*(-7), 0+z*7))
+			else
+				Ore.CFrame = CFrame.new(0+x*7, -5+y*(-7), 0+z*7)
+			end
 			--Ore.Transparency = math.abs(1*Noise)
+			
 			UsedPositions[PositionKey(x,y,z)] = Ore
 			return Ore
 		end
@@ -357,7 +371,14 @@ end
 --local CheckItemAmount = game.ReplicatedStorage.Events.GUI.CheckItemTypeAmount
 
 function game.ServerStorage.MineOre.OnInvoke(Player,Ore)
-	local RealOre = game.ReplicatedStorage.Ores:FindFirstChild(Ore.Name)
+	local RealOre
+	if Ore.Name == "Target" then
+		RealOre = game.ReplicatedStorage.Ores:FindFirstChild(Ore.Parent.Name)
+		Ore = Ore.Parent
+	else
+		RealOre = game.ReplicatedStorage.Ores:FindFirstChild(Ore.Name)
+	end
+	
 	local OreColor = RealOre.OreColor.Value
 	
 	local TypeAmount = PlayerStatManager:getStatForType(Player, "Ores")
@@ -369,7 +390,12 @@ function game.ServerStorage.MineOre.OnInvoke(Player,Ore)
 	if TypeAmount < 100 then --this will later be a PSM:GetStat for the bag's max capacity
 		if Ore:FindFirstChild("Claimed") == nil then
 			
-			local Hitbox = Ore
+			local Hitbox
+			if Ore:IsA("Model") then
+				Hitbox = Ore:FindFirstChild("Target")
+			else
+				Hitbox = Ore
+			end
 			local CompactPos = Vector3.new(0 + Hitbox.Position.X/7,(Hitbox.Position.Y - -5)/(-7),Hitbox.Position.Z/7)
 			
 			UsedPositions[PositionKey(CompactPos.X,CompactPos.Y,CompactPos.Z)] = false
@@ -384,7 +410,7 @@ function game.ServerStorage.MineOre.OnInvoke(Player,Ore)
 			local Bounds = CalculateNoise(CompactPos.X,CompactPos.Y,CompactPos.Z)
 			
 			--Break connected structures
-			if Bounds ~= "BlockBelow" or Bounds ~= "BlockAbove" then
+			if Bounds then --~= "BlockBelow" or Bounds ~= "BlockAbove"
 				local Y
 				if Bounds ~= "BlockBelow" then
 					Y = CompactPos.Y+1
@@ -395,11 +421,16 @@ function game.ServerStorage.MineOre.OnInvoke(Player,Ore)
 				if UsedPositions[PositionKey(CompactPos.X,Y,CompactPos.Z)] ~= false and UsedPositions[PositionKey(CompactPos.X,Y,CompactPos.Z)] ~= nil then
 					local ConnectedOre = UsedPositions[PositionKey(CompactPos.X,Y,CompactPos.Z)]
 					if game.ReplicatedStorage.Ores:FindFirstChild(tostring(ConnectedOre)):FindFirstChild("SpecialStructure") then
-						local OrePosition = ConnectedOre.Position
+						local OrePosition
+						if ConnectedOre:IsA("Model") then
+							OrePosition = ConnectedOre.Target.Position
+						else
+							OrePosition = ConnectedOre.Position
+						end
 						local ConnectedOreColor = ConnectedOre.OreColor.Value
 						MakeDustParticles(OrePosition,ConnectedOreColor)
 						UsedPositions[PositionKey(CompactPos.X,Y,CompactPos.Z)]:Destroy()
-						game.ServerStorage.MineOre:Invoke(Player, UsedPositions[PositionKey(CompactPos.X,Y,CompactPos.Z)])
+						--game.ServerStorage.MineOre:Invoke(Player, UsedPositions[PositionKey(CompactPos.X,Y,CompactPos.Z)])
 					end
 				end
 			end
@@ -437,7 +468,12 @@ function game.ServerStorage.MineOre.OnInvoke(Player,Ore)
 				warn("mined or experience cannot be saved")
 			end
 			
-			local OrePosition = Ore.Position
+			local OrePosition
+			if Ore:IsA("Model") then
+				OrePosition = Ore.Target.Position --Change back to genpos?
+			else
+				OrePosition = Ore.Position
+			end
 			
 			Ore:Destroy()
 			
@@ -469,7 +505,7 @@ local function GenerateMine()
 	
 	workspace.Regen.Transparency = 0
 	workspace.Regen.CanCollide = true
-	workspace.Regen.CFrame = CFrame.new(355, -10, 11)
+	workspace.Regen.CFrame = CFrame.new(355, -10, 11) --model covers cave during generation
 	
 	for i,Player in pairs(workspace.Players:GetChildren()) do
 		if Player:FindFirstChild("LowerTorso") then
@@ -510,3 +546,4 @@ local function GenerateMine()
 end
 
 GenerateMine()
+
