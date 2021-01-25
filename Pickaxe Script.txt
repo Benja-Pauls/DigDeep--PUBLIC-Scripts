@@ -1,7 +1,6 @@
 (LocalScript)
 Visual handler for mining, alerts other similar scripts
 ----------------------------------------------------------------------------------------------------------------------------------------------
-
 local Player = game.Players.LocalPlayer
 local PlayerCharacterList = workspace:WaitForChild("Players")
 local MiningGui = Player.PlayerGui:WaitForChild("MiningGui")
@@ -21,15 +20,23 @@ local Equipped = false
 local Active = false
 
 local function SelectOre(Ore)
-	if Ore.Parent == workspace.Mine then--and (Ore.Position - script.Parent.Parent.UpperTorso.Position).Magnitude <= 7 then
+	print("Select ore has been called for " .. tostring(Ore))
+	if Ore:IsDescendantOf(workspace.Mine) then--and (Ore.Position - script.Parent.Parent.UpperTorso.Position).Magnitude <= 7 then
 		if (Ore.Position - HRP.Position).magnitude <= PickaxeStats.Reach * 6.3 then
+			
+			--CONTROLS WHAT MOUSE HAS SELECTED
+			if Ore.Name == "Target" then
+				--Ore = Ore.Parent:FindFirstChild("MeshPart")
+				OreLabel.Text = Ore.Parent.Name
+			else
+				OreLabel.Text = Ore.Name
+			end
 			workspace.CurrentCamera.SelectedItem.Value = Ore
 			script.Parent.SetTarget:InvokeServer(Ore)
 			
 			if OreLabel.Visible == false then
 				OreLabel.Visible = true
 			end
-			OreLabel.Text = Ore.Name
 			
 			--Ore color doesn't match no region color
 			if Ore.Color ~= game.ReplicatedStorage.Ores.Stone.Color then
@@ -115,6 +122,10 @@ script.Parent.Equipped:Connect(function(Mouse)
 		if game:GetService("UserInputService").MouseEnabled then
 			Ore = Mouse.Target
 			if Ore and Equipped == true then
+				if Ore.Name == "GenerationPosition" then
+					Mouse.TargetFilter = Ore
+					Ore = Ore.Parent:FindFirstChild("Target")
+				end
 				if Ore:IsDescendantOf(game.workspace.Mine) then
 					SelectOre(Ore)
 					--print(tostring(Ore) .. " has been selected")
@@ -162,7 +173,6 @@ script.Parent.Unequipped:Connect(function()
 	Deactivate()
 	Unselect()
 end)
-
 
 
 
