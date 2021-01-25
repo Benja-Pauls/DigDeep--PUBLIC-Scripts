@@ -22,8 +22,6 @@ local function StartMining()
 	if Debounce then
 		repeat wait() until Player ~= nil
 		if Target then --If player hasn't stopped mining/looking at an ore
-			local RealOre = Ores:FindFirstChild(Target.Name)
-			
 			--(Cannot have mouse.target be meshpart since it's a descendant of targetfiltered part)
 			--if Target:IsA("MeshPart") then --Select special shape
 				--RealOre = Ores:FindFirstChild(Target.Parent.Name)
@@ -33,6 +31,12 @@ local function StartMining()
 				--RealOre = Ores:FindFirstChild(Target.Name)
 			--end
 			
+			local RealOre
+			if Target.Name == "Target" then
+				RealOre = Ores:FindFirstChild(Target.Parent.Name)
+			else
+				RealOre = Ores:FindFirstChild(Target.Name)
+			end
 			if RealOre then
 				MouseDown = true
 				script.Parent.IsMining.Value = true
