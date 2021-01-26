@@ -124,6 +124,7 @@ script.Parent.Equipped:Connect(function(Mouse)
 			if Ore and Equipped == true then
 				if Ore.Name == "GenerationPosition" then
 					Mouse.TargetFilter = Ore
+					Ore.Size = Vector3.new(0.01,0.01,0.01) --Cannot delete, used for positional reference
 					Ore = Ore.Parent:FindFirstChild("Target")
 				end
 				if Ore:IsDescendantOf(game.workspace.Mine) then
@@ -173,7 +174,5 @@ script.Parent.Unequipped:Connect(function()
 	Deactivate()
 	Unselect()
 end)
-
-
 
 
