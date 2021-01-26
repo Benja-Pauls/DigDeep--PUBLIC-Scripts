@@ -392,7 +392,7 @@ function game.ServerStorage.MineOre.OnInvoke(Player,Ore)
 			
 			local Hitbox
 			if Ore:IsA("Model") then
-				Hitbox = Ore:FindFirstChild("Target")
+				Hitbox = Ore:FindFirstChild("GenerationPosition")
 			else
 				Hitbox = Ore
 			end
@@ -423,7 +423,7 @@ function game.ServerStorage.MineOre.OnInvoke(Player,Ore)
 					if game.ReplicatedStorage.Ores:FindFirstChild(tostring(ConnectedOre)):FindFirstChild("SpecialStructure") then
 						local OrePosition
 						if ConnectedOre:IsA("Model") then
-							OrePosition = ConnectedOre.Target.Position
+							OrePosition = ConnectedOre.GenerationPosition.Position
 						else
 							OrePosition = ConnectedOre.Position
 						end
@@ -470,7 +470,7 @@ function game.ServerStorage.MineOre.OnInvoke(Player,Ore)
 			
 			local OrePosition
 			if Ore:IsA("Model") then
-				OrePosition = Ore.Target.Position --Change back to genpos?
+				OrePosition = Ore.GenerationPosition.Position
 			else
 				OrePosition = Ore.Position
 			end
