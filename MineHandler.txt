@@ -34,19 +34,24 @@ local function InsertIntoTable(Chance, Table, Index) --Put into Utility script
 	end
 end
 
-local function NoiseAcceptable(Noise, BoundsName, y, Ceiling)
+local function NoiseAcceptable(Noise, BoundsName, y, Ceiling, Min)
 	local Bounds
 	local NoiseCheck = Noise >= 0.48 or Noise <= -0.48
 	
 	if not NoiseCheck and not Ceiling then
 		Bounds = BoundsName
-	elseif Ceiling then
+	elseif Ceiling then --ceiling structure
 		if not NoiseCheck or (y-1)<Ceiling then
-			Bounds = BoundsName
+			if Min then
+				if y > Min then
+					Bounds = BoundsName
+				end
+			else
+				Bounds = BoundsName
+			end
 		end
 	end
-	
-	--print("Returning: " .. tostring(Bounds))
+
 	return Bounds
 end
 
@@ -69,11 +74,9 @@ local function CalculateNoise(x,y,z)
 	if NoiseAcceptable(AboveNoise, "BlockAbove", y, 3) then
 		Bounds = NoiseAcceptable(AboveNoise, "BlockAbove", y, 3) --Needs block above to spawn
 	end
-	--if NoiseAcceptable(TwoAboveNoise, "Block2Above", y, 4) then
-		--print("BLOCK2ABOVE")
-		--Bounds = NoiseAcceptable(TwoAboveNoise, "Block2Above", y, 4) --Needs block 2 above to spawn
-		--print("BOUNDS: " .. tostring(Bounds))
-	--end
+	if NoiseAcceptable(TwoAboveNoise, "Block2Above", y, 4, 3) then
+		Bounds = NoiseAcceptable(TwoAboveNoise, "Block2Above", y, 4, 3) --Needs block 2 above to spawn
+	end
 	
 	return Bounds
 end
@@ -287,8 +290,21 @@ function GenerateOre(x,y,z,Override,PresetPoint,Region,Player)
 				
 				local Bounds = CalculateNoise(x,y,z)
 				
-				SpawnStructures(x,y,z,Bounds,Region)
-				
+				local Y --looking for double structure already on block
+				if Bounds == "BlockAbove" then
+					Y = CompactPos.Y-1
+				elseif Bounds == "BlockBelow" then
+					Y = CompactPos.Y+1
+				end
+				print("1")
+				local ConnectedBlock = UsedPositions[PositionKey(CompactPos.X,Y,CompactPos.Z)]
+				if not ConnectedBlock:FindFirstChild("SpecialStructure") then 
+					print("2")
+					SpawnStructures(x,y,z,Bounds,Region)
+				else
+					print("WILL NOT SPAWN FROM INTERFERING STRUCTURES")
+				end
+				print("3")
 				for i,Vec in pairs(VectorsGen) do
 					local NewPos = CompactPos + Vec
 					if UsedPositions[PositionKey(NewPos.x,NewPos.y,NewPos.z)] == nil then
@@ -347,27 +363,7 @@ function GenerateOre(x,y,z,Override,PresetPoint,Region,Player)
 	end		
 end
 
---[[
-local function DestroyOre(Ore)
-	
-	local Hitbox = Ore
-	
-	local CompactPos = Vector3.new(0 + Hitbox.Position.X/7,(Hitbox.Position.Y - -5)/(-7),Hitbox.Position.Z/7)
-	
-	UsedPositions[PositionKey(CompactPos.X,CompactPos.Y,CompactPos.Z)] = false
-	
-	if Ore.IsA("BasePart") and Ore:FindFirstChild("AntiGen") == nil and Ore.Anchored then
-		for i,Vector in pairs(VectorsMine) do
-			local NewPos = CompactPos + Vector
-			if UsedPositions[PositionKey(NewPos.x,NewPos.y,NewPos.z)] == nil then
-				
-				GenerateOre(NewPos.x,NewPos.y,NewPos.z,false,nil,nil,nil)
-			end
-		end
-	end
-	Ore:Destroy() --Destroy Ore after all has been prepared
-end
-]]
+
 --local CheckItemAmount = game.ReplicatedStorage.Events.GUI.CheckItemTypeAmount
 
 function game.ServerStorage.MineOre.OnInvoke(Player,Ore)
@@ -383,11 +379,8 @@ function game.ServerStorage.MineOre.OnInvoke(Player,Ore)
 	
 	local TypeAmount = PlayerStatManager:getStatForType(Player, "Ores")
 	
-	--local BagName = 
-	local BagLevel --= PlayerStatManager:getStat()
 	
-	
-	if TypeAmount < 100 then --this will later be a PSM:GetStat for the bag's max capacity
+	if TypeAmount < 1000 then --this will later be a PSM:GetStat for the bag's max capacity
 		if Ore:FindFirstChild("Claimed") == nil then
 			
 			local Hitbox
@@ -411,8 +404,8 @@ function game.ServerStorage.MineOre.OnInvoke(Player,Ore)
 			
 			--Break connected structures
 			if Bounds then --~= "BlockBelow" or Bounds ~= "BlockAbove"
-				local Y
-				if Bounds ~= "BlockBelow" then
+				local Y --for connected structure
+				if Bounds == "BlockAbove" or Bounds == "Block2Above" then
 					Y = CompactPos.Y+1
 				else
 					Y = CompactPos.Y-1
@@ -546,4 +539,5 @@ local function GenerateMine()
 end
 
 GenerateMine()
+
 
