@@ -170,6 +170,7 @@ local function SpawnStructures(x,y,z,Bounds,Region)
 
 		if SpawnChance <= FinalSelection.MaxRarity.Value/FinalSelection["1/SpawnChance"].Value then 
 			local Structure = FinalSelection:Clone()
+			UsedPositions[PositionKey(x,y,z)] = Structure
 
 			Structure.Parent = workspace.Mine
 			if Structure:IsA("Model") then
@@ -194,7 +195,7 @@ local function SpawnStructures(x,y,z,Bounds,Region)
 					Structure.Target.Position = Structure.Target.Position + Vector3.new(0,Offset.Y,0)
 				end
 			end
-			UsedPositions[PositionKey(x,y,z)] = Structure
+			--UsedPositions[PositionKey(x,y,z)] = Structure
 		end
 	end
 end
@@ -291,20 +292,26 @@ function GenerateOre(x,y,z,Override,PresetPoint,Region,Player)
 				local Bounds = CalculateNoise(x,y,z)
 				
 				local Y --looking for double structure already on block
-				if Bounds == "BlockAbove" then
-					Y = CompactPos.Y-1
-				elseif Bounds == "BlockBelow" then
-					Y = CompactPos.Y+1
+				if Bounds == "BlockAbove" or Bounds == "Block2Below" then
+					Y = CompactPos.Y-1 --below structure
+				elseif Bounds == "BlockBelow" or Bounds == "Block2Above"then
+					Y = CompactPos.Y+1 --above structure
 				end
-				print("1")
-				local ConnectedBlock = UsedPositions[PositionKey(CompactPos.X,Y,CompactPos.Z)]
-				if not ConnectedBlock:FindFirstChild("SpecialStructure") then 
-					print("2")
-					SpawnStructures(x,y,z,Bounds,Region)
-				else
-					print("WILL NOT SPAWN FROM INTERFERING STRUCTURES")
+
+				if Y then
+					if UsedPositions[PositionKey(CompactPos.X,Y,CompactPos.Z)] ~= nil and UsedPositions[PositionKey(CompactPos.X,Y,CompactPos.Z)] ~= false then
+						local connectedBlock = UsedPositions[PositionKey(CompactPos.X,Y,CompactPos.Z)]
+						local connectedBlockInfo = game.ReplicatedStorage.Ores:FindFirstChild(tostring(connectedBlock))
+						if not connectedBlockInfo:FindFirstChild("SpecialStructure") then 
+							print("44444444444444444444444444444444444444444")
+							--SpawnStructures(x,y,z,Bounds,Region)
+						end
+					else
+						print("11111111111111111111111111")
+						SpawnStructures(x,y,z,Bounds,Region)
+					end
 				end
-				print("3")
+				
 				for i,Vec in pairs(VectorsGen) do
 					local NewPos = CompactPos + Vec
 					if UsedPositions[PositionKey(NewPos.x,NewPos.y,NewPos.z)] == nil then
@@ -314,7 +321,7 @@ function GenerateOre(x,y,z,Override,PresetPoint,Region,Player)
 						end
 						GenerateOre(NewPos.x,NewPos.y,NewPos.z,"Branch",Origin,Region)
 					end
-				end	
+				end
 			end		
 			
 		else --not cave, only generate ore (if in region is signified)
@@ -406,7 +413,7 @@ function game.ServerStorage.MineOre.OnInvoke(Player,Ore)
 			if Bounds then --~= "BlockBelow" or Bounds ~= "BlockAbove"
 				local Y --for connected structure
 				if Bounds == "BlockAbove" or Bounds == "Block2Above" then
-					Y = CompactPos.Y+1
+					Y = CompactPos.Y+1 --string that detects number between block and above?
 				else
 					Y = CompactPos.Y-1
 				end
