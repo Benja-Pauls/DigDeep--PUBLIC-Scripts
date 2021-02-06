@@ -81,6 +81,27 @@ local function CalculateNoise(x,y,z)
 	return Bounds
 end
 
+local function CalculateInterferingY(Bounds, y, Inverse)
+	local Y
+	--Leave inverse for now since more bound corrections may be added later
+	
+	if not Inverse then
+		if Bounds == "BlockAbove" or Bounds == "Block2Above" then
+			Y = y+1 
+		else
+			Y = y-1
+		end
+	else
+		if Bounds == "BlockAbove" or Bounds == "Block2Below" then
+			Y = y+1 --below structure
+		else
+			Y = y-1 --above structure
+		end
+	end
+	
+	return Y
+end
+
 local UsedPositions = {} --Used cave block positions table
 
 local function PositionKey(x,y,z)
@@ -195,7 +216,28 @@ local function SpawnStructures(x,y,z,Bounds,Region)
 					Structure.Target.Position = Structure.Target.Position + Vector3.new(0,Offset.Y,0)
 				end
 			end
-			--UsedPositions[PositionKey(x,y,z)] = Structure
+			
+			if FinalSelection:FindFirstChild("SpecialStructure") then
+				local YDirection = FinalSelection.SpecialStructure.Value
+
+				local Y = CalculateInterferingY(YDirection, y, true)--looking for structure already present within shape
+					
+				--print("BLOCK ABOVE: " .. tostring(FinalSelection) .. " " .. tostring(UsedPositions[PositionKey(x,y+1,z)]))
+				--print("BLOCK BELOW: " .. tostring(FinalSelection) .. " " .. tostring(UsedPositions[PositionKey(x,y-1,z)]))
+					
+				if Y then
+					if UsedPositions[PositionKey(x,Y,z)] ~= nil and UsedPositions[PositionKey(x,Y,z)] ~= false then
+						local connectedBlock = UsedPositions[PositionKey(x,Y,z)]
+						local connectedBlockInfo = game.ReplicatedStorage.Ores:FindFirstChild(tostring(connectedBlock))
+						if connectedBlockInfo:FindFirstChild("SpecialStructure") then 
+							print("DESTROYING STRUCTURE")
+							Structure:Destroy()
+							UsedPositions[PositionKey(x,y,z)] = false
+						end
+					end
+				end
+			end
+			
 		end
 	end
 end
@@ -288,28 +330,10 @@ function GenerateOre(x,y,z,Override,PresetPoint,Region,Player)
 				
 			else --Generating ores in region
 				local Origin = PresetPoint --Assigned as Origin from non-branch if statement
-				
 				local Bounds = CalculateNoise(x,y,z)
 				
-				local Y --looking for double structure already on block
-				if Bounds == "BlockAbove" or Bounds == "Block2Below" then
-					Y = CompactPos.Y-1 --below structure
-				elseif Bounds == "BlockBelow" or Bounds == "Block2Above"then
-					Y = CompactPos.Y+1 --above structure
-				end
-
-				if Y then
-					if UsedPositions[PositionKey(CompactPos.X,Y,CompactPos.Z)] ~= nil and UsedPositions[PositionKey(CompactPos.X,Y,CompactPos.Z)] ~= false then
-						local connectedBlock = UsedPositions[PositionKey(CompactPos.X,Y,CompactPos.Z)]
-						local connectedBlockInfo = game.ReplicatedStorage.Ores:FindFirstChild(tostring(connectedBlock))
-						if not connectedBlockInfo:FindFirstChild("SpecialStructure") then 
-							print("44444444444444444444444444444444444444444")
-							--SpawnStructures(x,y,z,Bounds,Region)
-						end
-					else
-						print("11111111111111111111111111")
-						SpawnStructures(x,y,z,Bounds,Region)
-					end
+				if Bounds then
+					SpawnStructures(x,y,z,Bounds,Region)
 				end
 				
 				for i,Vec in pairs(VectorsGen) do
@@ -411,12 +435,7 @@ function game.ServerStorage.MineOre.OnInvoke(Player,Ore)
 			
 			--Break connected structures
 			if Bounds then --~= "BlockBelow" or Bounds ~= "BlockAbove"
-				local Y --for connected structure
-				if Bounds == "BlockAbove" or Bounds == "Block2Above" then
-					Y = CompactPos.Y+1 --string that detects number between block and above?
-				else
-					Y = CompactPos.Y-1
-				end
+				local Y = CalculateInterferingY(Bounds, CompactPos.Y)--for connected structure
 				
 				if UsedPositions[PositionKey(CompactPos.X,Y,CompactPos.Z)] ~= false and UsedPositions[PositionKey(CompactPos.X,Y,CompactPos.Z)] ~= nil then
 					local ConnectedOre = UsedPositions[PositionKey(CompactPos.X,Y,CompactPos.Z)]
