@@ -1,7 +1,6 @@
 (ModuleScript)
 Handles all saving that occurs. Any true saving (ROBLOX data store assigning)
 -------------------------------------------------------------------------------------------------------------------------------------------------
-
 local PlayerStatManager = {}
 
 local tycoons = game.Workspace["Tycoon Game"]:WaitForChild("Tycoons"):GetChildren()
@@ -57,7 +56,7 @@ function PlayerStatManager:ChangeStat(player, statName, value, File, Currency, s
 			else
 				sessionData[playerUserId][statName] = sessionData[playerUserId][statName] + value
 			end
-			print(tostring(statName) .. "'s new value is: " .. tostring(sessionData[playerUserId][statName]))
+			--print(tostring(statName) .. "'s new value is: " .. tostring(sessionData[playerUserId][statName]))
 			
 			if File then 
 				UpdateGUIForFile(tostring(File),PlayerDataFile, player, playerUserId, statName, value)
@@ -195,7 +194,6 @@ function LoadPlayerData(PlayerDataFile,data,JoinedPlayer)
 	
 	local PlayerExperience = Instance.new("Folder",PlayerDataFile)
 	PlayerExperience.Name = "Experience"
-	
 	local SkillsFolder = Instance.new("Folder",PlayerExperience)
 	SkillsFolder.Name = "Skills"
 	
@@ -207,10 +205,12 @@ function LoadPlayerData(PlayerDataFile,data,JoinedPlayer)
 		local SavedValue = CheckSaveData(data[tostring(skill)])
 		ImportSaveData(data,SavedValue,SkillsFolder,Skill)
 		--print("Data for " .. tostring(Skill) .. " is " .. tostring(data[tostring(skill)]))
+		
+		--Make skill tiles acquired
 		UpdateInventory:FireClient(JoinedPlayer, tostring(Skill), SkillsFolder.Name, tostring(data[tostring(Skill)]), nil, "Experience")
 	end
 
-	--Ores w/ Discover values
+	--All Ore Data
 	local RealOres = game.ReplicatedStorage:WaitForChild("Ores")
 	for i,ore in pairs (RealOres:GetChildren()) do
 		-- Reason to make interior of this for i,v a function when more data is added?
@@ -233,9 +233,8 @@ function LoadPlayerData(PlayerDataFile,data,JoinedPlayer)
 		local SavedTycoonStorageValue = CheckSaveData(data[tostring(TycoonStorageOre)])
 		ImportSaveData(data,SavedTycoonStorageValue,TycoonStorageOres,TycoonStorageOre)
 		UpdateTycoonStorage:FireClient(JoinedPlayer, TycoonStorageOres.Name, tostring(TycoonStorageOre), tostring(data[tostring(TycoonStorageOre)]))
-
-		--print("Data for " .. tostring(data["TycoonStorage" .. tostring(Ore)]) .. " Tycoon Storage")
 	end	
+	
 	local CurrencyFolder = Instance.new("Folder",PlayerDataFile)
 	CurrencyFolder.Name = "Currencies"
 	local UniversalCurrency = Instance.new("Folder",CurrencyFolder)
@@ -243,8 +242,6 @@ function LoadPlayerData(PlayerDataFile,data,JoinedPlayer)
 	local Currency = Instance.new("NumberValue",UniversalCurrency)
 	Currency.Name = "Currency"
 	local PlayerCash = UniversalCurrency:FindFirstChild("Currency")
-	--Maybe make this a file, and look for cash and premium? 
-	--That would allow for addition of currencies per "alliance" or activity
 	
 	local SavedValue = CheckSaveData(data[tostring("Currency")])
 	if SavedValue == false then
@@ -311,7 +308,7 @@ end
 
 function PlayerStatManager:getStat(player, statName) --Stat Check
 	local playerUserId = game.Players:FindFirstChild(tostring(player)).UserId
-	print(sessionData[playerUserId][statName],statName,playerUserId)
+	--print(sessionData[playerUserId][statName],statName,playerUserId)
 	return sessionData[playerUserId][statName]
 end 
 
