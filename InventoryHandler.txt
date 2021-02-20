@@ -284,7 +284,7 @@ local function FindStatPage(Stat,Menu,MaxAmount,RaritySort)
 		StatRarity = "No Rarity"
 	end
 	
-	local Slots
+	--local Slots
 	local Page
 	local Over
 	local SlotCount = 0
@@ -401,6 +401,9 @@ local function InsertTileInfo(Type, tile, Stat, Value, found, File)
 		tile.Amount.Text = tostring(Value)
 		local ImageId = GetStatImage(File, Stat)
 		tile.Picture.Image = ImageId
+		if tostring(Stat) == DataMenu.ItemViewer.ItemName.Text then
+			DataMenu.ItemViewer.ItemAmount.Text = "You Have: " .. tostring(Value)
+		end
 		found = true
 	elseif Type == "Experience" then
 		StatInfo = game.ReplicatedStorage:FindFirstChild(tostring(File)):FindFirstChild(tostring(Stat) .. "Skill")
@@ -851,7 +854,6 @@ local function InsertNewEXPBar(ExperienceBarGui, ExperienceBar, Stat, Value, Cur
 	NamePlate:TweenPosition(UDim2.new(-12, 0, -0.9, 0), "Out", "Quint", .3)
 end
 
-local PrevEXPBar
 local function ManageEXPPopUp(Stat, Value, AmountAdded)
 	local ExperienceBar = GuiElements:FindFirstChild("ExperienceBar")
 	local ExperienceBarGui = script.Parent.Parent:FindFirstChild("EXPBarPopUp")
@@ -913,3 +915,8 @@ UpdateInventory.OnClientEvent:Connect(function(Stat, File, Value, AmountAdded, T
 end)
 
 --ReadyMenuButtons(DataMenu) --Manage Tabs
+
+
+
+
+
