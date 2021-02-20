@@ -40,28 +40,57 @@ local function PositionKey(x,y,z)
 	return x..","..y..","..z
 end
 
-local function NoiseAcceptable(Noise, y, Ceiling, Min, Mining)
+local function CalculateInterferingY(Bounds, y, Mining, sourceBlockDist)
+	local Y
+
+	if Mining then --breaking structures if "source" block broken (mining)
+		Y = y+sourceBlockDist 
+	else --Structures checking for structures already present(generation)
+		if Bounds == "BlockAbove" or Bounds == "Block2Below" then
+			Y = y+1 --below source block
+		else
+			Y = y-1 --above source block
+		end
+	end
+
+	return Y
+end
+
+local function NoiseAcceptable(BoundsName, sourceBlockDist, Noise, x, y, z, Ceiling, Min, Mining)
+	--If selected block is within noise bounds
 	local Bounds
+	local NoiseBool
 	local NoiseCheck = Noise >= 0.48 or Noise <= -0.48
-	
-	--create different checks for mining and generation, certain noise acceptances should prevail over others
-	--since it should know which structure, on that mined block, is "connected" to break (check 1 below and 2 below
-	--for structures and break blocks accordingly)
-	
+
 	if not NoiseCheck and not Ceiling then
-		Bounds = true
-	elseif Ceiling then --ceiling structure
+		NoiseBool = true
+	elseif Ceiling then --ceiling structure (need to check if at top already)
 		if not NoiseCheck or (y-1)<Ceiling then
-			if Min then
+			if Min then --multi-block
 				if Mining then
 					if y > (Min - 2) then
-						Bounds = true
+						NoiseBool = true
 					end
 				elseif y > Min then
-					Bounds = true
+					NoiseBool = true
 				end
 			else
-				Bounds = true
+				NoiseBool = true
+			end
+		end
+	end
+	
+	--Check Structure Positioning
+	if NoiseBool == true then 
+		if not Mining then
+			Bounds = true
+		else
+			local Y = CalculateInterferingY(BoundsName, y, Mining, sourceBlockDist)
+			local SelectedBlock = UsedPositions[PositionKey(x,Y,z)]
+			if SelectedBlock ~= nil and SelectedBlock ~= false then
+				if SelectedBlock:FindFirstChild("SpecialStructure") then
+					Bounds = true
+				end
 			end
 		end
 	end
@@ -69,58 +98,33 @@ local function NoiseAcceptable(Noise, y, Ceiling, Min, Mining)
 	return Bounds
 end
 
---local SeedChange (multiply z by this later, changed for each cave generation so caves don't repeat)
 local function CalculateNoise(x,y,z,Mining)
 	local Bounds
 	local sourceBlockDist
+	
 	local BelowNoise = math.noise(x/25, (y+1)/15, z/25)
 	local TwoBelowNoise = math.noise(x/25, (y+2)/15, z/25)
-	
-	--maybe have function parameter that checks if it is mining or spawning and then flipping the resulting bounds
-	--for the calculation when the value is returned
-	
-	if NoiseAcceptable(BelowNoise, y) then
-		Bounds = "BlockBelow"  --NoiseAcceptable(BelowNoise, "BlockBelow", y) --Needs block below to spawn
+	if NoiseAcceptable("BlockBelow", -1, BelowNoise, x, y, z) then
+		Bounds = "BlockBelow"
 		sourceBlockDist = -1
 	end
-	if NoiseAcceptable(TwoBelowNoise, y) then --UsedPosition check instead of noise
-		Bounds = "Block2Below"	--NoiseAcceptable(TwoBelowNoise, "Block2Below", y) --Needs block 2 below to spawn
+	if NoiseAcceptable("Block2Below", -2, TwoBelowNoise, x, y, z) then
+		Bounds = "Block2Below"
 		sourceBlockDist = -2
 	end
 	
 	local AboveNoise = math.noise(x/25, (y-1)/15, z/25)
 	local TwoAboveNoise = math.noise(x/25, (y-2)/15, z/25)
-	
-	if NoiseAcceptable(AboveNoise, y, 3) then
+	if NoiseAcceptable("BlockAbove", 1, AboveNoise, x, y, z, 3) then
 		Bounds = "BlockAbove"
-		--NoiseAcceptable(AboveNoise, "BlockAbove", y, 3) --Needs block above to spawn
 		sourceBlockDist = 1
 	end
-	if NoiseAcceptable(TwoAboveNoise, y, 4, 3, Mining) then
+	if NoiseAcceptable("Block2Above", 2, TwoAboveNoise, x, y, z, 4, 3, Mining) then
 		Bounds = "Block2Above"
-		--NoiseAcceptable(TwoAboveNoise, "Block2Above", y, 4, 3) --Needs block 2 above to spawn
 		sourceBlockDist = 2
 	end
 
-	print(Bounds, sourceBlockDist)
 	return Bounds, sourceBlockDist
-end
-
-local function CalculateInterferingY(Bounds, y, Inverse, sourceBlockDist)
-	local Y
-	--Leave inverse for now since more bound corrections may be added later
-	
-	if not Inverse then --breaking structures if "source" block broken (mining)
-		Y = y+sourceBlockDist 
-	else --Structures checking for structures (generation)
-		if Bounds == "BlockAbove" or Bounds == "Block2Below" then
-			Y = y+1 --below source block
-		else
-			Y = y-1 --above source block
-		end
-	end
-	
-	return Y
 end
 
 TeleportButton.OnServerEvent:Connect(function(player, button)
@@ -235,11 +239,11 @@ local function SpawnStructures(x,y,z,Bounds,Region,sourceBlockDist)
 			if FinalSelection:FindFirstChild("SpecialStructure") then
 				local YDirection = FinalSelection.SpecialStructure.Value
 
-				local Y = CalculateInterferingY(YDirection, y, true, sourceBlockDist)--looking for structure already present within shape
+				local Y = CalculateInterferingY(YDirection, y, nil, sourceBlockDist)--looking for structure already present within shape
 					
 				--print("BLOCK ABOVE: " .. tostring(FinalSelection) .. " " .. tostring(UsedPositions[PositionKey(x,y+1,z)]))
 				--print("BLOCK BELOW: " .. tostring(FinalSelection) .. " " .. tostring(UsedPositions[PositionKey(x,y-1,z)]))
-					
+				
 				if Y then
 					if UsedPositions[PositionKey(x,Y,z)] ~= nil and UsedPositions[PositionKey(x,Y,z)] ~= false then
 						local connectedBlock = UsedPositions[PositionKey(x,Y,z)]
@@ -448,30 +452,22 @@ function game.ServerStorage.MineOre.OnInvoke(Player,Ore)
 			
 			local Bounds,sourceBlockDist = CalculateNoise(CompactPos.X,CompactPos.Y,CompactPos.Z,true)
 			
-			--Break structure (growing from/hanging from) destroyed block
-			if Bounds then 
-				local Y = CalculateInterferingY(Bounds, CompactPos.Y, nil, sourceBlockDist)--for connected structure
-				local ConnectedOre = UsedPositions[PositionKey(CompactPos.X,Y,CompactPos.Z)]
+			if Bounds then --If structure nearby, break structure (growing from/hanging from) destroyed block
+				--local Y = CalculateInterferingY(Bounds, CompactPos.Y, nil, sourceBlockDist)--for connected structure
+				local ConnectedOre = UsedPositions[PositionKey(CompactPos.X,CompactPos.Y+sourceBlockDist,CompactPos.Z)]
 				
-				--Seeing if above2 is culprit for breaking double above structures
-				--if ConnectedOre == false then --Air
-					--print("original connected ore is false, adding one value to checked Y value")
-					--ConnectedOre = UsedPositions[PositionKey(CompactPos.X,Y+1,CompactPos.Z)]
-				--end
-
-				if ConnectedOre ~= false and ConnectedOre ~= nil then
-					--local ConnectedOre = UsedPositions[PositionKey(CompactPos.X,Y,CompactPos.Z)]
-					if game.ReplicatedStorage.Ores:FindFirstChild(tostring(ConnectedOre)):FindFirstChild("SpecialStructure") then
+				if typeof(ConnectedOre) ~= "boolean" then
+					if ConnectedOre:FindFirstChild("SpecialStructure") then
 						local OrePosition
 						if ConnectedOre:IsA("Model") then
 							OrePosition = ConnectedOre.GenerationPosition.Position
 						else
 							OrePosition = ConnectedOre.Position
 						end
-						local ConnectedOreColor = ConnectedOre.OreColor.Value
+						local replicatedConnectedOre = game.ReplicatedStorage.Ores:FindFirstChild(tostring(ConnectedOre))
+						local ConnectedOreColor = replicatedConnectedOre.OreColor.Value
 						MakeDustParticles(OrePosition,ConnectedOreColor)
 						ConnectedOre:Destroy()
-						--game.ServerStorage.MineOre:Invoke(Player, UsedPositions[PositionKey(CompactPos.X,Y,CompactPos.Z)])
 					end
 				end
 			end
@@ -587,4 +583,5 @@ local function GenerateMine()
 end
 
 GenerateMine()
+
 
