@@ -553,34 +553,5 @@ print(table.concat(myTable, " ") --This prints all of the table and puts a space
 
 -----LOOK AT PISHPOD PART SCRIPT'S TOP FOR DEMONSTRATION ON DIFFERENT VARIABLES IN TABLES-----
 
------[Start of In Pairs Loop Demonstration]------------------------------------------------------------------------------------------------------------------
-
---This info is in the script named Pish under the part "pishpod"
-
------[End of In Pairs Loop Demonstration]--------------------------------------------------------------------------------------------------------------------
-
------[Start of GetChildren Demonstration]--------------------------------------------------------------------------------------------------------------------
-
---This could be used, for example, to grab all players to play a game (just an idea)
-
---Lets say you have a bunch of same named parts
-
---I'm actually going to put this into a different script because watching it work is also helpful
-
---SUMMARY: :GetChildren() gets all the children from a specific parent to do something
-
------[End of GetChildren Demonstration]----------------------------------------------------------------------------------------------------------------------
-
------[Start of Making Tools Demonstration]--------------------------------------------------------------------------------------------------------------------------
-
----We're going to make a tool that a player can use!
-
----The tutorial is not in this script!
-
----The tool mentioned in this tutorial is the tool in the starter pack named "Disappearer"
-
------[End of Making Tools Demonstration]-----------------------------------------------------------------------------------------------------------------------
-
------[Start of Local Scripts Demonstration]--------------------------------------------------------------------------------------------------------------------
 
 
