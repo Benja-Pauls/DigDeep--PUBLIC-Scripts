@@ -2,7 +2,6 @@
 Visuals for data menu associated with items inside of the tycoon's (business) storage
 
 -----------------------------------------------------------------------------------------------------------------------------------------------
-
 local Players = game:GetService("Players")
 local Player = Players.LocalPlayer
 local LocalLoadTycoon = game.ReplicatedStorage.Events.Tycoon.LocalLoadTycoon
@@ -270,6 +269,7 @@ SelectionMenu.SelectItem.Activated:Connect(function()
 	
 	SellMenu.Visible = true	
 	SellMenu.SnapAmount.Value = math.ceil(SellMenu.SliderBar.AbsoluteSize.X/(ItemAmount)) --+1 for 0th
+	SellMenu.SellAll.Text = "Sell All: $" .. tostring(tonumber(SellMenu.MaxAmount.Value*SellMenu.SelectedItem.Value.CurrencyValue.Value))
 	
 	CalculateSliderPosition()
 end)
@@ -443,8 +443,8 @@ function CalculateSliderPosition(bool)
 	
 	amountToSell = math.ceil(Percentage*SellMenu.MaxAmount.Value)
 
-	selectedAmount.Text = tostring(amountToSell)
-	SellMenu.CashValue.Text = tostring(SellMenu.SelectedItem.Value.CurrencyValue.Value*amountToSell)
+	selectedAmount.Text = tostring(amountToSell) .. " " .. tostring(SellMenu.SelectedItem.Value)
+	SellMenu.CashValue.Text = "$" .. tostring(SellMenu.SelectedItem.Value.CurrencyValue.Value*amountToSell)
 end
 
 SellMenu.SellItem.Activated:Connect(function()
@@ -453,7 +453,16 @@ SellMenu.SellItem.Activated:Connect(function()
 	SellItem:FireServer(ItemInfo, ItemAmount)
 	SellMenu.Visible = false
 	
-	--Sell GUI animation to show how much $ player got
+	--Sell GUI animation
+end)
+
+SellMenu.SellAll.Activated:Connect(function()
+	local ItemInfo = SellMenu.SelectedItem.Value
+	local ItemAmount = amountToSell
+	SellItem:FireServer(ItemInfo, SellMenu.MaxAmount.Value)
+	SellMenu.Visible = false
+	
+	--Sell GUI animation
 end)
 
 SellMenu.ExitButton.Activated:Connect(function()
