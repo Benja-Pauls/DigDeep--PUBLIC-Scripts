@@ -192,10 +192,28 @@ function LoadPlayerData(PlayerDataFile,data,JoinedPlayer)
 	local TycoonStorageOres = Instance.new("Folder",TycoonStorageFolder)
 	TycoonStorageOres.Name = "TycoonStorageOres"
 	
-	local PlayerExperience = Instance.new("Folder",PlayerDataFile)
+	local PlayerExperience = Instance.new("Folder",PlayerDataFile) --Skills, Stats, Reputation
 	PlayerExperience.Name = "Experience"
 	local SkillsFolder = Instance.new("Folder",PlayerExperience)
 	SkillsFolder.Name = "Skills"
+	
+	local PlayerStatItems = Instance.new("Folder",PlayerDataFile)
+	PlayerStatItems.Name = "Player"
+	local BagsFolder = Instance.new("Folder",PlayerDataFile)
+	BagsFolder.Name = "Bags"
+	
+	--Write a function that handles the i,v in pairs for importing save data (Will clean code for readability)
+	
+	local RealBags = game.ReplicatedStorage:WaitForChild("Bags")
+	for i,bag in pairs (RealBags:GetChildren()) do
+		local Bag = Instance.new("IntValue",BagsFolder)
+		Bag.Name = tostring(bag)
+		
+		local SavedValue = CheckSaveData(data[tostring(bag)])
+		ImportSaveData(data,SavedValue,BagsFolder,Bag)
+		
+		--Update Player menu with bag information or ore menu with limit number
+	end
 	
 	local RealSkills = game.ReplicatedStorage:WaitForChild("Skills")
 	for i,skill in pairs (RealSkills:GetChildren()) do
