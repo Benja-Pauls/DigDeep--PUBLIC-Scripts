@@ -206,13 +206,16 @@ function LoadPlayerData(PlayerDataFile,data,JoinedPlayer)
 	
 	local RealBags = game.ReplicatedStorage:WaitForChild("Bags")
 	for i,bag in pairs (RealBags:GetChildren()) do
-		local Bag = Instance.new("IntValue",BagsFolder)
+		local Bag = Instance.new("BoolValue",BagsFolder)
 		Bag.Name = tostring(bag)
 		
 		local SavedValue = CheckSaveData(data[tostring(bag)])
 		ImportSaveData(data,SavedValue,BagsFolder,Bag)
 		
 		--Update Player menu with bag information or ore menu with limit number
+	end
+	if BagsFolder:FindFirstChild("Beginner Bag").Value == false then
+		BagsFolder["Beginner Bag"].Value = true
 	end
 	
 	local RealSkills = game.ReplicatedStorage:WaitForChild("Skills")
