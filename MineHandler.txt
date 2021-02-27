@@ -427,11 +427,10 @@ function game.ServerStorage.MineOre.OnInvoke(Player,Ore)
 	
 	local OreColor = RealOre.OreColor.Value
 	
-	local TypeAmount = PlayerStatManager:getStatForType(Player, "Ores")
-	local MaxOreBagAmount = PlayerStatManager:getStatForType(Player, "OreBag")
+	local TypeAmount = PlayerStatManager:getItemTypeCount(Player, "Ores") --Number of ores player has
+	local MaxOreAmount = PlayerStatManager:getEquippedData(Player, "OreBags", "Bags").Value --Bag capacity
 	
-	
-	if TypeAmount < MaxOreBagAmount then --this will later be a PSM:GetStat for the bag's max capacity
+	if TypeAmount < MaxOreAmount then
 		if Ore:FindFirstChild("Claimed") == nil then
 			
 			local Hitbox
@@ -584,5 +583,6 @@ local function GenerateMine()
 end
 
 GenerateMine()
+
 
 
