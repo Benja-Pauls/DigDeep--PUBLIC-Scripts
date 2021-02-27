@@ -166,7 +166,7 @@ local function ImportSaveData(data,SaveCheck,Folder,Stat)
 	end
 	for i,v in pairs (Folder:GetChildren()) do
 		if data[tostring(v)] == nil then
-			data[tostring(v)] = Stat.Value --0
+			data[tostring(v)] = Stat.Value --placeholder value to create (even if not interacted with yet)
 		else
 			v.Value = data[tostring(v)]
 		end
@@ -180,7 +180,7 @@ function LoadPlayerData(PlayerDataFile,data,JoinedPlayer)
 	local DataMenu = JoinedPlayer.PlayerGui:WaitForChild("DataMenu"):WaitForChild("DataMenu")
 	local InventoryGui = DataMenu.InventoryMenu
 	
-	--Make it so changing the money display value text isn't several times of code (changed function)
+	--Make function to handle creation of folders and naming them*****
 	local PlayerInventory = Instance.new("Folder",PlayerDataFile)
 	PlayerInventory.Name = "Inventory"
 	local OresFolder = Instance.new("Folder",PlayerInventory)
@@ -199,23 +199,51 @@ function LoadPlayerData(PlayerDataFile,data,JoinedPlayer)
 	
 	local PlayerStatItems = Instance.new("Folder",PlayerDataFile)
 	PlayerStatItems.Name = "Player"
+	local EquippedItems = Instance.new("Folder", PlayerStatItems)
+	EquippedItems.Name = "Equipped"
 	local BagsFolder = Instance.new("Folder",PlayerDataFile)
 	BagsFolder.Name = "Bags"
 	
-	--Write a function that handles the i,v in pairs for importing save data (Will clean code for readability)
-	
-	local RealBags = game.ReplicatedStorage:WaitForChild("Bags")
-	for i,bag in pairs (RealBags:GetChildren()) do
-		local Bag = Instance.new("BoolValue",BagsFolder)
-		Bag.Name = tostring(bag)
+	--*Write a function that handles the i,v in pairs for importing save data (Will clean code for readability)*
+
+	local RealBags = game.ReplicatedStorage.Equippable:WaitForChild("Bags")
+	for i,bagtype in pairs (RealBags:GetChildren()) do --Way to make this more efficient?
+		--Create bags in equipped folder so scripts can read what bag the player is using current, rather than all bag values
+		local EquippedBag = Instance.new("StringValue", EquippedItems)
+		EquippedBag.Name = tostring(bagtype)
+		local NewBagTypeFolder = Instance.new("Folder",BagsFolder)
+		NewBagTypeFolder.Name = tostring(bagtype)
 		
-		local SavedValue = CheckSaveData(data[tostring(bag)])
-		ImportSaveData(data,SavedValue,BagsFolder,Bag)
-		
-		--Update Player menu with bag information or ore menu with limit number
-	end
-	if BagsFolder:FindFirstChild("Beginner Bag").Value == false then
-		BagsFolder["Beginner Bag"].Value = true
+		local BestPurchasedBag
+		for i,bag in pairs (bagtype:GetChildren()) do
+			local Bag = Instance.new("BoolValue",NewBagTypeFolder) --true if purchased
+			Bag.Name = tostring(bag)
+			
+			if i == 1 then
+				BestPurchasedBag = tostring(bag) --Start BestBag as beginner bag to compare with
+				Bag.Value = true
+				data[tostring(bag)] = true
+			end
+			
+			local SavedValue = CheckSaveData(data[tostring(bag)])
+			ImportSaveData(data,SavedValue,NewBagTypeFolder,Bag)
+			
+			--List all purchased in case save overwrite goes wrong; otherwise, error may cause bag restart
+			--Check bag and auto-equip best bag when player joins game
+			--Where to exclaim what bag is equipped? (Number value in inventory as well...)
+			--Equipped folder efficieny for quick check of stats during activities
+			
+			if SavedValue == true and i > 1 then --Owned and not beginner bag
+				local BestBagValue = RealBags:FindFirstChild(tostring(bagtype)):FindFirstChild(tostring(BestPurchasedBag)).Value
+				if bag.Value > BestBagValue then
+					BestPurchasedBag = tostring(bag)
+				end
+			end
+			
+			if i == #bagtype:GetChildren() then
+				EquippedBag.Value = BestPurchasedBag
+			end
+		end
 	end
 	
 	local RealSkills = game.ReplicatedStorage:WaitForChild("Skills")
@@ -333,7 +361,7 @@ function PlayerStatManager:getStat(player, statName) --Stat Check
 	return sessionData[playerUserId][statName]
 end 
 
-function PlayerStatManager:getStatForType(player, Type) --For Amount in Inventory Bag Checking
+function PlayerStatManager:getItemTypeCount(player, Type) --For Amount in Inventory Bag Checking
 	local playerUserId = game.Players:FindFirstChild(tostring(player)).UserId
 	local TypeSaveFolder = game.ServerStorage.PlayerData:FindFirstChild(tostring(playerUserId)).Inventory:FindFirstChild(Type)
 	
@@ -343,6 +371,18 @@ function PlayerStatManager:getStatForType(player, Type) --For Amount in Inventor
 			Amount = Amount + statData.Value
 		end
 		return Amount
+	end
+end
+
+function PlayerStatManager:getEquippedData(player, Equippable, Type)
+	local playerUserId = game.Players:FindFirstChild(tostring(player)).UserId
+	local EquippedItem = game.ServerStorage.PlayerData:FindFirstChild(tostring(playerUserId)).Player.Equipped:FindFirstChild(Equippable)
+	
+	if EquippedItem then
+		local EquipmentName = EquippedItem.Value
+		local EquipmentStats = game.ReplicatedStorage.Equippable:FindFirstChild(Type):FindFirstChild(Equippable):FindFirstChild(EquipmentName)
+		
+		return EquipmentStats
 	end
 end
 
