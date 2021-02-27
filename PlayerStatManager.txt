@@ -174,6 +174,12 @@ local function ImportSaveData(data,SaveCheck,Folder,Stat)
 	end
 end
 
+local function CreateSaveFolder(ParentFolder, FolderName)
+	local NewFolder = Instance.new("Folder",ParentFolder)
+	NewFolder.Name = FolderName
+	return NewFolder
+end
+
 function LoadPlayerData(PlayerDataFile,data,JoinedPlayer)
 	print("Loading player data")
 	local playerUserId = game.Players:FindFirstChild(tostring(JoinedPlayer)).UserId
@@ -181,28 +187,19 @@ function LoadPlayerData(PlayerDataFile,data,JoinedPlayer)
 	local InventoryGui = DataMenu.InventoryMenu
 	
 	--Make function to handle creation of folders and naming them*****
-	local PlayerInventory = Instance.new("Folder",PlayerDataFile)
-	PlayerInventory.Name = "Inventory"
-	local OresFolder = Instance.new("Folder",PlayerInventory)
-	local OreInventoryMenu = InventoryGui:WaitForChild("OresMenu")
-	OresFolder.Name = "Ores"
+	local PlayerInventory = CreateSaveFolder(PlayerDataFile, "Inventory")
+	local OresFolder = CreateSaveFolder(PlayerInventory, "Ores")
 	
-	local TycoonStorageFolder = Instance.new("Folder",PlayerDataFile)
-	TycoonStorageFolder.Name = "TycoonStorage"
-	local TycoonStorageOres = Instance.new("Folder",TycoonStorageFolder)
-	TycoonStorageOres.Name = "TycoonStorageOres"
+	local TycoonStorageFolder = CreateSaveFolder(PlayerDataFile, "TycoonStorage")	
+	local TycoonStorageOres = CreateSaveFolder(TycoonStorageFolder, "TycoonStorageOres")	
+
 	
-	local PlayerExperience = Instance.new("Folder",PlayerDataFile) --Skills, Stats, Reputation
-	PlayerExperience.Name = "Experience"
-	local SkillsFolder = Instance.new("Folder",PlayerExperience)
-	SkillsFolder.Name = "Skills"
+	local PlayerExperience = CreateSaveFolder(PlayerDataFile, "Experience") --Skills, Stats, Reputation
+	local SkillsFolder = CreateSaveFolder(PlayerExperience, "Skills")
 	
-	local PlayerStatItems = Instance.new("Folder",PlayerDataFile)
-	PlayerStatItems.Name = "Player"
-	local EquippedItems = Instance.new("Folder", PlayerStatItems)
-	EquippedItems.Name = "Equipped"
-	local BagsFolder = Instance.new("Folder",PlayerDataFile)
-	BagsFolder.Name = "Bags"
+	local PlayerStatItems = CreateSaveFolder(PlayerDataFile, "Player")
+	local EquippedItems = CreateSaveFolder(PlayerStatItems, "Equipped")
+	local BagsFolder = CreateSaveFolder(PlayerStatItems, "Bags") --Chagne to PlayerStatItems as parent folder
 	
 	--*Write a function that handles the i,v in pairs for importing save data (Will clean code for readability)*
 
