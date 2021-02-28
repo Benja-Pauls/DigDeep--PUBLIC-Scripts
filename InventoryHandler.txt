@@ -914,7 +914,20 @@ UpdateInventory.OnClientEvent:Connect(function(Stat, File, Value, AmountAdded, T
 	end
 end)
 
+local UpdateItemCount = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateItemCount")
+UpdateItemCount.OnClientEvent:Connect(function(ItemTypeCount, BagCapacity)
+	--Update all GUI's that display bag data
+	--(likely a quick access menu, menu within menu, and player menu?)
+	
+	--Move up quick bag display for current updated and put on same countdown as experience bar with same rule
+	--of waiting until no more recent updates are happening
+	
+	--or put this event call check in seperate script for player stats? or have that seperate folder and that
+	--new folder calls this event instead of straight from Mine Handler
+end)
+
 --ReadyMenuButtons(DataMenu) --Manage Tabs
+
 
 
 
