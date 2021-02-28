@@ -414,7 +414,7 @@ function GenerateOre(x,y,z,Override,PresetPoint,Region,Player)
 end
 
 
---local CheckItemAmount = game.ReplicatedStorage.Events.GUI.CheckItemTypeAmount
+local UpdateItemCount = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateItemCount")
 
 function game.ServerStorage.MineOre.OnInvoke(Player,Ore)
 	local RealOre
@@ -429,6 +429,8 @@ function game.ServerStorage.MineOre.OnInvoke(Player,Ore)
 	
 	local TypeAmount = PlayerStatManager:getItemTypeCount(Player, "Ores") --Number of ores player has
 	local MaxOreAmount = PlayerStatManager:getEquippedData(Player, "OreBags", "Bags").Value --Bag capacity
+	
+	print(MaxOreAmount)
 	
 	if TypeAmount < MaxOreAmount then
 		if Ore:FindFirstChild("Claimed") == nil then
@@ -515,6 +517,7 @@ function game.ServerStorage.MineOre.OnInvoke(Player,Ore)
 			Ore:Destroy()
 			
 			MakeDustParticles(OrePosition,OreColor)
+			UpdateItemCount:FireClient(Player, TypeAmount, MaxOreAmount)
 		end
 	else
 		--Notify player that their inventory is full and they should sell/deposit their items 
@@ -583,6 +586,5 @@ local function GenerateMine()
 end
 
 GenerateMine()
-
 
 
