@@ -6,10 +6,29 @@ local TweenService = game:GetService("TweenService")
 local MoveAllBaseScreenUI = game.ReplicatedStorage.Events.GUI.MoveAllBaseScreenUI
 
 local Display = script.Parent:WaitForChild("Display")
-local ShowButton = Display:WaitForChild("Show")
-local PutAwayButton = Display:WaitForChild("PutAway")
+local Interact = Display:WaitForChild("Interact")
+local Showing = false
+local debounce = false
 
-ShowButton.Activated:Connect(function()
+Interact.Activated:Connect(function()
+	print("1")
+	if debounce == false then
+		debounce = true
+		if Showing == false then --Pull out $ Display
+			Interact.Text = ">>"
+			Display:TweenPosition(UDim2.new(0.735, 0, 0.04), "Out", "Bounce", 1)
+			wait(1) --are the waits required?
+			Showing = true
+		else --Hide Display
+			Interact.Text = "<<"
+			Display:TweenPosition(UDim2.new(0.975, 0, 0.04), "Out", "Quint", 1)
+			wait(1)
+			Showing = false
+		end
+		debounce = false
+	end
+	
+	--[[
 	Showing = true
 	Display:TweenPosition(UDim2.new(0,0 , 0.865,0), "Out", "Bounce", 1)
 	wait(.8)
@@ -17,31 +36,19 @@ ShowButton.Activated:Connect(function()
 	ShowButton.Active = false
 	PutAwayButton.Visible = true
 	PutAwayButton.Active = true
+	]]
 end)
 
-PutAwayButton.Activated:Connect(function()
-	Showing = false
-	Display:TweenPosition(UDim2.new(0,0 ,1.012,0), "Out", "Quint", 1)
-	wait(.8)
-	ShowButton.Visible = true
-	ShowButton.Active = true
-	PutAwayButton.Visible = false
-	PutAwayButton.Active = false
-end)
 
 MoveAllBaseScreenUI.Event:Connect(function(ChangeTo)
 	print("Hide All Base Screen UI bindable event has been fired")
-	Showing = false
+	Showing = false --shelf display
 	if ChangeTo == "Hide" then
 		Display:TweenPosition(UDim2.new(0, 0, 1.08, 0), "Out", "Quint", 1)
 	else --Show
 		Display:TweenPosition(UDim2.new(0,0 ,1.012,0), "Out", "Quint", 1)
 	end
 	wait(.8)
-	ShowButton.Visible = true
-	ShowButton.Active = true
-	PutAwayButton.Visible = false
-	PutAwayButton.Active = false
 end)
 
 
