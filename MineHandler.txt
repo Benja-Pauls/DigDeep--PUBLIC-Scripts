@@ -517,7 +517,7 @@ function game.ServerStorage.MineOre.OnInvoke(Player,Ore)
 			Ore:Destroy()
 			
 			MakeDustParticles(OrePosition,OreColor)
-			UpdateItemCount:FireClient(Player, TypeAmount, MaxOreAmount)
+			UpdateItemCount:FireClient(Player, TypeAmount, MaxOreAmount, "Ores")
 		end
 	else
 		--Notify player that their inventory is full and they should sell/deposit their items 
