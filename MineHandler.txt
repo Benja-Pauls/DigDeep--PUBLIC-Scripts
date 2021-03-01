@@ -427,7 +427,7 @@ function game.ServerStorage.MineOre.OnInvoke(Player,Ore)
 	
 	local OreColor = RealOre.OreColor.Value
 	
-	local TypeAmount = PlayerStatManager:getItemTypeCount(Player, "Ores") --Number of ores player has
+	local TypeAmount = PlayerStatManager:getItemTypeCount(Player, "Ores") + 1 --Number of ores player has
 	local MaxOreAmount = PlayerStatManager:getEquippedData(Player, "OreBags", "Bags").Value --Bag capacity
 	
 	print(MaxOreAmount)
