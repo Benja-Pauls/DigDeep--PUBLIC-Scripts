@@ -6,63 +6,7 @@ local Utility = {}
 
 function Utility:UpdateMoneyDisplay(Player, NewPlayerCash)
 	local MoneyDisplay = game.Players:FindFirstChild(tostring(Player)).PlayerGui:WaitForChild("MoneyDisplay")
-	MoneyDisplay.Display.Money.Text = "$" .. tostring(NewPlayerCash)
+	MoneyDisplay.Display.Frame.Money.Text = "$" .. tostring(NewPlayerCash)
 end
-
---[[
-
-local InventoryData = {}
-
---Currently, these two functions don't work because the i,v pair they reside in only loops through successfully once
-function Utility:SetupInventory(Player, item)
-	local Data = game.ServerStorage:WaitForChild("PlayerData")
-	local PlayerData = Data:FindFirstChild(Player.UserId)
-	local PlayerInventoryFile = PlayerData:WaitForChild("Inventory")
-	
-	for i,types in pairs (PlayerInventoryFile:GetChildren()) do
-		InventoryData[types] = types
-		if item.Parent == InventoryData[types] then
-			for i,v in pairs (types:GetChildren()) do
-				InventoryData[types][v] = v
-			end
-		end
-	end
-	
-end
-
-function Utility:SetupInventoryItem(Player, itemType, itemName, itemAmount)
-	local PlayersGui = Player.PlayerGui
-	if itemType == "Ores" then
-		
-		--if InventoryData[itemType][itemName] == nil then
-			--local Data = game.ServerStorage:WaitForChild("PlayerData")
-			--local PlayerData = Data:FindFirstChild(Player.UserId)
-			--local PlayerInventoryFile = PlayerData.Inventory
-			--for i,ore in pairs (PlayerInventoryFile:FindFirstChild("Ores"):GetChildren()) do
-			--	print(ore)
-			--end
-		--end
-		
-		local Menu = PlayersGui.Inventory.InventoryMenu:WaitForChild("OreMenu")
-		local Slots = Menu:GetChildren() --Probably use inventoryhandler local script to update the amount of tiles
-		for i,v in pairs (Slots) do
-			if v:FindFirstChild("Name").Text == "" and v:FindFirstChild("Amount").Text == "" then
-				if InventoryData[itemType][itemName] == nil then
-					print("Adding inventory item:" .. tostring(itemName))
-					v:FindFirstChild("Name").Text = tostring(itemName)
-					v.Amount.Text = tostring(itemAmount)
-					print(typeof(itemName))
-					print(typeof(InventoryData[itemType][itemName]))
-					InventoryData[itemType][itemName] = itemName
-					InventoryData[itemType][itemName][itemAmount] = itemAmount
-				--Maybe have another function that determines the placement of the new tile (placetile)
-				--it detects the last item in column 1, 2, 3, 4, or 5, and places
-					return InventoryData[itemType][itemName][itemAmount]
-				end
-			end
-		end
-	end
-end
-]]
 
 return Utility
