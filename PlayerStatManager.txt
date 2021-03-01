@@ -186,7 +186,6 @@ function LoadPlayerData(PlayerDataFile,data,JoinedPlayer)
 	local DataMenu = JoinedPlayer.PlayerGui:WaitForChild("DataMenu"):WaitForChild("DataMenu")
 	local InventoryGui = DataMenu.InventoryMenu
 	
-	--Make function to handle creation of folders and naming them*****
 	local PlayerInventory = CreateSaveFolder(PlayerDataFile, "Inventory")
 	local OresFolder = CreateSaveFolder(PlayerInventory, "Ores")
 	
@@ -201,48 +200,7 @@ function LoadPlayerData(PlayerDataFile,data,JoinedPlayer)
 	local EquippedItems = CreateSaveFolder(PlayerStatItems, "Equipped")
 	local BagsFolder = CreateSaveFolder(PlayerStatItems, "Bags") --Chagne to PlayerStatItems as parent folder
 	
-	--*Write a function that handles the i,v in pairs for importing save data (Will clean code for readability)*
-
-	local RealBags = game.ReplicatedStorage.Equippable:WaitForChild("Bags")
-	for i,bagtype in pairs (RealBags:GetChildren()) do --Way to make this more efficient?
-		--Create bags in equipped folder so scripts can read what bag the player is using current, rather than all bag values
-		local EquippedBag = Instance.new("StringValue", EquippedItems)
-		EquippedBag.Name = tostring(bagtype)
-		local NewBagTypeFolder = Instance.new("Folder",BagsFolder)
-		NewBagTypeFolder.Name = tostring(bagtype)
-		
-		local BestPurchasedBag
-		for i,bag in pairs (bagtype:GetChildren()) do
-			local Bag = Instance.new("BoolValue",NewBagTypeFolder) --true if purchased
-			Bag.Name = tostring(bag)
-			
-			if i == 1 then
-				BestPurchasedBag = tostring(bag) --Start BestBag as beginner bag to compare with
-				Bag.Value = true
-				data[tostring(bag)] = true
-			end
-			
-			local SavedValue = CheckSaveData(data[tostring(bag)])
-			ImportSaveData(data,SavedValue,NewBagTypeFolder,Bag)
-			
-			--List all purchased in case save overwrite goes wrong; otherwise, error may cause bag restart
-			--Check bag and auto-equip best bag when player joins game
-			--Where to exclaim what bag is equipped? (Number value in inventory as well...)
-			--Equipped folder efficieny for quick check of stats during activities
-			
-			if SavedValue == true and i > 1 then --Owned and not beginner bag
-				local BestBagValue = RealBags:FindFirstChild(tostring(bagtype)):FindFirstChild(tostring(BestPurchasedBag)).Value
-				if bag.Value > BestBagValue then
-					BestPurchasedBag = tostring(bag)
-				end
-			end
-			
-			if i == #bagtype:GetChildren() then
-				EquippedBag.Value = BestPurchasedBag
-			end
-		end
-	end
-	
+	--*Write a function that handles the i,v in pairs for importing save data (Will clean code for readability)*	
 	local RealSkills = game.ReplicatedStorage:WaitForChild("Skills")
 	for i,skill in pairs (RealSkills:GetChildren()) do
 		local Skill = Instance.new("IntValue",SkillsFolder)
@@ -280,6 +238,56 @@ function LoadPlayerData(PlayerDataFile,data,JoinedPlayer)
 		ImportSaveData(data,SavedTycoonStorageValue,TycoonStorageOres,TycoonStorageOre)
 		UpdateTycoonStorage:FireClient(JoinedPlayer, TycoonStorageOres.Name, tostring(TycoonStorageOre), tostring(data[tostring(TycoonStorageOre)]))
 	end	
+	
+	--All Bag Data
+	local RealBags = game.ReplicatedStorage.Equippable:WaitForChild("Bags")
+	for i,bagtype in pairs (RealBags:GetChildren()) do --Way to make this more efficient?
+		--Create bags in equipped folder so scripts can read what bag the player is using current, rather than all bag values
+		local EquippedBag = Instance.new("StringValue", EquippedItems)
+		EquippedBag.Name = tostring(bagtype)
+		local NewBagTypeFolder = Instance.new("Folder",BagsFolder)
+		NewBagTypeFolder.Name = tostring(bagtype)
+
+		local BestPurchasedBag
+		for i,bag in pairs (bagtype:GetChildren()) do
+			local Bag = Instance.new("BoolValue",NewBagTypeFolder) --true if purchased
+			Bag.Name = tostring(bag)
+
+			if i == 1 then --Start BestBag as beginner bag to compare with
+				BestPurchasedBag = tostring(bag)
+				Bag.Value = true
+				data[tostring(bag)] = true
+			end
+
+			local SavedValue = CheckSaveData(data[tostring(bag)])
+			ImportSaveData(data,SavedValue,NewBagTypeFolder,Bag)
+
+			--List all purchased in case save overwrite goes wrong; otherwise, error may cause bag restart
+			--Check bag and auto-equip best bag when player joins game
+			--Where to exclaim what bag is equipped? (Number value in inventory as well...)
+			--Equipped folder efficieny for quick check of stats during activities
+
+			if SavedValue == true and i > 1 then --Owned and not beginner bag
+				local BestBagValue = RealBags:FindFirstChild(tostring(bagtype)):FindFirstChild(tostring(BestPurchasedBag)).Value
+				if bag.Value > BestBagValue then
+					BestPurchasedBag = tostring(bag)
+				end
+			end
+
+			if i == #bagtype:GetChildren() then
+				EquippedBag.Value = BestPurchasedBag
+			end
+		end
+
+		--Update Inventory Menus' Attributes
+		local BestBagValue = RealBags:FindFirstChild(tostring(bagtype)):FindFirstChild(tostring(BestPurchasedBag)).Value
+		local MenuName = string.gsub(tostring(bagtype), "Bag", "") .. "Menu"
+		DataMenu:WaitForChild("InventoryMenu"):FindFirstChild(MenuName):SetAttribute("BagCapacity", BestBagValue)
+
+		local ItemCount = PlayerStatManager:getItemTypeCount(JoinedPlayer, string.gsub(tostring(bagtype), "Bag", ""))
+		print(ItemCount)
+		DataMenu:WaitForChild("InventoryMenu"):FindFirstChild(MenuName):SetAttribute("ItemCount", ItemCount)
+	end
 	
 	local CurrencyFolder = Instance.new("Folder",PlayerDataFile)
 	CurrencyFolder.Name = "Currencies"
