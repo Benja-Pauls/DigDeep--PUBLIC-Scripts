@@ -1,0 +1,12 @@
+--Used for equipping selected items, arranging menu tiles, and updating information on this screen
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------------
+local DataMenu = script.Parent.DataMenu
+local PlayerMenu = DataMenu:FindFirstChild("PlayerMenu")
+
+--Item Selection Manager (possibly item tile selection manager too like InventoryHandler)
+
+--Equip event to change used item
+
+--Information updater functions
+
