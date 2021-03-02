@@ -1,5 +1,5 @@
+(Local Script)
 --Used for equipping selected items, arranging menu tiles, and updating information on this screen
-
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------
 local DataMenu = script.Parent.DataMenu
 local PlayerMenu = DataMenu:FindFirstChild("PlayerMenu")
