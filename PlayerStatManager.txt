@@ -33,7 +33,9 @@ local function UpdateGUIForFile(DataTabName, PlayerDataFile, player, playerUserI
 				
 			elseif tostring(DataTabName) == "Currencies" then
 				local RScurrency = game.ReplicatedStorage.Currencies:FindFirstChild(statName)
-				Utility:UpdateMoneyDisplay(player, PlayerStatManager:ConvertShort(total))
+				
+				--if Global currency
+				Utility:UpdateMoneyDisplay(player, Utility:ConvertShort(total))
 				UpdateInventory:FireClient(player, statName, tostring(DataTab), nil, amountAdded, "Inventory", RScurrency.Value)
 				--(put inventory for parameter so popup shows up; otherwise, leave nil.)
 			end
@@ -329,7 +331,7 @@ function SetTycoonPurchases(JoinedPlayer, PlayerCash, playerUserId)
 			end
 		end	
 		
-		Utility:UpdateMoneyDisplay(JoinedPlayer, PlayerStatManager:ConvertShort(PlayerCash.Value))
+		Utility:UpdateMoneyDisplay(JoinedPlayer, Utility:ConvertShort(PlayerCash.Value))
 	end
 end
 
@@ -374,6 +376,7 @@ function PlayerStatManager:getItemTypeCount(player, Type) --For Amount in Invent
 		local Amount = 0
 		for i,statData in pairs (TypeSaveFolder:GetChildren()) do
 			Amount = Amount + statData.Value
+			print("AMOUNT: ",Amount)
 		end
 		return Amount
 	end
@@ -407,24 +410,5 @@ end
 
 game.Players.PlayerAdded:Connect(FindPlayerData)
 
---Shortens numbers (Change so isn't only one number after decimal, change to at least 2 after)
-function PlayerStatManager:ConvertShort(Filter_Num) --MOVE TO UTILITY?
-	--print(Filter_Num) = money amount player has in total
-	local x = tostring(Filter_Num)
-	--print(x) = money amount player has in total
-	if #x>=10 then
-		local important = (#x-9)
-		return x:sub(0,(important)).."."..(x:sub(#x-7,(#x-7))).."B"
-	elseif #x>=7 then
-		local important = (#x-6)
-		return x:sub(0,(important)).."."..(x:sub(#x-5,(#x-5))).."M"
-		--elseif #x>=4 then
-		--local important = (#x-3)
-		--print(tostring(x:sub(x:sub(#x-2,(#x-2)))))
-		--return x:sub(0,(important)).."."..(x:sub(#x-2,(#x-2))).."K"
-	else
-		return Filter_Num
-	end
-end
 
 return PlayerStatManager
