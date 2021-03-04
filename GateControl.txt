@@ -31,7 +31,7 @@ script.Parent.Head.Touched:connect(function(hit)
 					--Check if this tycoon has been previously owned
 					if stat == false then
 						print(tostring(player) .. " has never bought the entrance before")
-						ClaimTycoonGui:InvokeClient(player,tycoon)
+						ClaimTycoonGui:FireClient(player,tycoon)
 						
 						CancelClaimTycoon.OnServerEvent:Connect(function(player,tycoon)
 							if tycoon == script.Parent.Parent.Parent then
