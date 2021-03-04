@@ -1,8 +1,28 @@
-(Local Script)
 --Used for equipping selected items, arranging menu tiles, and updating information on this screen
+
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+--Script-wide used variables
+local Players = game:GetService("Players")
+local Player = Players.LocalPlayer
+local PlayerUserId = Player.UserId
 local DataMenu = script.Parent.DataMenu
 local PlayerMenu = DataMenu:FindFirstChild("PlayerMenu")
+
+-----------------<|PlayerInfo|>--------------------------------------------------------------------------------------
+
+local PlayerInfo = PlayerMenu.PlayerInfo
+local thumbType = Enum.ThumbnailType.HeadShot
+local thumbSize = Enum.ThumbnailSize.Size420x420
+local PlayerProfilePicture = Players:GetUserThumbnailAsync(PlayerUserId, thumbType, thumbSize)
+PlayerInfo.PlayerThumbnail.Image = PlayerProfilePicture
+
+PlayerInfo.PlayerName.Text = tostring(Player)
+
+local RealBags = game.ReplicatedStorage.Equippable.Bags.OreBags
+
+
+--Each bag icon has a small progress bar with bright blue coloring (to see easily) that displays how full the bag is
 
 --Item Selection Manager (possibly item tile selection manager too like InventoryHandler)
 
