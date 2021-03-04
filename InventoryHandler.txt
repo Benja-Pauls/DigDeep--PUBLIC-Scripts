@@ -16,12 +16,17 @@ for i,v in pairs (DataMenu:GetChildren()) do
 	end
 end
 
-local Open = false
 local InventoryOpens = 0
 OpenDataMenuButton.Activated:Connect(function()
-	if Open == false then
+	if DataMenu.Visible == false then
+		DataMenu.Position = UDim2.new(0.126, 0, -.8, 0)
 		DataMenu.Visible = true
-		Open = true
+		DataMenu.PlayerMenu.Visible = true
+		OpenDataMenuButton.Active = false
+		DataMenu:TweenPosition(UDim2.new(0.126, 0, 0.141, 0), "Out", "Quint", .5)
+		wait(.5)
+		OpenDataMenuButton.Active = true
+		
 		if InventoryOpens == 0 then
 			InventoryOpens = 1
 			DataMenu.InventoryMenu.SelectedBagInfo.Visible = false
@@ -30,17 +35,20 @@ OpenDataMenuButton.Activated:Connect(function()
 			CleanupMenuTabs(DataMenu)
 		end
 		
-	elseif Open == true then
+	elseif DataMenu.Visible == true then
+		OpenDataMenuButton.Active = false
+		DataMenu:TweenPosition(UDim2.new(0.126, 0, -0.8, 0), "Out", "Quint", .5)
+		wait(.5)
 		DataMenu.Visible = false
-		Open = false
+		DataMenu.Position = UDim2.new(0.126, 0, 0.141, 0)
 		PageManager.Visible = false
 		DataMenu.ItemViewer.Visible = false
+		OpenDataMenuButton.Active = true
 	end
 end)
 
 MoveAllBaseScreenUI.Event:Connect(function(ChangeTo)
 	DataMenu.Visible = false
-	Open = false
 	if ChangeTo == "Hide" then
 		OpenDataMenuButton:TweenPosition(UDim2.new(-.1, 0, OpenDataMenuButton.Position.Y.Scale, 0), "Out", "Quint", 1)
 	else
@@ -62,7 +70,10 @@ function ReadyMenuButtons(Menu)
 				ButtonPresses[button] = 0
 				local AssociatedMenuName = button:FindFirstChild("Menu").Value
 				local ButtonMenu = Menu:FindFirstChild(AssociatedMenuName)
-				ButtonMenu.Visible = false
+				
+				if ButtonMenu.Name ~= "PlayerMenu" then --Default Menu for Players
+					ButtonMenu.Visible = false
+				end
 				
 				button.Activated:Connect(function()
 					DataMenu.InventoryMenu.EmptyNotifier.Visible = false
@@ -110,9 +121,6 @@ function ReadyMenuButtons(Menu)
 		end
 		wait(.1)
 		MenuAcceptance = true
-	else
-		--cancellation of other menus, way to count this so wait waits for a certain number to
-		--be achieved here?
 	end
 end
 
@@ -121,7 +129,10 @@ function CleanupMenuTabs(Menu)
 		if button:IsA("TextButton") and button:FindFirstChild("Menu") then
 			local AssociatedMenuName = button:FindFirstChild("Menu").Value
 			local ButtonMenu = Menu:FindFirstChild(AssociatedMenuName)
-			ButtonMenu.Visible = false
+			
+			if ButtonMenu.Name ~= "PlayerMenu" then --Default Menu for Players
+				ButtonMenu.Visible = false
+			end
 			if button.Parent == DataMenu.InventoryMenu then
 				DataMenu.InventoryMenu.SelectedBagInfo.Visible = false
 			end
@@ -965,12 +976,10 @@ UpdateItemCount.OnClientEvent:Connect(function(ItemTypeCount, BagCapacity, BagTy
 	Menu:SetAttribute("ItemCount", ItemTypeCount)
 	Menu:SetAttribute("BagCapacity", BagCapacity)
 	
-	--Update player menu GUI for inventory section here, but update numbers for GUI in player menu in a seperate
-	--script: possibly PlayerMenuHandler using this same client event trigger
-	
 	--PlayerMenuHandler will likely handle equipping, arranging of tiles in that inventory screen, adding new tiles
 	--when the player has purchased something, ...
 end)
+
 
 
 
