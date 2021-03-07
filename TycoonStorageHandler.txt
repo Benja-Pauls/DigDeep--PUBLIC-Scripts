@@ -169,13 +169,13 @@ local function UpdateSelectionInfo(RarityMenu, tile)
 end
 
 local UpdateTycoonStorage = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateTycoonStorage")
-UpdateTycoonStorage.OnClientEvent:Connect(function(File, Stat, StatValue, AmountAdded)
+UpdateTycoonStorage.OnClientEvent:Connect(function(File, Stat, StatValue, AmountAdded, AcquiredLocation)
 	if typeof(StatValue) == "string" then
 		File = string.gsub(File, "TycoonStorage", "")
 		Stat = string.gsub(Stat, "TycoonStorage", "")
-	else
+	else --Bool for Discovered
 		Stat = string.gsub(Stat, "Discovered", "")
-		local RarityName = game.ReplicatedStorage:FindFirstChild(tostring(File)):FindFirstChild(tostring(Stat)):FindFirstChild("GUI Info").RarityName.Value
+		local RarityName = game.ReplicatedStorage:FindFirstChild(tostring(AcquiredLocation)):FindFirstChild(tostring(Stat)):FindFirstChild("GUI Info").RarityName.Value
 		ItemsPreview:FindFirstChild(tostring(File)):FindFirstChild(RarityName):WaitForChild(tostring(Stat)).Discovered.Value = StatValue
 	end
 	wait() --Allow ItemPreview tiles to be made
@@ -269,7 +269,7 @@ SelectionMenu.SelectItem.Activated:Connect(function()
 	
 	SellMenu.Visible = true	
 	SellMenu.SnapAmount.Value = math.ceil(SellMenu.SliderBar.AbsoluteSize.X/(ItemAmount)) --+1 for 0th
-	SellMenu.SellAll.Text = "Sell All: $" .. tostring(tonumber(SellMenu.MaxAmount.Value*SellMenu.SelectedItem.Value.CurrencyValue.Value))
+	SellMenu.SellAll.Text = "Sell All: $" .. tostring(tonumber(ItemAmount*SellMenu.SelectedItem.Value.CurrencyValue.Value))
 	
 	CalculateSliderPosition()
 end)
@@ -428,7 +428,7 @@ if SelectionMenu.Visible == true then
 end
 
 local snapAmount
-local amountToSell
+local amountToSellPercent
 function CalculateSliderPosition(bool)
 	snapAmount = SellMenu.SnapAmount.Value
 	local xOffset = math.floor((Mouse.X - sliderBar.AbsolutePosition.X) / snapAmount) * snapAmount
@@ -441,25 +441,28 @@ function CalculateSliderPosition(bool)
 	local roundedOffsetClamped = (xOffsetClamped / snapAmount) * snapAmount --highest amount slider can achieve
 	local Percentage = roundedOffsetClamped / roundedAbsSize
 	
-	amountToSell = math.ceil(Percentage*SellMenu.MaxAmount.Value)
+	amountToSellPercent = Percentage
+	local GUIamountToSell = math.ceil(Percentage*SellMenu.MaxAmount.Value)
 
-	selectedAmount.Text = tostring(amountToSell) .. " " .. tostring(SellMenu.SelectedItem.Value)
-	SellMenu.CashValue.Text = "$" .. tostring(SellMenu.SelectedItem.Value.CurrencyValue.Value*amountToSell)
+	selectedAmount.Text = tostring(GUIamountToSell) .. " " .. tostring(SellMenu.SelectedItem.Value)
+	SellMenu.CashValue.Text = "$" .. tostring(SellMenu.SelectedItem.Value.CurrencyValue.Value*GUIamountToSell)
 end
 
 SellMenu.SellItem.Activated:Connect(function()
-	local ItemInfo = SellMenu.SelectedItem.Value
-	local ItemAmount = amountToSell
-	SellItem:FireServer(ItemInfo, ItemAmount)
+	local ItemInfo = tostring(SellMenu.SelectedItem.Value) --Keep as string to prevent RS exploiting
+	SellItem:FireServer(CurrentMenu, ItemInfo, amountToSellPercent)
 	SellMenu.Visible = false
+	
+	--Possibly do a statValue vs MaxAmount check to see if certain player is exploiting
+	--maybe have a saved stat in each player that is amount of exploiter warnings. If exploiter warnings count is too high, they
+	--will be notified&kicked/banned
 	
 	--Sell GUI animation
 end)
 
 SellMenu.SellAll.Activated:Connect(function()
 	local ItemInfo = SellMenu.SelectedItem.Value
-	local ItemAmount = amountToSell
-	SellItem:FireServer(ItemInfo, SellMenu.MaxAmount.Value)
+	SellItem:FireServer(CurrentMenu, ItemInfo, 1)
 	SellMenu.Visible = false
 	
 	--Sell GUI animation
@@ -478,53 +481,58 @@ function SetupTycoonStorageTiles(button)
 	local MenuName = button.Name
 	if ItemsPreview:FindFirstChild(MenuName) then
 		local AffiliatedItemsPreview = ItemsPreview:FindFirstChild(MenuName)
-		local ItemDataFolder = game.ReplicatedStorage:FindFirstChild(MenuName)
+		
+		local ItemDataFolder = game.ReplicatedStorage.Ores
+		--local ItemDataFolder = game.ReplicatedStorage:FindFirstChild(MenuName)
+			
 		local TycoonStorageTile = game.ReplicatedStorage.GuiElements:FindFirstChild("TycoonStorageTile")
 		
 		for i,item in pairs (ItemDataFolder:GetChildren()) do
-			local ItemRarity = item["GUI Info"].RarityName.Value
-			local RarityMenu = AffiliatedItemsPreview:FindFirstChild(ItemRarity)
-			local RarityChildCount = 0
-			local PrevTile
-			for i,tile in pairs (RarityMenu:GetChildren()) do
-				if tile:IsA("Frame") then
-					if tile.SlotNumber.Value > RarityChildCount then
-						RarityChildCount = tile.SlotNumber.Value
-						PrevTile = tile
-					end
-				end
-			end
-			local NewTile = TycoonStorageTile:Clone()
-			NewTile.SlotNumber.Value = RarityChildCount + 1
-			NewTile.Name = tostring(item)
-			--NewTile.BorderColor3 = Color3.fromRGB(RarityMenu.TextStrokeColor3)
-			
-			NewTile.Picture.Image = item["GUI Info"].InventoryImage.Value --Put in check for discovered remotefunction for image/lock
-			
-			NewTile.Parent = RarityMenu
-			--print(RarityChildCount, RarityChildCount/AmountPerRow, math.floor(RarityChildCount/AmountPerRow))
-			
-			if RarityChildCount == 0 then
-				NewTile.Position = UDim2.new(0.05, 0, 1, 0)
-				MoveOtherRaritiesDown(RarityMenu)
-				
-			elseif (RarityChildCount)/AmountPerRow ~= math.floor(RarityChildCount/AmountPerRow) then
-				NewTile.Position = UDim2.new(PrevTile.Position.X.Scale + .3, 0, PrevTile.Position.Y.Scale, 0)
-				
-			elseif (RarityChildCount)/AmountPerRow == math.floor(RarityChildCount/AmountPerRow) then
-				--Starting a new row
-				local RowStarterTile
+			local ItemType = string.gsub(item.Bag.Value, "Bag", "") .. "s"
+			if ItemType == button.Name then
+				local ItemRarity = item["GUI Info"].RarityName.Value
+				local RarityMenu = AffiliatedItemsPreview:FindFirstChild(ItemRarity)
+				local RarityChildCount = 0
+				local PrevTile
 				for i,tile in pairs (RarityMenu:GetChildren()) do
 					if tile:IsA("Frame") then
-						if tile.SlotNumber.Value == NewTile.SlotNumber.Value - AmountPerRow then
-							RowStarterTile = tile
+						if tile.SlotNumber.Value > RarityChildCount then
+							RarityChildCount = tile.SlotNumber.Value
+							PrevTile = tile
 						end
 					end
 				end
-				NewTile.Position = UDim2.new(RowStarterTile.Position.X.Scale, 0, RowStarterTile.Position.Y.Scale + 1.67, 0)
-				MoveOtherRaritiesDown(RarityMenu)
-			end
-			
+				local NewTile = TycoonStorageTile:Clone()
+				NewTile.SlotNumber.Value = RarityChildCount + 1
+				NewTile.Name = tostring(item)
+				--NewTile.BorderColor3 = Color3.fromRGB(RarityMenu.TextStrokeColor3)
+				
+				NewTile.Picture.Image = item["GUI Info"].InventoryImage.Value --Put in check for discovered remotefunction for image/lock
+				
+				NewTile.Parent = RarityMenu
+				--print(RarityChildCount, RarityChildCount/AmountPerRow, math.floor(RarityChildCount/AmountPerRow))
+				
+				if RarityChildCount == 0 then
+					NewTile.Position = UDim2.new(0.05, 0, 1, 0)
+					MoveOtherRaritiesDown(RarityMenu)
+					
+				elseif (RarityChildCount)/AmountPerRow ~= math.floor(RarityChildCount/AmountPerRow) then
+					NewTile.Position = UDim2.new(PrevTile.Position.X.Scale + .3, 0, PrevTile.Position.Y.Scale, 0)
+					
+				elseif (RarityChildCount)/AmountPerRow == math.floor(RarityChildCount/AmountPerRow) then
+					--Starting a new row
+					local RowStarterTile
+					for i,tile in pairs (RarityMenu:GetChildren()) do
+						if tile:IsA("Frame") then
+							if tile.SlotNumber.Value == NewTile.SlotNumber.Value - AmountPerRow then
+								RowStarterTile = tile
+							end
+						end
+					end
+					NewTile.Position = UDim2.new(RowStarterTile.Position.X.Scale, 0, RowStarterTile.Position.Y.Scale + 1.67, 0)
+					MoveOtherRaritiesDown(RarityMenu)
+				end
+			end	
 		end
 	end
 end
