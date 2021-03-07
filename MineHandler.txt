@@ -64,7 +64,9 @@ local function NoiseAcceptable(BoundsName, sourceBlockDist, Noise, x, y, z, Ceil
 
 	if not NoiseCheck and not Ceiling then
 		NoiseBool = true
+		--print("IF: ", BoundsName)
 	elseif Ceiling then --ceiling structure (need to check if at top already)
+		--print("ELSEIF: ", BoundsName)
 		if not NoiseCheck or (y-1)<Ceiling then
 			if Min then --multi-block
 				if Mining then
@@ -81,13 +83,13 @@ local function NoiseAcceptable(BoundsName, sourceBlockDist, Noise, x, y, z, Ceil
 	end
 	
 	--Check Structure Positioning
-	if NoiseBool == true then 
+	if NoiseBool then 
 		if not Mining then
 			Bounds = true
-		else
+		else --Possibly mining block near a structure
 			local Y = CalculateInterferingY(BoundsName, y, Mining, sourceBlockDist)
 			local SelectedBlock = UsedPositions[PositionKey(x,Y,z)]
-			if SelectedBlock ~= nil and SelectedBlock ~= false then
+			if SelectedBlock ~= nil and SelectedBlock ~= false then --exists and not air
 				if SelectedBlock:FindFirstChild("SpecialStructure") then
 					Bounds = true
 				end
@@ -98,30 +100,36 @@ local function NoiseAcceptable(BoundsName, sourceBlockDist, Noise, x, y, z, Ceil
 	return Bounds
 end
 
+local calcNoiseCount = 0
 local function CalculateNoise(x,y,z,Mining)
+	calcNoiseCount = calcNoiseCount + 1
 	local Bounds
 	local sourceBlockDist
 	
 	local BelowNoise = math.noise(x/25, (y+1)/15, z/25)
 	local TwoBelowNoise = math.noise(x/25, (y+2)/15, z/25)
-	if NoiseAcceptable("BlockBelow", -1, BelowNoise, x, y, z) then
+	if NoiseAcceptable("BlockBelow", -1, BelowNoise, x, y, z, nil, nil, Mining) then
 		Bounds = "BlockBelow"
 		sourceBlockDist = -1
+		print("TRIAL " .. tostring(calcNoiseCount) .. ": BlockBelow")
 	end
-	if NoiseAcceptable("Block2Below", -2, TwoBelowNoise, x, y, z) then
+	if NoiseAcceptable("Block2Below", -2, TwoBelowNoise, x, y, z, nil, 3, Mining) then
 		Bounds = "Block2Below"
 		sourceBlockDist = -2
+		print("TRIAL " .. tostring(calcNoiseCount) .. ": Block2Below")
 	end
 	
 	local AboveNoise = math.noise(x/25, (y-1)/15, z/25)
 	local TwoAboveNoise = math.noise(x/25, (y-2)/15, z/25)
-	if NoiseAcceptable("BlockAbove", 1, AboveNoise, x, y, z, 3) then
+	if NoiseAcceptable("BlockAbove", 1, AboveNoise, x, y, z, 3, nil, Mining) then
 		Bounds = "BlockAbove"
 		sourceBlockDist = 1
+		print("TRIAL " .. tostring(calcNoiseCount) .. ": BlockAbove")
 	end
 	if NoiseAcceptable("Block2Above", 2, TwoAboveNoise, x, y, z, 4, 3, Mining) then
 		Bounds = "Block2Above"
 		sourceBlockDist = 2
+		print("TRIAL " .. tostring(calcNoiseCount) .. ": Block2Above")
 	end
 
 	return Bounds, sourceBlockDist
@@ -426,11 +434,12 @@ function game.ServerStorage.MineOre.OnInvoke(Player,Ore)
 	end
 	
 	local OreColor = RealOre.OreColor.Value
+	local AssociatedBag = RealOre.Bag.Value
+	local ItemType = string.gsub(AssociatedBag, "Bag", "") .. "s"
 	
-	local TypeAmount = PlayerStatManager:getItemTypeCount(Player, "Ores") + 1 --Number of ores player has
-	local MaxOreAmount = PlayerStatManager:getEquippedData(Player, "OreBags", "Bags").Value --Bag capacity
-	
-	print(MaxOreAmount)
+	print(string.gsub(AssociatedBag, "Bag", "") .. "s")
+	local TypeAmount = PlayerStatManager:getItemTypeCount(Player, ItemType) + 1 --Number of ores player has
+	local MaxOreAmount = PlayerStatManager:getEquippedData(Player, AssociatedBag .. "s", "Bags").Value --Bag capacity
 	
 	if TypeAmount < MaxOreAmount then
 		if Ore:FindFirstChild("Claimed") == nil then
@@ -487,21 +496,19 @@ function game.ServerStorage.MineOre.OnInvoke(Player,Ore)
 				local PlayerDataFile = PlayerData:WaitForChild(tostring(Player.UserId))
 				local PlayerInventory = PlayerDataFile:WaitForChild("Inventory")
 				local PlayerExperience = PlayerDataFile:WaitForChild("Experience")
-				local OresFolder = PlayerInventory:WaitForChild("Ores")
+				
+				local AssociatedFolder = PlayerInventory:WaitForChild(ItemType)
+				local CurrentOre = AssociatedFolder:FindFirstChild(Ore.Name)
 				local SkillsFolder = PlayerExperience:WaitForChild("Skills")
-				
-				local CurrentOre = OresFolder:FindFirstChild(Ore.Name)
-				--CurrentOre.Value = CurrentOre.Value + 1
-				
 				local CurrentSkill = SkillsFolder:FindFirstChild("MiningSkill")
-				--CurrentSkill.Value = CurrentSkill.Value + InitialOreExperience
+				
 				
 				--Change player discovered value if this is first time acquired
 				local DiscoverValue = CurrentOre:FindFirstChild(tostring(Ore) .. "Discovered")
 				if DiscoverValue.Value == false then
 					print("Changing " .. tostring(DiscoverValue) .. " to true")
 					DiscoverValue.Value = true
-					PlayerStatManager:ChangeStat(Player, tostring(Ore) .. "Discovered", true, tostring(OresFolder))
+					PlayerStatManager:ChangeStat(Player, tostring(Ore) .. "Discovered", true, tostring(AssociatedFolder))
 				end
 			else
 				warn("mined or experience cannot be saved")
@@ -517,7 +524,7 @@ function game.ServerStorage.MineOre.OnInvoke(Player,Ore)
 			Ore:Destroy()
 			
 			MakeDustParticles(OrePosition,OreColor)
-			UpdateItemCount:FireClient(Player, TypeAmount, MaxOreAmount, "Ores")
+			UpdateItemCount:FireClient(Player, TypeAmount, MaxOreAmount, ItemType)
 		end
 	else
 		--Notify player that their inventory is full and they should sell/deposit their items 
