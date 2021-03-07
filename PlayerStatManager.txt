@@ -26,7 +26,18 @@ local function UpdateGUIForFile(DataTabName, PlayerDataFile, player, playerUserI
 			local amountAdded = value
 			
 			if tostring(DataTabName) == "Inventory" or tostring(DataTabName) == "Experience" then
-				UpdateInventory:FireClient(player, statName, tostring(file), tostring(total), amountAdded, tostring(DataTab))
+				local LocationOfAcquirement
+				if tostring(DataTabName) == "Inventory" then
+					for i,location in pairs (game.ReplicatedStorage:GetChildren()) do--possibly make a ItemLocations folder
+						if location:FindFirstChild(statName) then
+							LocationOfAcquirement = tostring(location)
+						end
+					end
+				else
+					LocationOfAcquirement = "Skills"
+				end
+				print("ACQUIREMENT: ", LocationOfAcquirement, DataTabName)
+				UpdateInventory:FireClient(player, statName, tostring(file), tostring(total), amountAdded, tostring(DataTab), nil, LocationOfAcquirement)
 				
 			elseif tostring(DataTabName) == "TycoonStorage" then
 				UpdateTycoonStorage:FireClient(player, tostring(file), statName, tostring(total), amountAdded)
@@ -83,8 +94,12 @@ function PlayerStatManager:ChangeStat(player, statName, value, File, Currency, s
 	end
 end
 
-SellItem.OnServerEvent:Connect(function(Player, Item, Amount)
+SellItem.OnServerEvent:Connect(function(Player, Menu, item, Percentage)--, Amount)
+	local playerUserId = game.Players:FindFirstChild(tostring(Player)).UserId
+	
+	local Item = game.ReplicatedStorage:FindFirstChild(tostring(Menu)):FindFirstChild(item)
 	local ItemWorth = tonumber(Item.CurrencyValue.Value)
+	local Amount = math.ceil(Percentage * sessionData[playerUserId]["TycoonStorage" .. tostring(Item)])
 	local SellAmount = Amount*ItemWorth
 	
 	print("Selling " .. tostring(Amount) .. " " .. tostring(Item) .. "'s for $" .. tostring(SellAmount))
@@ -189,10 +204,10 @@ function LoadPlayerData(PlayerDataFile,data,JoinedPlayer)
 	local InventoryGui = DataMenu.InventoryMenu
 	
 	local PlayerInventory = CreateSaveFolder(PlayerDataFile, "Inventory")
-	local OresFolder = CreateSaveFolder(PlayerInventory, "Ores")
+	--local OresFolder = CreateSaveFolder(PlayerInventory, "Ores")
 	
 	local TycoonStorageFolder = CreateSaveFolder(PlayerDataFile, "TycoonStorage")	
-	local TycoonStorageOres = CreateSaveFolder(TycoonStorageFolder, "TycoonStorageOres")	
+	--local TycoonStorageOres = CreateSaveFolder(TycoonStorageFolder, "TycoonStorageOres")	
 
 	
 	local PlayerExperience = CreateSaveFolder(PlayerDataFile, "Experience") --Skills, Stats, Reputation
@@ -213,32 +228,52 @@ function LoadPlayerData(PlayerDataFile,data,JoinedPlayer)
 		--print("Data for " .. tostring(Skill) .. " is " .. tostring(data[tostring(skill)]))
 		
 		--Make skill tiles acquired
-		UpdateInventory:FireClient(JoinedPlayer, tostring(Skill), SkillsFolder.Name, tostring(data[tostring(Skill)]), nil, "Experience")
+		UpdateInventory:FireClient(JoinedPlayer, tostring(Skill), SkillsFolder.Name, tostring(data[tostring(Skill)]), nil, "Experience", nil, "Skills")
 	end
 
-	--All Ore Data
+	--All Ore Data (go through all ores and check bag, if save folder not made yet, make one and put it in the folder, then continue)
 	local RealOres = game.ReplicatedStorage:WaitForChild("Ores")
-	for i,ore in pairs (RealOres:GetChildren()) do
-		-- Reason to make interior of this for i,v a function when more data is added?
-		local Ore = Instance.new("IntValue",OresFolder)
-		Ore.Name = tostring(ore)
-		local OreDiscovery = Instance.new("BoolValue",Ore)
-		OreDiscovery.Name = tostring(Ore) .. "Discovered"
-		local TycoonStorageOre = Instance.new("IntValue",TycoonStorageOres)
-		TycoonStorageOre.Name = "TycoonStorage" .. tostring(ore)
+	for i,item in pairs (RealOres:GetChildren()) do --change to mine materials (no longer sorted by type in RS, rather location purposes
+		local AssociatedBag = item.Bag.Value
+		local ItemType = string.gsub(AssociatedBag, "Bag", "") .. "s"
 		
-		local SavedValue = CheckSaveData(data[tostring(ore)])
-		ImportSaveData(data,SavedValue,OresFolder,Ore)
+		local AssociatedFolder
+		if PlayerInventory:FindFirstChild(ItemType) then --make this a check folder existence function (utility section at end or start of code?)
+			AssociatedFolder = PlayerInventory:FindFirstChild(ItemType)
+		else
+			AssociatedFolder = CreateSaveFolder(PlayerInventory, ItemType)
+		end
+			
+		--local OresFolder = CreateSaveFolder(PlayerInventory, "Ores")
+		local Item = Instance.new("IntValue",AssociatedFolder)
+		Item.Name = tostring(item)
+		local ItemDiscovery = Instance.new("BoolValue",Item)
+		ItemDiscovery.Name = tostring(Item) .. "Discovered"
+		
+		local AssociatedItemStorage
+		if TycoonStorageFolder:FindFirstChild("TycoonStorage" .. ItemType) then --include in check existence function
+			AssociatedItemStorage = TycoonStorageFolder:FindFirstChild("TycoonStorage" .. ItemType)
+		else
+			AssociatedItemStorage = CreateSaveFolder(TycoonStorageFolder, "TycoonStorage" .. ItemType)
+		end
+		
+		local TycoonStorageItem = Instance.new("IntValue", AssociatedItemStorage) 
+		--must create folder for tycoon storage
+		--local TycoonStorageOre = Instance.new("IntValue",TycoonStorageOres)
+		TycoonStorageItem.Name = "TycoonStorage" .. tostring(item)
+		
+		local SavedValue = CheckSaveData(data[tostring(item)])
+		ImportSaveData(data,SavedValue,AssociatedFolder,Item)
 		--print("Data for " .. tostring(Ore) .. " is " .. tostring(data[tostring(Ore)]))
-		UpdateInventory:FireClient(JoinedPlayer, tostring(Ore), OresFolder.Name, tostring(data[tostring(Ore)]), nil,"Inventory")
+		UpdateInventory:FireClient(JoinedPlayer, tostring(Item), AssociatedFolder.Name, tostring(data[tostring(Item)]), nil, "Inventory", nil, tostring(RealOres))
 
-		local SavedDiscoverValue = CheckSaveData(data[tostring(OreDiscovery)])
-		ImportSaveData(data,SavedDiscoverValue,Ore,OreDiscovery)
-		UpdateTycoonStorage:FireClient(JoinedPlayer, OresFolder.Name, tostring(Ore) .. "Discovered", data[tostring(OreDiscovery)])
+		local SavedDiscoverValue = CheckSaveData(data[tostring(ItemDiscovery)])
+		ImportSaveData(data,SavedDiscoverValue,Item,ItemDiscovery)
+		UpdateTycoonStorage:FireClient(JoinedPlayer, AssociatedFolder.Name, tostring(Item) .. "Discovered", data[tostring(ItemDiscovery)], nil, tostring(RealOres))
 		
-		local SavedTycoonStorageValue = CheckSaveData(data[tostring(TycoonStorageOre)])
-		ImportSaveData(data,SavedTycoonStorageValue,TycoonStorageOres,TycoonStorageOre)
-		UpdateTycoonStorage:FireClient(JoinedPlayer, TycoonStorageOres.Name, tostring(TycoonStorageOre), tostring(data[tostring(TycoonStorageOre)]))
+		local SavedTycoonStorageValue = CheckSaveData(data[tostring(TycoonStorageItem)])
+		ImportSaveData(data,SavedTycoonStorageValue,AssociatedItemStorage,TycoonStorageItem)
+		UpdateTycoonStorage:FireClient(JoinedPlayer, AssociatedItemStorage.Name, tostring(TycoonStorageItem), tostring(data[tostring(TycoonStorageItem)]), nil, tostring(RealOres))   
 	end	
 	
 	--All Bag Data
@@ -287,7 +322,6 @@ function LoadPlayerData(PlayerDataFile,data,JoinedPlayer)
 		DataMenu:WaitForChild("InventoryMenu"):FindFirstChild(MenuName):SetAttribute("BagCapacity", BestBagValue)
 
 		local ItemCount = PlayerStatManager:getItemTypeCount(JoinedPlayer, string.gsub(tostring(bagtype), "Bag", ""))
-		print(ItemCount)
 		DataMenu:WaitForChild("InventoryMenu"):FindFirstChild(MenuName):SetAttribute("ItemCount", ItemCount)
 	end
 	
@@ -376,7 +410,6 @@ function PlayerStatManager:getItemTypeCount(player, Type) --For Amount in Invent
 		local Amount = 0
 		for i,statData in pairs (TypeSaveFolder:GetChildren()) do
 			Amount = Amount + statData.Value
-			print("AMOUNT: ",Amount)
 		end
 		return Amount
 	end
