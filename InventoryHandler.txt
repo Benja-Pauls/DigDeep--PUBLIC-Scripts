@@ -52,7 +52,7 @@ MoveAllBaseScreenUI.Event:Connect(function(ChangeTo)
 	if ChangeTo == "Hide" then
 		OpenDataMenuButton:TweenPosition(UDim2.new(-.1, 0, OpenDataMenuButton.Position.Y.Scale, 0), "Out", "Quint", 1)
 	else
-		OpenDataMenuButton:TweenPosition(UDim2.new(0.017, 0, 0.695, 0), "Out", "Quint", 1)
+		OpenDataMenuButton:TweenPosition(UDim2.new(0.01, 0, 0.8, 0), "Out", "Quint", 1)
 	end
 end)
 
@@ -140,12 +140,10 @@ function CleanupMenuTabs(Menu)
 	end
 end
 
-local function GetStatImage(File, Stat)
+local function GetStatImage(StatInfo)
 	local ImageId
-	if Stat.Name then
-		ImageId = game.ReplicatedStorage:FindFirstChild(tostring(File)):FindFirstChild(Stat.Name)["GUI Info"].InventoryImage.Value
-	else
-		ImageId = game.ReplicatedStorage:FindFirstChild(tostring(File)):FindFirstChild(Stat)["GUI Info"].InventoryImage.Value
+	if StatInfo then
+		ImageId = StatInfo["GUI Info"].InventoryImage.Value
 	end
 	return ImageId
 end
@@ -295,13 +293,16 @@ DataMenu.ItemViewer.BackButton.Activated:Connect(function()
 	end
 end)
 
-local function FindStatPage(Stat,Menu,MaxAmount,RaritySort)
+local function FindStatPage(Stat, Menu, MaxAmount, RaritySort, AcquiredLocation)
 	local Pages = Menu:GetChildren()
-	local StorageName = string.gsub(tostring(Menu), "Menu", "")
+	--local RepStorageName = string.gsub(tostring(Menu), "Menu", "") --Remove menu from string
 	
 	local StatRarity
 	if RaritySort then
-		StatRarity = game.ReplicatedStorage:FindFirstChild(StorageName):FindFirstChild(Stat)["GUI Info"].RarityName.Value
+		print("LOCATION: ", AcquiredLocation, Stat)
+		print(game.ReplicatedStorage:FindFirstChild(AcquiredLocation))
+		print(game.ReplicatedStorage:FindFirstChild(AcquiredLocation):FindFirstChild(Stat))
+		StatRarity = game.ReplicatedStorage:FindFirstChild(AcquiredLocation):FindFirstChild(Stat)["GUI Info"].RarityName.Value
 	else
 		StatRarity = "No Rarity"
 	end
@@ -415,20 +416,21 @@ end)
 
 --------------<|Tile Functions|>------------------------------------------------------------------------------------
 
-local function InsertTileInfo(Type, tile, Stat, Value, found, File)
+local function InsertTileInfo(Type, tile, Stat, Value, found, AcquiredLocation)
 	local StatInfo
 	if Type == "Inventory" then
-		StatInfo = game.ReplicatedStorage:FindFirstChild(tostring(File)):FindFirstChild(tostring(Stat))
+		StatInfo = game.ReplicatedStorage:FindFirstChild(tostring(AcquiredLocation)):FindFirstChild(tostring(Stat))
 		tile.StatName.Value = tostring(Stat)
 		tile.Amount.Text = tostring(Value)
-		local ImageId = GetStatImage(File, Stat)
+		local ImageId = GetStatImage(StatInfo)
 		tile.Picture.Image = ImageId
 		if tostring(Stat) == DataMenu.ItemViewer.ItemName.Text then
 			DataMenu.ItemViewer.ItemAmount.Text = "You Have: " .. tostring(Value)
 		end
 		found = true
 	elseif Type == "Experience" then
-		StatInfo = game.ReplicatedStorage:FindFirstChild(tostring(File)):FindFirstChild(tostring(Stat) .. "Skill")
+		print("LOCATION: ", AcquiredLocation)
+		StatInfo = game.ReplicatedStorage:FindFirstChild(tostring(AcquiredLocation)):FindFirstChild(tostring(Stat) .. "Skill")
 		local CurrentLevel = 0
 		--Move into Levels value where the value is how many levels, no for in pairs, just 1,amount,1 loop
 		for i,level in pairs (StatInfo.Levels:GetChildren()) do
@@ -461,7 +463,6 @@ local function InsertTileInfo(Type, tile, Stat, Value, found, File)
 		print("tile was clicked")
 		if ItemViewerOpen == false then
 			ItemViewerOpen = true
-			local Menu = DataMenu:FindFirstChild(Type .. "Menu"):FindFirstChild(tostring(File) .. "Menu")
 			local ItemViewerMenu = DataMenu.ItemViewer
 			if Type == "Inventory" then
 				local RarityName = StatInfo["GUI Info"].RarityName.Value
@@ -507,7 +508,7 @@ local function InsertTileInfo(Type, tile, Stat, Value, found, File)
 	return found
 end
 
-function ManageTiles(Stat, Menu, Value, File, Type)
+function ManageTiles(Stat, Menu, Value, Type, AcquiredLocation)
 	--print(Stat,Menu,Value,File,Type) = Stone,OresMenu,2,Ores,Inventory
 	local Value = tonumber(Value)
 	
@@ -515,17 +516,18 @@ function ManageTiles(Stat, Menu, Value, File, Type)
 	local Page
 	local SlotCount
 	local OriginalMaterialSlot
+	print("LOCATION: ", AcquiredLocation)
 	if Type == "Inventory" then
 		OriginalMaterialSlot = GuiElements:FindFirstChild("InventoryMaterialSlot")
 		--print("Page being associated with item: " .. tostring(Stat) .. " worth " .. tostring(Value))
-		Rarity,Page,SlotCount = FindStatPage(Stat,Menu,15,true)
+		Rarity,Page,SlotCount = FindStatPage(Stat, Menu, 15, true, AcquiredLocation)
 	else
 		OriginalMaterialSlot = GuiElements:FindFirstChild("ExperienceSlot")
-		Rarity,Page,SlotCount = FindStatPage(Stat,Menu,4,false)
+		Rarity,Page,SlotCount = FindStatPage(Stat, Menu, 4, false, AcquiredLocation)
 		--SlotCount = #Menu:GetChildren()
 		--Page = Menu
 	end
-		
+	print("LOCATION: ", AcquiredLocation)
 		
 	if SlotCount > 0 then
 		local found = false
@@ -536,7 +538,7 @@ function ManageTiles(Stat, Menu, Value, File, Type)
 				if tile.StatName.Value == tostring(Stat) and found == false then --Update Tile
 					
 					if Value > 0 then
-						found = InsertTileInfo(Type, tile, Stat, Value, found, File)--Get rid of looking
+						found = InsertTileInfo(Type, tile, Stat, Value, found, AcquiredLocation)
 					else --Deleting existing tile because value = 0 or zeroed from storage transaction 
 						found = true
 						local SlotNumber = i
@@ -592,7 +594,7 @@ function ManageTiles(Stat, Menu, Value, File, Type)
 			
 			local PrevTileY = PreviousTile.Position.Y.Scale
 			
-			found = InsertTileInfo(Type, tile, Stat, Value, found, File)
+			found = InsertTileInfo(Type, tile, Stat, Value, found, AcquiredLocation)
 		end
 	else
 		
@@ -612,7 +614,7 @@ function ManageTiles(Stat, Menu, Value, File, Type)
 			end
 			
 			FirstSlot.StatName.Value = tostring(Stat)
-			InsertTileInfo(Type, FirstSlot, Stat, Value, nil, File)
+			InsertTileInfo(Type, FirstSlot, Stat, Value, nil, AcquiredLocation)
 		end
 	end
 end
@@ -621,7 +623,7 @@ end
 ------------------<|Material PopUp Functions|>-----------------------------------------------------
 
 local MaterialPopUpAmount
-local function InsertNewMaterialPopUp(ItemPopUp, Object, File, AmountAdded, Currency)
+local function InsertNewMaterialPopUp(ItemPopUp, AcquiredLocation, Object, AmountAdded, Currency)
 	--print("New PopUp: " .. tostring(Object))
 	local OriginalPopUpGUI = GuiElements:FindFirstChild("PopUpSlot")
 	
@@ -631,8 +633,8 @@ local function InsertNewMaterialPopUp(ItemPopUp, Object, File, AmountAdded, Curr
 		slot:TweenPosition(UDim2.new(slot.Position.X.Scale, 0, slot.Position.Y.Scale - .105, 0), "Out", "Quint", .8)
 	end
 	
-	--print(File, Object)
-	local RealObject = game.ReplicatedStorage:FindFirstChild(tostring(File)):FindFirstChild(tostring(Object))
+	print("LOCATION: ", AcquiredLocation)
+	local RealObject = game.ReplicatedStorage:FindFirstChild(AcquiredLocation):FindFirstChild(tostring(Object))
 	local Rarity = RealObject["GUI Info"].RarityName.Value
 	local RarityFile = game.ReplicatedStorage.GuiElements.RarityColors:FindFirstChild(Rarity)
 	local NewPopUp = OriginalPopUpGUI:Clone()
@@ -648,7 +650,7 @@ local function InsertNewMaterialPopUp(ItemPopUp, Object, File, AmountAdded, Curr
 		--possibly give money their own popup color or shape?
 	end
 	
-	local ItemImage = GetStatImage(File, Object)
+	local ItemImage = GetStatImage(RealObject)
 	NewPopUp.Picture.Image = ItemImage
 	
 	NewPopUp.BackgroundColor3 = RarityFile.TileColor.Value
@@ -664,7 +666,7 @@ end
 local PrevItem
 local PrevAmount
 local CurrentObject
-local function ManageMaterialPopups(ObjectName, File, AmountAdded, Currency)
+local function ManageMaterialPopups(ObjectName, AcquiredLocation, AmountAdded, Currency)
 	local ItemPopUp = script.Parent.Parent.PopUps:FindFirstChild("ItemPopUp")
 	if AmountAdded ~= nil then
 		if AmountAdded ~= 0 then
@@ -676,13 +678,13 @@ local function ManageMaterialPopups(ObjectName, File, AmountAdded, Currency)
 			end
 			
 			if PrevItem ~= tostring(CurrentObject) then
-				InsertNewMaterialPopUp(ItemPopUp, ObjectName, File, AmountAdded, Currency)
+				InsertNewMaterialPopUp(ItemPopUp, AcquiredLocation, ObjectName, AmountAdded, Currency)
 				PrevItem = tostring(ObjectName)
 				PrevAmount = AmountAdded
 				
 			elseif PrevItem == tostring(CurrentObject) and #ItemPopUp:GetChildren() == 0 then
 				print("Detected that no slot is available, but prev has been mined")
-				InsertNewMaterialPopUp(ItemPopUp, ObjectName, File, AmountAdded, Currency)
+				InsertNewMaterialPopUp(ItemPopUp, AcquiredLocation, ObjectName, AmountAdded, Currency)
 				PrevItem = tostring(ObjectName)
 				PrevAmount = AmountAdded
 				
@@ -892,13 +894,13 @@ end
 
 local function InsertNewBagPopUp(BagPopUp, BagPopUpGui, ItemTypeCount, BagCapacity, BagType, PopUpAlreadyExists)
 	if PopUpAlreadyExists then
-		BagPopUpGui:FindFirstChild("BagPopUp").TimeLeft:Destroy()
-		--local OldBagPopUp = BagPopUpGui:FindFirstChild("BagPopUp")
-		--local NamePlate = OldBagPopUp.NamePlate
-		--NamePlate:TweenPosition(UDim2.new(0.076,0,0,0), "Out", "Quint", .3)
-		--wait(.3)
-		--OldBagPopUp:TweenPosition(UDim2.new(0.126,0,1,0), "Out", "Quint", .5)
-		--wait(.6)
+		local OldBagPopUp = BagPopUpGui:FindFirstChild("BagPopUp")
+		local NamePlate = OldBagPopUp.NamePlate
+		NamePlate:TweenPosition(UDim2.new(0.076,0,0,0), "Out", "Quint", .15)
+		wait(.15)
+		OldBagPopUp:TweenPosition(UDim2.new(0.126,0,1,0), "Out", "Quint", .2)
+		wait(.2)
+		OldBagPopUp:Destroy()
 	end
 	
 	local NewBagPopUp = BagPopUp:Clone()
@@ -919,7 +921,7 @@ end
 -------------------------------------<High-Traffic Functions>---------------------------------------------------------------------------------------
 
 local UpdateInventory = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateInventory")
-UpdateInventory.OnClientEvent:Connect(function(Stat, File, Value, AmountAdded, Type, Currency)
+UpdateInventory.OnClientEvent:Connect(function(Stat, File, Value, AmountAdded, Type, Currency, AcquiredLocation)
 	local TypeSlots = DataMenu:FindFirstChild(tostring(Type) .. "Menu")
 	
 	local Slots
@@ -930,24 +932,22 @@ UpdateInventory.OnClientEvent:Connect(function(Stat, File, Value, AmountAdded, T
 	end
 	
 	if Type == "Inventory" then
-		ManageMaterialPopups(Stat, File, AmountAdded, Currency)
+		ManageMaterialPopups(Stat, AcquiredLocation, AmountAdded, Currency) --remove file once location can be attached to skill
 		
-		--if Currency == nil then	
-			--ManageTiles(Stat, Slots, Value, File, Type)
-		--end
+
 	elseif Type == "Experience" then --Later, possibly have tile/pop-up manager handle types
 		
 		--Experience tiles are also unlocked once you get at least one point of exp
 		--Would be fun to have a "You've unlocked a new skill!" animated gui (or levelling up animation)
-		if string.find(tostring(Stat), "Skill") then --Find Skill in string
-			Stat = string.gsub(tostring(Stat), "Skill", "") --Replace Skill with ""
+		if string.find(tostring(Stat), "Skill") then
+			Stat = string.gsub(tostring(Stat), "Skill", "") --Remove "Skill" from string
 		end
 		ManageEXPPopUp(Stat, Value, AmountAdded)
-		--ManageTiles(Stat, Slots, Value, File, Type)
 	end
 	if Currency == nil then
 		if tonumber(Value) ~= 0 then
-			ManageTiles(Stat, Slots, Value, File, Type)
+			print("LOCATION: ", AcquiredLocation)
+			ManageTiles(Stat, Slots, Value, Type, AcquiredLocation)
 		end
 	end
 end)
@@ -959,16 +959,19 @@ UpdateItemCount.OnClientEvent:Connect(function(ItemTypeCount, BagCapacity, BagTy
 	
 	local BagPopUp = GuiElements:FindFirstChild("BagPopUp")
 	local BagPopUpGui = script.Parent.Parent.PopUps:FindFirstChild("CurrentBagPopUp")
-	
 	if #BagPopUpGui:GetChildren() ~= 0 then --Menu already present
+		print("BAGTYPE: ", BagType, BagPopUpGui.BagPopUp.NamePlate.Text)
 		if BagPopUpGui.BagPopUp.NamePlate.Text == BagType then
+			print("1")
 			local CurrentBagPopUp = BagPopUpGui:FindFirstChild("BagPopUp")
 			CountdownPopUp(BagPopUpGui, CurrentBagPopUp, 11, 0, 0.082, 0, 0.344)
 			CurrentBagPopUp.Amounts.Text = tostring(ItemTypeCount) .. "/" .. tostring(BagCapacity)
 		else
+			print("2")
 			InsertNewBagPopUp(BagPopUp, BagPopUpGui, ItemTypeCount, BagCapacity, BagType, true)
 		end
 	else
+		print("3")
 		InsertNewBagPopUp(BagPopUp, BagPopUpGui, ItemTypeCount, BagCapacity, BagType)
 	end
 	
@@ -979,7 +982,6 @@ UpdateItemCount.OnClientEvent:Connect(function(ItemTypeCount, BagCapacity, BagTy
 	--PlayerMenuHandler will likely handle equipping, arranging of tiles in that inventory screen, adding new tiles
 	--when the player has purchased something, ...
 end)
-
 
 
 
