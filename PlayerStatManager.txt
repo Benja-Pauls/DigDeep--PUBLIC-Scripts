@@ -13,14 +13,76 @@ local UpdateInventory = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateIn
 local UpdateTycoonStorage = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateTycoonStorage")
 local DepositInventory = game.ReplicatedStorage.Events.Utility:WaitForChild("DepositInventory")
 local SellItem = game.ReplicatedStorage.Events.Utility:WaitForChild("SellItem")
+local UpdateItemCount = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateItemCount")
 
 local PlayerSave = DataStoreService:GetDataStore("Tycoon Test190") --Changing this will change the datastore info is taken from
 
 local sessionData = {}
 
+--------------------------<|Utility Functions|>------------------------------------------------------------------------------------------------------------
+local function CheckSaveData(Save)
+	if not Save then
+		return false
+	else
+		return true
+	end
+end
+
+local function ImportSaveData(data,SaveCheck,Folder,Stat)
+	if SaveCheck == false then
+		if typeof(Stat) == "number" then
+			Stat.Value = 0
+		else
+			Stat.Value = false
+		end
+	end
+	for i,v in pairs (Folder:GetChildren()) do
+		if data[tostring(v)] == nil then
+			data[tostring(v)] = Stat.Value --placeholder value to create (even if not interacted with yet)
+		else
+			v.Value = data[tostring(v)]
+		end
+		--print(v,v.Value,data[tostring(v)])
+	end
+end
+
+local function CreateSaveFolder(ParentFolder, FolderName)
+	local NewFolder = Instance.new("Folder",ParentFolder)
+	NewFolder.Name = FolderName
+	return NewFolder
+end
+
+local function FindItemInfo(statName, bagType, locationOnly)
+	for i,location in pairs (game.ReplicatedStorage.ItemLocations:GetChildren()) do
+		if location:FindFirstChild(statName) then
+			if string.gsub(location:FindFirstChild(statName).Bag.Value, "Bag", "") .. "s" == bagType then
+				if locationOnly then
+					return location
+				else
+					return location:FindFirstChild(statName)
+				end
+			end
+		end
+	end	
+end
+
+local function FindAssociatedFolder(MotherFolder, ItemType, ItemName)
+	if MotherFolder:FindFirstChild(ItemType) then --make this a check folder existence function (utility section at end or start of code?)
+		if not MotherFolder:FindFirstChild(ItemType):FindFirstChild(ItemName) then --if item not already inputted from other location
+			return MotherFolder:FindFirstChild(ItemType)
+		end
+	else
+		return CreateSaveFolder(MotherFolder, ItemType)
+	end
+end
+
+-----------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
 local function UpdateGUIForFile(DataTabName, PlayerDataFile, player, playerUserId, statName, value)
 	local DataTab = PlayerDataFile:FindFirstChild(DataTabName) --Example: (UserId).Experience
 	for i,file in pairs (DataTab:GetChildren()) do
+		print(file)
 		if file:FindFirstChild(tostring(statName)) then --DataTab:FindFirstChild(file):FindFirstChild(statName)?
 			local total = sessionData[playerUserId][statName]
 			local amountAdded = value
@@ -28,19 +90,31 @@ local function UpdateGUIForFile(DataTabName, PlayerDataFile, player, playerUserI
 			if tostring(DataTabName) == "Inventory" or tostring(DataTabName) == "Experience" then
 				local LocationOfAcquirement
 				if tostring(DataTabName) == "Inventory" then
-					for i,location in pairs (game.ReplicatedStorage:GetChildren()) do--possibly make a ItemLocations folder
-						if location:FindFirstChild(statName) then
-							LocationOfAcquirement = tostring(location)
-						end
+					LocationOfAcquirement = FindItemInfo(statName, tostring(file), true)
+					
+					--Update Bag
+					local TypeAmount = PlayerStatManager:getItemTypeCount(player, tostring(file))
+					local MaxItemAmount = PlayerStatManager:getEquippedData(player, LocationOfAcquirement:FindFirstChild(statName).Bag.Value .. "s", "Bags").Value --Bag capacity
+					if value ~= 0 then
+						UpdateItemCount:FireClient(player, TypeAmount+1, MaxItemAmount, tostring(file))
+					else
+						UpdateItemCount:FireClient(player, 0, MaxItemAmount, tostring(file), true)
 					end
 				else
 					LocationOfAcquirement = "Skills"
 				end
-				print("ACQUIREMENT: ", LocationOfAcquirement, DataTabName)
-				UpdateInventory:FireClient(player, statName, tostring(file), tostring(total), amountAdded, tostring(DataTab), nil, LocationOfAcquirement)
+				
+				--Finally, update inventory information
+				if LocationOfAcquirement then	
+					UpdateInventory:FireClient(player, statName, tostring(file), tostring(total), amountAdded, tostring(DataTab), nil, tostring(LocationOfAcquirement))
+				else
+					warn("Item (" .. statName .. ") has no location of acquirement")
+				end
 				
 			elseif tostring(DataTabName) == "TycoonStorage" then
-				UpdateTycoonStorage:FireClient(player, tostring(file), statName, tostring(total), amountAdded)
+				local LocationOfAcquirement = FindItemInfo(string.gsub(statName, "TycoonStorage", ""), string.gsub(tostring(file), "TycoonStorage", ""), true)
+				print(tostring(file), statName, tostring(total), amountAdded, LocationOfAcquirement)
+				UpdateTycoonStorage:FireClient(player, tostring(file), statName, tostring(total), amountAdded, LocationOfAcquirement)
 				
 			elseif tostring(DataTabName) == "Currencies" then
 				local RScurrency = game.ReplicatedStorage.Currencies:FindFirstChild(statName)
@@ -87,7 +161,9 @@ function PlayerStatManager:ChangeStat(player, statName, value, File, Currency, s
 		sessionData[playerUserId][statName] = value 
 		if typeof(sessionData[playerUserId][statName]) == "boolean" then
 			if string.find(statName, "Discovered") then
-				UpdateTycoonStorage:FireClient(player, tostring(File), statName, value)
+				--Unlock tile in tycoon storage
+				local LocationOfAcquirement = FindItemInfo(string.gsub(statName, "Discovered", ""), tostring(File), true)
+				UpdateTycoonStorage:FireClient(player, tostring(File), statName, value, nil, LocationOfAcquirement)
 			end
 			--later stat check for data type efficiency
 		end
@@ -95,17 +171,26 @@ function PlayerStatManager:ChangeStat(player, statName, value, File, Currency, s
 end
 
 SellItem.OnServerEvent:Connect(function(Player, Menu, item, Percentage)--, Amount)
-	local playerUserId = game.Players:FindFirstChild(tostring(Player)).UserId
-	
-	local Item = game.ReplicatedStorage:FindFirstChild(tostring(Menu)):FindFirstChild(item)
-	local ItemWorth = tonumber(Item.CurrencyValue.Value)
-	local Amount = math.ceil(Percentage * sessionData[playerUserId]["TycoonStorage" .. tostring(Item)])
-	local SellAmount = Amount*ItemWorth
-	
-	print("Selling " .. tostring(Amount) .. " " .. tostring(Item) .. "'s for $" .. tostring(SellAmount))
-	
-	PlayerStatManager:ChangeStat(Player, "Currency", SellAmount, "Currencies", true) --Update Currency
-	PlayerStatManager:ChangeStat(Player, "TycoonStorage" .. tostring(Item), -Amount, "TycoonStorage")
+	if Percentage >= 0 and Percentage <= 1 then
+		local playerUserId = game.Players:FindFirstChild(tostring(Player)).UserId
+		
+		local Item = FindItemInfo(item, tostring(Menu))
+		
+		if Item then
+			local ItemWorth = tonumber(Item.CurrencyValue.Value)
+			local Amount = math.ceil(Percentage * sessionData[playerUserId]["TycoonStorage" .. tostring(Item)])
+			local SellAmount = Amount*ItemWorth
+			
+			print("Selling " .. tostring(Amount) .. " " .. tostring(Item) .. "'s for $" .. tostring(SellAmount))
+			
+			PlayerStatManager:ChangeStat(Player, "Currency", SellAmount, "Currencies", true) --Update Currency
+			PlayerStatManager:ChangeStat(Player, "TycoonStorage" .. tostring(Item), -Amount, "TycoonStorage")
+		else
+			warn("Item could not be found to sell!")
+		end
+	--else
+		--exploiter warning
+	end
 end)
 
 DepositInventory.OnServerEvent:Connect(function(Player)
@@ -113,7 +198,6 @@ DepositInventory.OnServerEvent:Connect(function(Player)
 	for i,folder in pairs (PlayerDataFile.Inventory:GetChildren()) do
 		for i,item in pairs (folder:GetChildren()) do
 			local InventoryValue = item.Value --the value of the item is one more than the actual value
-			--print(item, InventoryValue)
 			if InventoryValue > 0 then
 				--Update Inventory
 				PlayerStatManager:ChangeStat(Player, tostring(item), 0, "Inventory", nil, "Zero")
@@ -164,39 +248,6 @@ local function FindPlayerData(JoinedPlayer)
 	end		
 end
 
---local IsThereNewData = false
-local function CheckSaveData(Save)
-	if not Save then
-		return false
-	else
-		return true
-	end
-end
-
-local function ImportSaveData(data,SaveCheck,Folder,Stat)
-	if SaveCheck == false then
-		if typeof(Stat) == "number" then
-			Stat.Value = 0
-		else
-			Stat.Value = false
-		end
-	end
-	for i,v in pairs (Folder:GetChildren()) do
-		if data[tostring(v)] == nil then
-			data[tostring(v)] = Stat.Value --placeholder value to create (even if not interacted with yet)
-		else
-			v.Value = data[tostring(v)]
-		end
-		--print(v,v.Value,data[tostring(v)])
-	end
-end
-
-local function CreateSaveFolder(ParentFolder, FolderName)
-	local NewFolder = Instance.new("Folder",ParentFolder)
-	NewFolder.Name = FolderName
-	return NewFolder
-end
-
 function LoadPlayerData(PlayerDataFile,data,JoinedPlayer)
 	print("Loading player data")
 	local playerUserId = game.Players:FindFirstChild(tostring(JoinedPlayer)).UserId
@@ -231,51 +282,40 @@ function LoadPlayerData(PlayerDataFile,data,JoinedPlayer)
 		UpdateInventory:FireClient(JoinedPlayer, tostring(Skill), SkillsFolder.Name, tostring(data[tostring(Skill)]), nil, "Experience", nil, "Skills")
 	end
 
-	--All Ore Data (go through all ores and check bag, if save folder not made yet, make one and put it in the folder, then continue)
-	local RealOres = game.ReplicatedStorage:WaitForChild("Ores")
-	for i,item in pairs (RealOres:GetChildren()) do --change to mine materials (no longer sorted by type in RS, rather location purposes
-		local AssociatedBag = item.Bag.Value
-		local ItemType = string.gsub(AssociatedBag, "Bag", "") .. "s"
-		
-		local AssociatedFolder
-		if PlayerInventory:FindFirstChild(ItemType) then --make this a check folder existence function (utility section at end or start of code?)
-			AssociatedFolder = PlayerInventory:FindFirstChild(ItemType)
-		else
-			AssociatedFolder = CreateSaveFolder(PlayerInventory, ItemType)
-		end
+	--All Locations' Item Data
+	for i,location in pairs (game.ReplicatedStorage.ItemLocations:GetChildren()) do
+		for i,item in pairs (location:GetChildren()) do --change to mine materials (no longer sorted by type in RS, rather location purposes
+			local AssociatedBag = item.Bag.Value
+			local ItemType = string.gsub(AssociatedBag, "Bag", "") .. "s"
 			
-		--local OresFolder = CreateSaveFolder(PlayerInventory, "Ores")
-		local Item = Instance.new("IntValue",AssociatedFolder)
-		Item.Name = tostring(item)
-		local ItemDiscovery = Instance.new("BoolValue",Item)
-		ItemDiscovery.Name = tostring(Item) .. "Discovered"
-		
-		local AssociatedItemStorage
-		if TycoonStorageFolder:FindFirstChild("TycoonStorage" .. ItemType) then --include in check existence function
-			AssociatedItemStorage = TycoonStorageFolder:FindFirstChild("TycoonStorage" .. ItemType)
-		else
-			AssociatedItemStorage = CreateSaveFolder(TycoonStorageFolder, "TycoonStorage" .. ItemType)
-		end
-		
-		local TycoonStorageItem = Instance.new("IntValue", AssociatedItemStorage) 
-		--must create folder for tycoon storage
-		--local TycoonStorageOre = Instance.new("IntValue",TycoonStorageOres)
-		TycoonStorageItem.Name = "TycoonStorage" .. tostring(item)
-		
-		local SavedValue = CheckSaveData(data[tostring(item)])
-		ImportSaveData(data,SavedValue,AssociatedFolder,Item)
-		--print("Data for " .. tostring(Ore) .. " is " .. tostring(data[tostring(Ore)]))
-		UpdateInventory:FireClient(JoinedPlayer, tostring(Item), AssociatedFolder.Name, tostring(data[tostring(Item)]), nil, "Inventory", nil, tostring(RealOres))
+			--Go through all items and check bag, if save folder not made yet, make one and put it in the folder, then continue
+			local AssociatedFolder = FindAssociatedFolder(PlayerInventory, ItemType, tostring(item))
+				
+			local Item = Instance.new("IntValue",AssociatedFolder)
+			Item.Name = tostring(item)
+			local ItemDiscovery = Instance.new("BoolValue",Item)
+			ItemDiscovery.Name = tostring(Item) .. "Discovered"
+			
+			local AssociatedItemStorage = FindAssociatedFolder(TycoonStorageFolder, "TycoonStorage" .. ItemType, "TycoonStorage" .. tostring(item))
+			local TycoonStorageItem = Instance.new("IntValue", AssociatedItemStorage) 
+			TycoonStorageItem.Name = "TycoonStorage" .. tostring(item)
+			
+			local SavedValue = CheckSaveData(data[tostring(item)])
+			ImportSaveData(data,SavedValue,AssociatedFolder,Item)
+			--print("Data for " .. tostring(Ore) .. " is " .. tostring(data[tostring(Ore)]))
+			UpdateInventory:FireClient(JoinedPlayer, tostring(Item), AssociatedFolder.Name, tostring(data[tostring(Item)]), nil, "Inventory", nil, tostring(location))
 
-		local SavedDiscoverValue = CheckSaveData(data[tostring(ItemDiscovery)])
-		ImportSaveData(data,SavedDiscoverValue,Item,ItemDiscovery)
-		UpdateTycoonStorage:FireClient(JoinedPlayer, AssociatedFolder.Name, tostring(Item) .. "Discovered", data[tostring(ItemDiscovery)], nil, tostring(RealOres))
-		
-		local SavedTycoonStorageValue = CheckSaveData(data[tostring(TycoonStorageItem)])
-		ImportSaveData(data,SavedTycoonStorageValue,AssociatedItemStorage,TycoonStorageItem)
-		UpdateTycoonStorage:FireClient(JoinedPlayer, AssociatedItemStorage.Name, tostring(TycoonStorageItem), tostring(data[tostring(TycoonStorageItem)]), nil, tostring(RealOres))   
-	end	
+			local SavedDiscoverValue = CheckSaveData(data[tostring(ItemDiscovery)])
+			ImportSaveData(data,SavedDiscoverValue,Item,ItemDiscovery)
+			UpdateTycoonStorage:FireClient(JoinedPlayer, AssociatedFolder.Name, tostring(Item) .. "Discovered", data[tostring(ItemDiscovery)], nil, tostring(location))
+			
+			local SavedTycoonStorageValue = CheckSaveData(data[tostring(TycoonStorageItem)])
+			ImportSaveData(data,SavedTycoonStorageValue,AssociatedItemStorage,TycoonStorageItem)
+			UpdateTycoonStorage:FireClient(JoinedPlayer, AssociatedItemStorage.Name, tostring(TycoonStorageItem), tostring(data[tostring(TycoonStorageItem)]), nil, tostring(location))   
+		end	
+	end
 	
+	--Could possibly make a function for all equippables
 	--All Bag Data
 	local RealBags = game.ReplicatedStorage.Equippable:WaitForChild("Bags")
 	for i,bagtype in pairs (RealBags:GetChildren()) do --Way to make this more efficient?
@@ -402,7 +442,7 @@ function PlayerStatManager:getStat(player, statName) --Stat Check
 	return sessionData[playerUserId][statName]
 end 
 
-function PlayerStatManager:getItemTypeCount(player, Type) --For Amount in Inventory Bag Checking
+function PlayerStatManager:getItemTypeCount(player, Type) --For Amount in Bag Checking
 	local playerUserId = game.Players:FindFirstChild(tostring(player)).UserId
 	local TypeSaveFolder = game.ServerStorage.PlayerData:FindFirstChild(tostring(playerUserId)).Inventory:FindFirstChild(Type)
 	
@@ -421,8 +461,12 @@ function PlayerStatManager:getEquippedData(player, Equippable, Type)
 	
 	if EquippedItem then
 		local EquipmentName = EquippedItem.Value
+		print(player, Equippable, Type, EquipmentName)
+		print(game.ReplicatedStorage.Equippable:FindFirstChild(Type))
+		print(game.ReplicatedStorage.Equippable:FindFirstChild(Type):FindFirstChild(Equippable))
+		print(game.ReplicatedStorage.Equippable:FindFirstChild(Type):FindFirstChild(Equippable):FindFirstChild(EquipmentName))
 		local EquipmentStats = game.ReplicatedStorage.Equippable:FindFirstChild(Type):FindFirstChild(Equippable):FindFirstChild(EquipmentName)
-		
+		print("1")
 		return EquipmentStats
 	end
 end
