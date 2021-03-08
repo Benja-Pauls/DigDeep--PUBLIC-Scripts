@@ -20,7 +20,6 @@ local Equipped = false
 local Active = false
 
 local function SelectOre(Ore)
-	print("Select ore has been called for " .. tostring(Ore))
 	if Ore:IsDescendantOf(workspace.Mine) then--and (Ore.Position - script.Parent.Parent.UpperTorso.Position).Magnitude <= 7 then
 		if (Ore.Position - HRP.Position).magnitude <= PickaxeStats.Reach * 6.3 then
 			
@@ -39,7 +38,7 @@ local function SelectOre(Ore)
 			end
 			
 			--Ore color doesn't match no region color
-			if Ore.Color ~= game.ReplicatedStorage.Ores.Stone.Color then
+			if Ore.Color ~= game.ReplicatedStorage.ItemLocations.Mineshaft.Stone.Color then
 				
 				local GUIColor
 				local RegionName
