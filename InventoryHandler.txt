@@ -299,11 +299,8 @@ local function FindStatPage(Stat, Menu, MaxAmount, RaritySort, AcquiredLocation)
 	
 	local StatRarity
 	if RaritySort then
-		print("LOCATION: ", AcquiredLocation, Stat)
-		print(game.ReplicatedStorage:FindFirstChild(AcquiredLocation))
-		print(game.ReplicatedStorage:FindFirstChild(AcquiredLocation):FindFirstChild(Stat))
-		StatRarity = game.ReplicatedStorage:FindFirstChild(AcquiredLocation):FindFirstChild(Stat)["GUI Info"].RarityName.Value
-	else
+		StatRarity = game.ReplicatedStorage.ItemLocations:FindFirstChild(AcquiredLocation):FindFirstChild(Stat)["GUI Info"].RarityName.Value
+	else --skills, no need for location acquirement
 		StatRarity = "No Rarity"
 	end
 	
@@ -419,7 +416,7 @@ end)
 local function InsertTileInfo(Type, tile, Stat, Value, found, AcquiredLocation)
 	local StatInfo
 	if Type == "Inventory" then
-		StatInfo = game.ReplicatedStorage:FindFirstChild(tostring(AcquiredLocation)):FindFirstChild(tostring(Stat))
+		StatInfo = game.ReplicatedStorage.ItemLocations:FindFirstChild(tostring(AcquiredLocation)):FindFirstChild(tostring(Stat))
 		tile.StatName.Value = tostring(Stat)
 		tile.Amount.Text = tostring(Value)
 		local ImageId = GetStatImage(StatInfo)
@@ -429,7 +426,6 @@ local function InsertTileInfo(Type, tile, Stat, Value, found, AcquiredLocation)
 		end
 		found = true
 	elseif Type == "Experience" then
-		print("LOCATION: ", AcquiredLocation)
 		StatInfo = game.ReplicatedStorage:FindFirstChild(tostring(AcquiredLocation)):FindFirstChild(tostring(Stat) .. "Skill")
 		local CurrentLevel = 0
 		--Move into Levels value where the value is how many levels, no for in pairs, just 1,amount,1 loop
@@ -511,23 +507,20 @@ end
 function ManageTiles(Stat, Menu, Value, Type, AcquiredLocation)
 	--print(Stat,Menu,Value,File,Type) = Stone,OresMenu,2,Ores,Inventory
 	local Value = tonumber(Value)
-	
 	local Rarity
 	local Page
 	local SlotCount
 	local OriginalMaterialSlot
-	print("LOCATION: ", AcquiredLocation)
 	if Type == "Inventory" then
 		OriginalMaterialSlot = GuiElements:FindFirstChild("InventoryMaterialSlot")
 		--print("Page being associated with item: " .. tostring(Stat) .. " worth " .. tostring(Value))
 		Rarity,Page,SlotCount = FindStatPage(Stat, Menu, 15, true, AcquiredLocation)
 	else
 		OriginalMaterialSlot = GuiElements:FindFirstChild("ExperienceSlot")
-		Rarity,Page,SlotCount = FindStatPage(Stat, Menu, 4, false, AcquiredLocation)
+		Rarity,Page,SlotCount = FindStatPage(Stat, Menu, 4, false, AcquiredLocation) --no rarity sort
 		--SlotCount = #Menu:GetChildren()
 		--Page = Menu
 	end
-	print("LOCATION: ", AcquiredLocation)
 		
 	if SlotCount > 0 then
 		local found = false
@@ -633,8 +626,7 @@ local function InsertNewMaterialPopUp(ItemPopUp, AcquiredLocation, Object, Amoun
 		slot:TweenPosition(UDim2.new(slot.Position.X.Scale, 0, slot.Position.Y.Scale - .105, 0), "Out", "Quint", .8)
 	end
 	
-	print("LOCATION: ", AcquiredLocation)
-	local RealObject = game.ReplicatedStorage:FindFirstChild(AcquiredLocation):FindFirstChild(tostring(Object))
+	local RealObject = game.ReplicatedStorage.ItemLocations:FindFirstChild(AcquiredLocation):FindFirstChild(tostring(Object))
 	local Rarity = RealObject["GUI Info"].RarityName.Value
 	local RarityFile = game.ReplicatedStorage.GuiElements.RarityColors:FindFirstChild(Rarity)
 	local NewPopUp = OriginalPopUpGUI:Clone()
@@ -676,7 +668,6 @@ local function ManageMaterialPopups(ObjectName, AcquiredLocation, AmountAdded, C
 			else
 				CurrentObject = ObjectName
 			end
-			
 			if PrevItem ~= tostring(CurrentObject) then
 				InsertNewMaterialPopUp(ItemPopUp, AcquiredLocation, ObjectName, AmountAdded, Currency)
 				PrevItem = tostring(ObjectName)
@@ -946,33 +937,30 @@ UpdateInventory.OnClientEvent:Connect(function(Stat, File, Value, AmountAdded, T
 	end
 	if Currency == nil then
 		if tonumber(Value) ~= 0 then
-			print("LOCATION: ", AcquiredLocation)
 			ManageTiles(Stat, Slots, Value, Type, AcquiredLocation)
 		end
 	end
 end)
 
 local UpdateItemCount = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateItemCount")
-UpdateItemCount.OnClientEvent:Connect(function(ItemTypeCount, BagCapacity, BagType)
+UpdateItemCount.OnClientEvent:Connect(function(ItemTypeCount, BagCapacity, BagType, DeposittedInventory)
 	
-	print(ItemTypeCount, BagCapacity)
+	--print(tostring(BagType) .. ": " .. tostring(ItemTypeCount) .. "/" .. tostring(BagCapacity))
 	
-	local BagPopUp = GuiElements:FindFirstChild("BagPopUp")
-	local BagPopUpGui = script.Parent.Parent.PopUps:FindFirstChild("CurrentBagPopUp")
-	if #BagPopUpGui:GetChildren() ~= 0 then --Menu already present
-		print("BAGTYPE: ", BagType, BagPopUpGui.BagPopUp.NamePlate.Text)
-		if BagPopUpGui.BagPopUp.NamePlate.Text == BagType then
-			print("1")
-			local CurrentBagPopUp = BagPopUpGui:FindFirstChild("BagPopUp")
-			CountdownPopUp(BagPopUpGui, CurrentBagPopUp, 11, 0, 0.082, 0, 0.344)
-			CurrentBagPopUp.Amounts.Text = tostring(ItemTypeCount) .. "/" .. tostring(BagCapacity)
+	if not DeposittedInventory then
+		local BagPopUp = GuiElements:FindFirstChild("BagPopUp")
+		local BagPopUpGui = script.Parent.Parent.PopUps:FindFirstChild("CurrentBagPopUp")
+		if #BagPopUpGui:GetChildren() ~= 0 then --Menu already present
+			if BagPopUpGui.BagPopUp.NamePlate.Text == BagType then
+				local CurrentBagPopUp = BagPopUpGui:FindFirstChild("BagPopUp")
+				CountdownPopUp(BagPopUpGui, CurrentBagPopUp, 11, 0, 0.082, 0, 0.344)
+				CurrentBagPopUp.Amounts.Text = tostring(ItemTypeCount) .. "/" .. tostring(BagCapacity)
+			else
+				InsertNewBagPopUp(BagPopUp, BagPopUpGui, ItemTypeCount, BagCapacity, BagType, true)
+			end
 		else
-			print("2")
-			InsertNewBagPopUp(BagPopUp, BagPopUpGui, ItemTypeCount, BagCapacity, BagType, true)
+			InsertNewBagPopUp(BagPopUp, BagPopUpGui, ItemTypeCount, BagCapacity, BagType)
 		end
-	else
-		print("3")
-		InsertNewBagPopUp(BagPopUp, BagPopUpGui, ItemTypeCount, BagCapacity, BagType)
 	end
 	
 	local Menu = DataMenu.InventoryMenu:FindFirstChild(BagType .. "Menu")
@@ -982,6 +970,7 @@ UpdateItemCount.OnClientEvent:Connect(function(ItemTypeCount, BagCapacity, BagTy
 	--PlayerMenuHandler will likely handle equipping, arranging of tiles in that inventory screen, adding new tiles
 	--when the player has purchased something, ...
 end)
+
 
 
 
