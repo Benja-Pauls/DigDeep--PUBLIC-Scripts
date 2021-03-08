@@ -3,7 +3,7 @@ Handles mining, mine generation, and ore generation after ore is mined (generate
 
 ------------------------------------------------------------------------------------------------------------------------------------------------
 local PlayerStatManager = require(game.ServerScriptService:WaitForChild("PlayerStatManager"))
-local OriginalOres = game.ReplicatedStorage.Ores:GetChildren()
+local OriginalOres = game.ReplicatedStorage.ItemLocations.Mineshaft:GetChildren()
 local OriginalRegions = game.ReplicatedStorage.MineRegions:GetChildren()
 local PlayerData = game:GetService("ServerStorage"):WaitForChild("PlayerData")
 local TeleportButton = game:GetService("ReplicatedStorage").Events.GUI:WaitForChild("TeleportButton")
@@ -111,12 +111,12 @@ local function CalculateNoise(x,y,z,Mining)
 	if NoiseAcceptable("BlockBelow", -1, BelowNoise, x, y, z, nil, nil, Mining) then
 		Bounds = "BlockBelow"
 		sourceBlockDist = -1
-		print("TRIAL " .. tostring(calcNoiseCount) .. ": BlockBelow")
+		--print("TRIAL " .. tostring(calcNoiseCount) .. ": BlockBelow")
 	end
 	if NoiseAcceptable("Block2Below", -2, TwoBelowNoise, x, y, z, nil, 3, Mining) then
 		Bounds = "Block2Below"
 		sourceBlockDist = -2
-		print("TRIAL " .. tostring(calcNoiseCount) .. ": Block2Below")
+		--print("TRIAL " .. tostring(calcNoiseCount) .. ": Block2Below")
 	end
 	
 	local AboveNoise = math.noise(x/25, (y-1)/15, z/25)
@@ -124,12 +124,12 @@ local function CalculateNoise(x,y,z,Mining)
 	if NoiseAcceptable("BlockAbove", 1, AboveNoise, x, y, z, 3, nil, Mining) then
 		Bounds = "BlockAbove"
 		sourceBlockDist = 1
-		print("TRIAL " .. tostring(calcNoiseCount) .. ": BlockAbove")
+		--print("TRIAL " .. tostring(calcNoiseCount) .. ": BlockAbove")
 	end
 	if NoiseAcceptable("Block2Above", 2, TwoAboveNoise, x, y, z, 4, 3, Mining) then
 		Bounds = "Block2Above"
 		sourceBlockDist = 2
-		print("TRIAL " .. tostring(calcNoiseCount) .. ": Block2Above")
+		--print("TRIAL " .. tostring(calcNoiseCount) .. ": Block2Above")
 	end
 
 	return Bounds, sourceBlockDist
@@ -201,7 +201,7 @@ local function SpawnStructures(x,y,z,Bounds,Region,sourceBlockDist)
 	local Lottery = {}
 	
 	--Randomly select region structures with bounds met, then put into roulette for spawning
-	for Index,Selection in pairs (game.ReplicatedStorage.Ores:GetChildren()) do
+	for Index,Selection in pairs (game.ReplicatedStorage.ItemLocations.Mineshaft:GetChildren()) do
 		if Selection:FindFirstChild("SpecialStructure") and Selection:FindFirstChild("RegionSpecial").Value == tostring(Region) then
 			if Selection.SpecialStructure.Value == tostring(Bounds) then
 				local Chance = CalculateChance(y,Selection)
@@ -255,7 +255,7 @@ local function SpawnStructures(x,y,z,Bounds,Region,sourceBlockDist)
 				if Y then
 					if UsedPositions[PositionKey(x,Y,z)] ~= nil and UsedPositions[PositionKey(x,Y,z)] ~= false then
 						local connectedBlock = UsedPositions[PositionKey(x,Y,z)]
-						local connectedBlockInfo = game.ReplicatedStorage.Ores:FindFirstChild(tostring(connectedBlock))
+						local connectedBlockInfo = game.ReplicatedStorage.ItemLocations.Mineshaft:FindFirstChild(tostring(connectedBlock))
 						if connectedBlockInfo:FindFirstChild("SpecialStructure") then 
 							print("DESTROYING STRUCTURE")
 							Structure:Destroy()
@@ -425,20 +425,19 @@ end
 local UpdateItemCount = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateItemCount")
 
 function game.ServerStorage.MineOre.OnInvoke(Player,Ore)
-	local RealOre
+	local RealMineshaftItem
 	if Ore.Name == "Target" then
-		RealOre = game.ReplicatedStorage.Ores:FindFirstChild(Ore.Parent.Name)
+		RealMineshaftItem = game.ReplicatedStorage.ItemLocations.Mineshaft:FindFirstChild(Ore.Parent.Name)
 		Ore = Ore.Parent
 	else
-		RealOre = game.ReplicatedStorage.Ores:FindFirstChild(Ore.Name)
+		RealMineshaftItem = game.ReplicatedStorage.ItemLocations.Mineshaft:FindFirstChild(Ore.Name)
 	end
 	
-	local OreColor = RealOre.OreColor.Value
-	local AssociatedBag = RealOre.Bag.Value
+	local OreColor = RealMineshaftItem.OreColor.Value
+	local AssociatedBag = RealMineshaftItem.Bag.Value
 	local ItemType = string.gsub(AssociatedBag, "Bag", "") .. "s"
 	
-	print(string.gsub(AssociatedBag, "Bag", "") .. "s")
-	local TypeAmount = PlayerStatManager:getItemTypeCount(Player, ItemType) + 1 --Number of ores player has
+	local TypeAmount = PlayerStatManager:getItemTypeCount(Player, ItemType)
 	local MaxOreAmount = PlayerStatManager:getEquippedData(Player, AssociatedBag .. "s", "Bags").Value --Bag capacity
 	
 	if TypeAmount < MaxOreAmount then
@@ -475,7 +474,7 @@ function game.ServerStorage.MineOre.OnInvoke(Player,Ore)
 						else
 							OrePosition = ConnectedOre.Position
 						end
-						local replicatedConnectedOre = game.ReplicatedStorage.Ores:FindFirstChild(tostring(ConnectedOre))
+						local replicatedConnectedOre = game.ReplicatedStorage.ItemLocations.Mineshaft:FindFirstChild(tostring(ConnectedOre))
 						local ConnectedOreColor = replicatedConnectedOre.OreColor.Value
 						MakeDustParticles(OrePosition,ConnectedOreColor)
 						ConnectedOre:Destroy()
@@ -490,7 +489,7 @@ function game.ServerStorage.MineOre.OnInvoke(Player,Ore)
 			if typeof(mined) == "number" and typeof(experience) == "number" then
 				PlayerStatManager:ChangeStat(Player, Ore.Name, 1, "Inventory", true)
 				
-				local InitialOreExperience = RealOre.Experience.Value
+				local InitialOreExperience = RealMineshaftItem.Experience.Value
 				PlayerStatManager:ChangeStat(Player, "MiningSkill", InitialOreExperience, "Experience", true)
 				
 				local PlayerDataFile = PlayerData:WaitForChild(tostring(Player.UserId))
@@ -524,7 +523,7 @@ function game.ServerStorage.MineOre.OnInvoke(Player,Ore)
 			Ore:Destroy()
 			
 			MakeDustParticles(OrePosition,OreColor)
-			UpdateItemCount:FireClient(Player, TypeAmount, MaxOreAmount, ItemType)
+			--UpdateItemCount:FireClient(Player, TypeAmount+1, MaxOreAmount, ItemType)
 		end
 	else
 		--Notify player that their inventory is full and they should sell/deposit their items 
@@ -548,7 +547,7 @@ function MakeDustParticles(OrePosition, OreColor)
 end
 
 local function GenerateMine()
-	print("Generating Mine")
+	print("GENERATING MINESHAFT")
 	
 	workspace.Regen.Transparency = 0
 	workspace.Regen.CanCollide = true
@@ -593,5 +592,6 @@ local function GenerateMine()
 end
 
 GenerateMine()
+
 
 
