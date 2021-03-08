@@ -5,7 +5,7 @@ local MiningGui = script.Parent
 local OreLabel = MiningGui:WaitForChild("OreLabel")
 local ProgressBar = script.Parent:WaitForChild("ProgressBarBillboardGui")
 local ExclaimRegion = game.ReplicatedStorage.Events.GUI.ExclaimRegion
-local Ores = game.ReplicatedStorage.Ores
+local MineshaftItems = game.ReplicatedStorage.ItemLocations.Mineshaft
 
 repeat wait() until workspace.CurrentCamera.SelectedItem ~= nil
 
@@ -45,9 +45,9 @@ local function SelectedItem()
 		
 		local RealOre
 		if Target.Name == "Target" then
-			RealOre = Ores:FindFirstChild(Target.Parent.Name)
+			RealOre = MineshaftItems:FindFirstChild(Target.Parent.Name)
 		else
-			RealOre = Ores:FindFirstChild(Target.Name)
+			RealOre = MineshaftItems:FindFirstChild(Target.Name)
 		end
 		
 		if RealOre then
@@ -131,6 +131,10 @@ end)
 
 SelectedItem()
 workspace.CurrentCamera.SelectedItem.Changed:connect(SelectedItem)
+
+
+
+
 
 
 
