@@ -490,7 +490,8 @@ function game.ServerStorage.MineOre.OnInvoke(Player,Ore)
 				PlayerStatManager:ChangeStat(Player, Ore.Name, 1, "Inventory", true)
 				
 				local InitialOreExperience = RealMineshaftItem.Experience.Value
-				PlayerStatManager:ChangeStat(Player, "MiningSkill", InitialOreExperience, "Experience", true)
+				local AssociatedSkill = RealMineshaftItem.AssociatedSkill.Value
+				PlayerStatManager:ChangeStat(Player, AssociatedSkill, InitialOreExperience, "Experience", true)
 				
 				local PlayerDataFile = PlayerData:WaitForChild(tostring(Player.UserId))
 				local PlayerInventory = PlayerDataFile:WaitForChild("Inventory")
@@ -592,6 +593,5 @@ local function GenerateMine()
 end
 
 GenerateMine()
-
 
 
