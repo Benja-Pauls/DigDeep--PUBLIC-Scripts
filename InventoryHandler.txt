@@ -416,6 +416,7 @@ end)
 local function InsertTileInfo(Type, tile, Stat, Value, found, AcquiredLocation)
 	local StatInfo
 	if Type == "Inventory" then
+		print("Insert tile info INVENTORY called for " .. tostring(Stat))
 		StatInfo = game.ReplicatedStorage.ItemLocations:FindFirstChild(tostring(AcquiredLocation)):FindFirstChild(tostring(Stat))
 		tile.StatName.Value = tostring(Stat)
 		tile.Amount.Text = tostring(Value)
@@ -426,7 +427,11 @@ local function InsertTileInfo(Type, tile, Stat, Value, found, AcquiredLocation)
 		end
 		found = true
 	elseif Type == "Experience" then
+		print("Insert tile info EXPERIENCE called for " .. tostring(Stat))
 		StatInfo = game.ReplicatedStorage:FindFirstChild(tostring(AcquiredLocation)):FindFirstChild(tostring(Stat) .. "Skill")
+		tile.StatName.Value = tostring(Stat)
+		tile.DisplayName.Text = tostring(Stat)
+		
 		local CurrentLevel = 0
 		--Move into Levels value where the value is how many levels, no for in pairs, just 1,amount,1 loop
 		for i,level in pairs (StatInfo.Levels:GetChildren()) do
@@ -796,10 +801,13 @@ function EXPPopUp(ExpBar, Value, Pace)
 	NewExpPopUp:Destroy()
 end
 
-local function ShowEXPChange(CurrentLevel, NextLevel, StatInfo, Value, AmountAdded)
+local function ShowEXPChange(ExperienceBar, CurrentLevel, NextLevel, StatInfo, Value, AmountAdded)
 	local ExperienceBarGui = script.Parent.Parent.PopUps:FindFirstChild("EXPBarPopUp")
 	local ProgressBar = ExperienceBarGui.ExperienceBar.ProgressBar
 	local CurrentLevelEXP = StatInfo.Levels:FindFirstChild(tostring(CurrentLevel))
+	
+	ExperienceBar.CurrentLevel.Text = tostring(CurrentLevel)
+	ExperienceBar.NextLevel.Text = tostring(NextLevel)
 	
 	--Difference bar check
 	if ProgressBar:FindFirstChild("EXPDifference") then
@@ -831,20 +839,25 @@ local function ShowEXPChange(CurrentLevel, NextLevel, StatInfo, Value, AmountAdd
 	end
 end
 
-local function InsertNewEXPBar(ExperienceBarGui, ExperienceBar, Stat, Value, CurrentLevel, NextLevel, NewBar)
+local function InsertNewEXPBar(ExperienceBarGui, ExperienceBar, Stat, Value, CurrentLevel, NextLevel, PopUpAlreadyExists)
 	
-	if NewBar ~= true then
-		ExperienceBarGui.ExperienceBar.TimeLeft:Destroy() --CountdownPopUp() will recognize and delete other experience bar
-		wait(.6)
+	if PopUpAlreadyExists then
+		local OldExpPopUp = ExperienceBarGui.ExperienceBar
+		local NamePlate = OldExpPopUp.NamePlate
+		NamePlate:TweenPosition(UDim2.new(-12,0,0,0), "Out", "Quint", .15)
+		wait(.15)
+		OldExpPopUp:TweenPosition(UDim2.new(0.98, 0, 1.055, 0), "Out", "Quint", .2)
+		wait(.2)
+		OldExpPopUp:Destroy()
 	end
 	
 	local NewExperienceBar = ExperienceBar:Clone()
 	NewExperienceBar.Parent = ExperienceBarGui
 	NewExperienceBar.Position = UDim2.new(0.98, 0, 1.055, 0)
-	NewExperienceBar:TweenPosition(UDim2.new(.98, 0, NewExperienceBar.Position.Y.Scale - .1, 0), "Out", "Quint", .5)
-	
 	NewExperienceBar.CurrentLevel.Text = tostring(CurrentLevel)
 	NewExperienceBar.NextLevel.Text = tostring(NextLevel)
+	
+	NewExperienceBar:TweenPosition(UDim2.new(.98, 0, NewExperienceBar.Position.Y.Scale - .1, 0), "Out", "Quint", .5)
 	
 	local StatInfo = game.ReplicatedStorage:FindFirstChild("Skills"):FindFirstChild(tostring(Stat) .. "Skill")
 	local ProgressBar = ExperienceBarGui.ExperienceBar.ProgressBar
@@ -868,14 +881,18 @@ local function ManageEXPPopUp(Stat, Value, AmountAdded)
 	
 	if AmountAdded ~= nil then
 		if #ExperienceBarGui:GetChildren() ~= 0 then
-			if ExperienceBarGui.ExperienceBar.NamePlate.DisplayName.Text ~= tostring(Stat) then
-				InsertNewEXPBar(ExperienceBarGui,ExperienceBar,Stat, Value, CurrentLevel, NextLevel)
+			if ExperienceBarGui.ExperienceBar.NamePlate.DisplayName.Text == tostring(Stat) then
+				print("OLD EXPBAR: ",CurrentLevel,NextLevel)
+				ShowEXPChange(ExperienceBarGui.ExperienceBar, CurrentLevel, NextLevel, StatInfo, Value, AmountAdded)
+				CountdownPopUp(ExperienceBarGui, ExperienceBarGui.ExperienceBar, 12, .5, 0, 0, .9)
+			else
+				print("NEW EXPBAR: ",CurrentLevel,NextLevel)
+				InsertNewEXPBar(ExperienceBarGui, ExperienceBar, Stat, Value, CurrentLevel, NextLevel, true)
 			end
-			ShowEXPChange(CurrentLevel, NextLevel, StatInfo, Value, AmountAdded)
-			CountdownPopUp(ExperienceBarGui, ExperienceBarGui.ExperienceBar, 12, .5, 0, 0, .9)
 		else --Pop up new experience bar
-			InsertNewEXPBar(ExperienceBarGui,ExperienceBar,Stat, Value, CurrentLevel, NextLevel, true)
-			ShowEXPChange(CurrentLevel, NextLevel, StatInfo, Value, AmountAdded)
+			print("NEW EXPBAR: ",CurrentLevel,NextLevel)
+			InsertNewEXPBar(ExperienceBarGui,ExperienceBar,Stat, Value, CurrentLevel, NextLevel)
+			ShowEXPChange(ExperienceBarGui.ExperienceBar, CurrentLevel, NextLevel, StatInfo, Value, AmountAdded)
 		end
 	end
 	
@@ -914,7 +931,6 @@ end
 local UpdateInventory = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateInventory")
 UpdateInventory.OnClientEvent:Connect(function(Stat, File, Value, AmountAdded, Type, Currency, AcquiredLocation)
 	local TypeSlots = DataMenu:FindFirstChild(tostring(Type) .. "Menu")
-	
 	local Slots
 	if File then
 		Slots = TypeSlots:FindFirstChild(File .. "Menu") or TypeSlots:FindFirstChild(File)
@@ -970,7 +986,6 @@ UpdateItemCount.OnClientEvent:Connect(function(ItemTypeCount, BagCapacity, BagTy
 	--PlayerMenuHandler will likely handle equipping, arranging of tiles in that inventory screen, adding new tiles
 	--when the player has purchased something, ...
 end)
-
 
 
 
