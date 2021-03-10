@@ -130,9 +130,9 @@ function CleanupMenuTabs(Menu)
 			local AssociatedMenuName = button:FindFirstChild("Menu").Value
 			local ButtonMenu = Menu:FindFirstChild(AssociatedMenuName)
 			
-			if ButtonMenu.Name ~= "PlayerMenu" then --Default Menu for Players
-				ButtonMenu.Visible = false
-			end
+			--if ButtonMenu.Name ~= "PlayerMenu" then --Default Menu for Players
+				--ButtonMenu.Visible = false
+		--	end
 			if button.Parent == DataMenu.InventoryMenu then
 				DataMenu.InventoryMenu.SelectedBagInfo.Visible = false
 			end
@@ -293,6 +293,7 @@ DataMenu.ItemViewer.BackButton.Activated:Connect(function()
 	end
 end)
 
+--Creates pages for tiles to be held (tiles managed by ManageTiles())
 local function FindStatPage(Stat, Menu, MaxAmount, RaritySort, AcquiredLocation)
 	local Pages = Menu:GetChildren()
 	--local RepStorageName = string.gsub(tostring(Menu), "Menu", "") --Remove menu from string
@@ -398,6 +399,9 @@ local function FindStatPage(Stat, Menu, MaxAmount, RaritySort, AcquiredLocation)
 	
 	return StatRarity,Page,SlotCount
 end
+
+local FindStatPageEvent = game.ReplicatedStorage.Events.GUI.FindStatPage
+FindStatPageEvent.OnInvoke = FindStatPage --Using FindStatPage() from PlayerMenuHandler
 
 local DepositInventory = game.ReplicatedStorage.Events.Utility.DepositInventory
 DepositInventory.OnClientEvent:Connect(function()
