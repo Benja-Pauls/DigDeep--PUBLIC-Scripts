@@ -438,96 +438,99 @@ function game.ServerStorage.MineOre.OnInvoke(Player,Ore)
 	local ItemType = string.gsub(AssociatedBag, "Bag", "") .. "s"
 	
 	local TypeAmount = PlayerStatManager:getItemTypeCount(Player, ItemType)
-	local MaxOreAmount = PlayerStatManager:getEquippedData(Player, AssociatedBag .. "s", "Bags").Value --Bag capacity
+	local MaxOreAmount = PlayerStatManager:getEquippedData(Player, AssociatedBag .. "s", "Bags") --Bag capacity
 	
-	if TypeAmount < MaxOreAmount then
-		if Ore:FindFirstChild("Claimed") == nil then
-			
-			local Hitbox
-			if Ore:IsA("Model") then
-				Hitbox = Ore:FindFirstChild("GenerationPosition")
-			else
-				Hitbox = Ore
-			end
-			local CompactPos = Vector3.new(0 + Hitbox.Position.X/7,(Hitbox.Position.Y - -5)/(-7),Hitbox.Position.Z/7)
-			
-			UsedPositions[PositionKey(CompactPos.X,CompactPos.Y,CompactPos.Z)] = false
-			
-			for i,Vector in pairs(VectorsMine) do
-				local NewPos = CompactPos + Vector
-				if UsedPositions[PositionKey(NewPos.x,NewPos.y,NewPos.z)] == nil then
-					GenerateOre(NewPos.x,NewPos.y,NewPos.z,false,nil,nil,Player)
-				end
-			end
-			
-			local Bounds,sourceBlockDist = CalculateNoise(CompactPos.X,CompactPos.Y,CompactPos.Z,true)
-			
-			if Bounds then --If structure nearby, break structure (growing from/hanging from) destroyed block
-				--local Y = CalculateInterferingY(Bounds, CompactPos.Y, nil, sourceBlockDist)--for connected structure
-				local ConnectedOre = UsedPositions[PositionKey(CompactPos.X,CompactPos.Y+sourceBlockDist,CompactPos.Z)]
+	if MaxOreAmount then
+		if TypeAmount < MaxOreAmount.Value then
+			if Ore:FindFirstChild("Claimed") == nil then
 				
-				if typeof(ConnectedOre) ~= "boolean" then
-					if ConnectedOre:FindFirstChild("SpecialStructure") then
-						local OrePosition
-						if ConnectedOre:IsA("Model") then
-							OrePosition = ConnectedOre.GenerationPosition.Position
-						else
-							OrePosition = ConnectedOre.Position
-						end
-						local replicatedConnectedOre = game.ReplicatedStorage.ItemLocations.Mineshaft:FindFirstChild(tostring(ConnectedOre))
-						local ConnectedOreColor = replicatedConnectedOre.OreColor.Value
-						MakeDustParticles(OrePosition,ConnectedOreColor)
-						ConnectedOre:Destroy()
+				local Hitbox
+				if Ore:IsA("Model") then
+					Hitbox = Ore:FindFirstChild("GenerationPosition")
+				else
+					Hitbox = Ore
+				end
+				local CompactPos = Vector3.new(0 + Hitbox.Position.X/7,(Hitbox.Position.Y - -5)/(-7),Hitbox.Position.Z/7)
+				
+				UsedPositions[PositionKey(CompactPos.X,CompactPos.Y,CompactPos.Z)] = false
+				
+				for i,Vector in pairs(VectorsMine) do
+					local NewPos = CompactPos + Vector
+					if UsedPositions[PositionKey(NewPos.x,NewPos.y,NewPos.z)] == nil then
+						GenerateOre(NewPos.x,NewPos.y,NewPos.z,false,nil,nil,Player)
 					end
 				end
-			end
-			
-			--Add Ore to inventory
-			local mined = PlayerStatManager:getStat(Player, Ore.Name)
-			local experience = PlayerStatManager:getStat(Player, "MiningSkill")
-			--print(typeof(mined),typeof(experience))
-			if typeof(mined) == "number" and typeof(experience) == "number" then
-				PlayerStatManager:ChangeStat(Player, Ore.Name, 1, "Inventory", true)
 				
-				local InitialOreExperience = RealMineshaftItem.Experience.Value
-				local AssociatedSkill = RealMineshaftItem.AssociatedSkill.Value
-				PlayerStatManager:ChangeStat(Player, AssociatedSkill, InitialOreExperience, "Experience", true)
+				local Bounds,sourceBlockDist = CalculateNoise(CompactPos.X,CompactPos.Y,CompactPos.Z,true)
 				
-				local PlayerDataFile = PlayerData:WaitForChild(tostring(Player.UserId))
-				local PlayerInventory = PlayerDataFile:WaitForChild("Inventory")
-				local PlayerExperience = PlayerDataFile:WaitForChild("Experience")
-				
-				local AssociatedFolder = PlayerInventory:WaitForChild(ItemType)
-				local CurrentOre = AssociatedFolder:FindFirstChild(Ore.Name)
-				local SkillsFolder = PlayerExperience:WaitForChild("Skills")
-				local CurrentSkill = SkillsFolder:FindFirstChild("MiningSkill")
-				
-				
-				--Change player discovered value if this is first time acquired
-				local DiscoverValue = CurrentOre:FindFirstChild(tostring(Ore) .. "Discovered")
-				if DiscoverValue.Value == false then
-					print("Changing " .. tostring(DiscoverValue) .. " to true")
-					DiscoverValue.Value = true
-					PlayerStatManager:ChangeStat(Player, tostring(Ore) .. "Discovered", true, tostring(AssociatedFolder))
+				if Bounds then --If structure nearby, break structure (growing from/hanging from) destroyed block
+					--local Y = CalculateInterferingY(Bounds, CompactPos.Y, nil, sourceBlockDist)--for connected structure
+					local ConnectedOre = UsedPositions[PositionKey(CompactPos.X,CompactPos.Y+sourceBlockDist,CompactPos.Z)]
+					
+					if typeof(ConnectedOre) ~= "boolean" then
+						if ConnectedOre:FindFirstChild("SpecialStructure") then
+							local OrePosition
+							if ConnectedOre:IsA("Model") then
+								OrePosition = ConnectedOre.GenerationPosition.Position
+							else
+								OrePosition = ConnectedOre.Position
+							end
+							local replicatedConnectedOre = game.ReplicatedStorage.ItemLocations.Mineshaft:FindFirstChild(tostring(ConnectedOre))
+							local ConnectedOreColor = replicatedConnectedOre.OreColor.Value
+							MakeDustParticles(OrePosition,ConnectedOreColor)
+							ConnectedOre:Destroy()
+						end
+					end
 				end
-			else
-				warn("mined or experience cannot be saved")
+				
+				--Add Ore to inventory
+				local mined = PlayerStatManager:getStat(Player, Ore.Name)
+				local experience = PlayerStatManager:getStat(Player, "MiningSkill")
+				--print(typeof(mined),typeof(experience))
+				if typeof(mined) == "number" and typeof(experience) == "number" then
+					PlayerStatManager:ChangeStat(Player, Ore.Name, 1, "Inventory", true)
+					
+					local InitialOreExperience = RealMineshaftItem.Experience.Value
+					local AssociatedSkill = RealMineshaftItem.AssociatedSkill.Value
+					PlayerStatManager:ChangeStat(Player, AssociatedSkill, InitialOreExperience, "Experience", true)
+					
+					local PlayerDataFile = PlayerData:WaitForChild(tostring(Player.UserId))
+					local PlayerInventory = PlayerDataFile:WaitForChild("Inventory")
+					local PlayerExperience = PlayerDataFile:WaitForChild("Experience")
+					
+					local AssociatedFolder = PlayerInventory:WaitForChild(ItemType)
+					local CurrentOre = AssociatedFolder:FindFirstChild(Ore.Name)
+					local SkillsFolder = PlayerExperience:WaitForChild("Skills")
+					local CurrentSkill = SkillsFolder:FindFirstChild("MiningSkill")
+					
+					
+					--Change player discovered value if this is first time acquired
+					local DiscoverValue = CurrentOre:FindFirstChild(tostring(Ore) .. "Discovered")
+					if DiscoverValue.Value == false then
+						print("Changing " .. tostring(DiscoverValue) .. " to true")
+						DiscoverValue.Value = true
+						PlayerStatManager:ChangeStat(Player, tostring(Ore) .. "Discovered", true, tostring(AssociatedFolder))
+					end
+				else
+					warn("mined or experience cannot be saved")
+				end
+				
+				local OrePosition
+				if Ore:IsA("Model") then
+					OrePosition = Ore.GenerationPosition.Position
+				else
+					OrePosition = Ore.Position
+				end
+				
+				Ore:Destroy()
+				
+				MakeDustParticles(OrePosition,OreColor)
 			end
-			
-			local OrePosition
-			if Ore:IsA("Model") then
-				OrePosition = Ore.GenerationPosition.Position
-			else
-				OrePosition = Ore.Position
-			end
-			
-			Ore:Destroy()
-			
-			MakeDustParticles(OrePosition,OreColor)
-			--UpdateItemCount:FireClient(Player, TypeAmount+1, MaxOreAmount, ItemType)
+		else
+			--Notify player that their inventory is full and they should sell/deposit their items 
 		end
 	else
-		--Notify player that their inventory is full and they should sell/deposit their items 
+		--Notify player they have no bag they can fill
 	end
 end
 
