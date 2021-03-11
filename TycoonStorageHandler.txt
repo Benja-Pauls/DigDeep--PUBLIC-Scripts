@@ -167,7 +167,7 @@ local function UpdateSelectionInfo(RarityMenu, tile)
 	SelectionMenu.Hint.Visible = not Discovered
 	
 	if Discovered == true then
-		SelectionMenu.Picture.Image = ItemInformation["GUI Info"].InventoryImage.Value
+		SelectionMenu.Picture.Image = ItemInformation["GUI Info"].StatImage.Value
 		SelectionMenu:FindFirstChild("Name").Text = tostring(tile)
 		SelectionMenu.Amount.Text = tostring(tile.AmountInStorage.Value)
 		SelectionMenu.UnitPrice.Text = tostring(ItemInformation.CurrencyValue.Value)
@@ -242,7 +242,7 @@ function ReadySelectionMenu(Menu)
 				if ItemInformation then
 					if Discovered then
 						SelectionMenu:FindFirstChild("Name").Text = tostring(item)
-						SelectionMenu.Picture.Image = ItemInformation["GUI Info"].InventoryImage.Value
+						SelectionMenu.Picture.Image = ItemInformation["GUI Info"].StatImage.Value
 						SelectionMenu.UnitPrice.Text = tostring(ItemInformation.CurrencyValue.Value)
 						
 						while SelectionMenu.CurrentSelection.Value == tostring(item) do
@@ -537,7 +537,7 @@ function SetupTycoonStorageTiles(button)
 					NewTile.Name = tostring(item)
 					--NewTile.BorderColor3 = Color3.fromRGB(RarityMenu.TextStrokeColor3)
 					
-					NewTile.Picture.Image = item["GUI Info"].InventoryImage.Value --Put in check for discovered remotefunction for image/lock
+					NewTile.Picture.Image = item["GUI Info"].StatImage.Value --Put in check for discovered remotefunction for image/lock
 					
 					NewTile.Parent = RarityMenu
 					--print(RarityChildCount, RarityChildCount/AmountPerRow, math.floor(RarityChildCount/AmountPerRow))
