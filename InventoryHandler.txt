@@ -1020,7 +1020,8 @@ UpdatePlayerMenu.OnClientEvent:Connect(function(EquipType, ItemType, Item)
 		--ManageTiles()
 	end
 	
-	
+	--Could possibly include this in UpdateInventory RemoteEvent, but player menu may need special differences
+	--that cannot be integrated alongside the fairly similar experience and inventory menus
 	
 	
 end)
@@ -1050,3 +1051,9 @@ UpdateItemCount.OnClientEvent:Connect(function(ItemTypeCount, BagCapacity, BagTy
 	Menu:SetAttribute("ItemCount", ItemTypeCount)
 	Menu:SetAttribute("BagCapacity", BagCapacity)
 end)
+
+
+
+
+
+
