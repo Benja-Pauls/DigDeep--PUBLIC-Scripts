@@ -1,7 +1,6 @@
 (LocalScript)
 GUI handler for purchases around the tycoon (still refered to as buttons)
 ------------------------------------------------------------------------------------------------------------------------------------------------
-
 game.StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList,false)
 
 local Player = game.Players.LocalPlayer
@@ -32,9 +31,9 @@ LocalLoadTycoon.OnClientEvent:Connect(function(tycoon)
 local function GetStatImage(File, Stat)
 	local ImageId
 	if Stat.Name then
-		ImageId = game.ReplicatedStorage:FindFirstChild(tostring(File)):FindFirstChild(Stat.Name)["GUI Info"].InventoryImage.Value
+		ImageId = game.ReplicatedStorage:FindFirstChild(tostring(File)):FindFirstChild(Stat.Name)["GUI Info"].StatImage.Value
 	else
-		ImageId = game.ReplicatedStorage:FindFirstChild(tostring(File)):FindFirstChild(Stat)["GUI Info"].InventoryImage.Value
+		ImageId = game.ReplicatedStorage:FindFirstChild(tostring(File)):FindFirstChild(Stat)["GUI Info"].StatImage.Value
 	end
 	return ImageId
 end
