@@ -5,7 +5,7 @@ local tool = script.Parent
 local Player = script.Parent.Parent.Parent --Maybe set this more accordingly? SetTarget may mess up?
 local MineshaftItems = game.ReplicatedStorage.ItemLocations.Mineshaft
 
---When the player barely hovers over the UI, the pickaxe mines continuously... mouse.target check must be getting confused
+--When the player barely hovers over the UI, the pickaxe continues to mine... mouse.target check must be getting confused
 
 function script.Parent.SetTarget.OnServerInvoke(player,Selection)
 	script.Parent.Target.Value = Selection
@@ -18,6 +18,9 @@ local Debounce = true
 
 --Start mining process, check player for any preventive measure before actually mining ore
 local function StartMining()
+	
+	--Possibly check bag amounts here instead?
+	
 	local Target = script.Parent.Target.Value
 	if Debounce then
 		repeat wait() until Player ~= nil
