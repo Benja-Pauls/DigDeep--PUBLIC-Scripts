@@ -3,6 +3,7 @@ Inventory graphical menu handler
 
 -------------------------------------------------------------------------------------------------------------------------------------------------
 local Player = game.Players.LocalPlayer
+local PlayerUserId = Player.UserId
 local OpenDataMenuButton = script.Parent.OpenDataMenuButton
 local DataMenu = script.Parent.DataMenu
 local MoveAllBaseScreenUI = game.ReplicatedStorage.Events.GUI.MoveAllBaseScreenUI
@@ -31,8 +32,13 @@ OpenDataMenuButton.Activated:Connect(function()
 			InventoryOpens = 1
 			DataMenu.InventoryMenu.SelectedBagInfo.Visible = false
 			ReadyMenuButtons(DataMenu) --Manage Tabs
+			ReadyMenuButtons(DataMenu.PlayerMenu) --Prep menu buttons on default screen
 		else
 			CleanupMenuTabs(DataMenu)
+		end
+		DataMenu.PlayerMenu.Visible = true
+		for i,menu in pairs (DataMenu.PlayerMenu["Default Menu"]:GetChildren()) do
+			menu.Visible = true
 		end
 		
 	elseif DataMenu.Visible == true then
@@ -45,6 +51,7 @@ OpenDataMenuButton.Activated:Connect(function()
 		DataMenu.ItemViewer.Visible = false
 		OpenDataMenuButton.Active = true
 	end
+	print(DataMenu.PlayerMenu.Visible)
 end)
 
 MoveAllBaseScreenUI.Event:Connect(function(ChangeTo)
@@ -66,7 +73,7 @@ function ReadyMenuButtons(Menu)
 	if MenuAcceptance == true then
 		MenuAcceptance = false
 		for i,button in pairs(Menu:GetChildren()) do
-			if button:IsA("TextButton") and button:FindFirstChild("Menu") then
+			if (button:IsA("TextButton") or button:IsA("ImageButton")) and button:FindFirstChild("Menu") then
 				ButtonPresses[button] = 0
 				local AssociatedMenuName = button:FindFirstChild("Menu").Value
 				local ButtonMenu = Menu:FindFirstChild(AssociatedMenuName)
@@ -76,13 +83,16 @@ function ReadyMenuButtons(Menu)
 				end
 				
 				button.Activated:Connect(function()
-					DataMenu.InventoryMenu.EmptyNotifier.Visible = false
 					print(tostring(button) .. " has been activated")
+					DataMenu.InventoryMenu.EmptyNotifier.Visible = false
 					for i,v in pairs (ButtonMenu.Parent:GetChildren()) do
-						if not v:IsA("TextButton") and not v:FindFirstChild("Menu") and tostring(v) ~= "TopTabBar" then
-							v.Visible = false
+						if not v:IsA("TextButton") and not v:IsA("ImageButton") and not v:IsA("Folder") and not v:FindFirstChild("Menu") then
+							if tostring(v) ~= "TopTabBar" then
+								v.Visible = false
+							end
 						end
 					end
+
 					ButtonMenu.Visible = true
 					if Menu.Name == "InventoryMenu" then --Display Bag Info
 						local BagCapacity = ButtonMenu:GetAttribute("BagCapacity")
@@ -91,6 +101,7 @@ function ReadyMenuButtons(Menu)
 						Menu.SelectedBagInfo.BagType.Text = string.gsub(tostring(ButtonMenu), "Menu", "")
 						Menu.SelectedBagInfo.Visible = true
 					end
+
 					if Menu.Parent == DataMenu then --Menu of button
 						PageManager.Menu.Value = ButtonMenu
 						local PageCount = CountPages()
@@ -107,9 +118,11 @@ function ReadyMenuButtons(Menu)
 						--PageManager.Menu.Value = nil
 						PageManager.Visible = false
 					end
+
 					DataMenu.ItemViewer.Visible = false
 					ItemViewerOpen = false
 					PageManager.CurrentPage.Value = 1
+
 					if ButtonPresses[button] == 0 then
 						ButtonPresses[button] = 1
 						ReadyMenuButtons(ButtonMenu)
@@ -117,6 +130,7 @@ function ReadyMenuButtons(Menu)
 						CleanupMenuTabs(ButtonMenu)
 					end
 				end)
+				
 			end
 		end
 		wait(.1)
@@ -126,13 +140,10 @@ end
 
 function CleanupMenuTabs(Menu)
 	for i,button in pairs(Menu:GetChildren()) do
-		if button:IsA("TextButton") and button:FindFirstChild("Menu") then
+		if (button:IsA("TextButton") or button:IsA("ImageButton")) and button:FindFirstChild("Menu") then
 			local AssociatedMenuName = button:FindFirstChild("Menu").Value
 			local ButtonMenu = Menu:FindFirstChild(AssociatedMenuName)
 			
-			--if ButtonMenu.Name ~= "PlayerMenu" then --Default Menu for Players
-				--ButtonMenu.Visible = false
-		--	end
 			if button.Parent == DataMenu.InventoryMenu then
 				DataMenu.InventoryMenu.SelectedBagInfo.Visible = false
 			end
@@ -143,7 +154,7 @@ end
 local function GetStatImage(StatInfo)
 	local ImageId
 	if StatInfo then
-		ImageId = StatInfo["GUI Info"].InventoryImage.Value
+		ImageId = StatInfo["GUI Info"].StatImage.Value
 	end
 	return ImageId
 end
@@ -203,7 +214,7 @@ function FinalizePageChange(Page)
 		PageManager.PageRarityDisplay.TextColor3 = Rarity.Value
 		PageManager.PageRarityDisplay.TextStrokeColor3 = Rarity.TileColor.Value
 		for i,tile in pairs (Page:GetChildren()) do
-			if tile:IsA("TextButton") then
+			if tile:IsA("TextButton") or tile:IsA("ImageButton") then
 				tile.BackgroundColor3 = Rarity.TileColor.Value
 			end
 		end
@@ -315,7 +326,7 @@ local function FindStatPage(Stat, Menu, MaxAmount, RaritySort, AcquiredLocation)
 			--print("Found existing page for " .. tostring(StatRarity))
 
 			for i,slot in pairs (page:GetChildren()) do
-				if slot:IsA("TextButton") then
+				if slot:IsA("TextButton") or slot:IsA("ImageButton") then
 					SlotCount = SlotCount + 1
 				end
 			end
@@ -400,9 +411,6 @@ local function FindStatPage(Stat, Menu, MaxAmount, RaritySort, AcquiredLocation)
 	return StatRarity,Page,SlotCount
 end
 
-local FindStatPageEvent = game.ReplicatedStorage.Events.GUI.FindStatPage
-FindStatPageEvent.OnInvoke = FindStatPage --Using FindStatPage() from PlayerMenuHandler
-
 local DepositInventory = game.ReplicatedStorage.Events.Utility.DepositInventory
 DepositInventory.OnClientEvent:Connect(function()
 	for i,menu in pairs (DataMenu.InventoryMenu:GetChildren()) do
@@ -419,9 +427,15 @@ end)
 
 local function InsertTileInfo(Type, tile, Stat, Value, found, AcquiredLocation)
 	local StatInfo
-	if Type == "Inventory" then
-		print("Insert tile info INVENTORY called for " .. tostring(Stat))
-		StatInfo = game.ReplicatedStorage.ItemLocations:FindFirstChild(tostring(AcquiredLocation)):FindFirstChild(tostring(Stat))
+	if Type == "Inventory" or Type == "Bags" then
+		print("Insert tile info INVENTORY/BAGS called for " .. tostring(Stat))
+		
+		if Type == "Inventory" then
+			StatInfo = game.ReplicatedStorage.ItemLocations:FindFirstChild(tostring(AcquiredLocation)):FindFirstChild(tostring(Stat))
+		else
+			StatInfo = game.ReplicatedStorage.Equippable.Bags:FindFirstChild(tostring(AcquiredLocation)):FindFirstChild(tostring(Stat))
+		end
+		
 		tile.StatName.Value = tostring(Stat)
 		tile.Amount.Text = tostring(Value)
 		local ImageId = GetStatImage(StatInfo)
@@ -489,7 +503,7 @@ local function InsertTileInfo(Type, tile, Stat, Value, found, AcquiredLocation)
 				ItemViewerMenu.ItemAmount.Text = "Total EXP: " .. tostring(Value)
 			end
 			
-			ItemViewerMenu.ItemImage.Image = StatInfo["GUI Info"].InventoryImage.Value
+			ItemViewerMenu.ItemImage.Image = StatInfo["GUI Info"].StatImage.Value
 			ItemViewerMenu.ItemName.Text = tostring(Stat)
 			
 			--[[
@@ -524,10 +538,13 @@ function ManageTiles(Stat, Menu, Value, Type, AcquiredLocation)
 		OriginalMaterialSlot = GuiElements:FindFirstChild("InventoryMaterialSlot")
 		--print("Page being associated with item: " .. tostring(Stat) .. " worth " .. tostring(Value))
 		Rarity,Page,SlotCount = FindStatPage(Stat, Menu, 15, true, AcquiredLocation)
+	elseif Type == "Bags" then
+		OriginalMaterialSlot = GuiElements:FindFirstChild("InventoryMaterialSlot")
+		Rarity,Page,SlotCount = FindStatPage(Stat, Menu, 15, false, AcquiredLocation)
 	else
 		OriginalMaterialSlot = GuiElements:FindFirstChild("ExperienceSlot")
 		Rarity,Page,SlotCount = FindStatPage(Stat, Menu, 4, false, AcquiredLocation) --no rarity sort
-		--SlotCount = #Menu:GetChildren()
+		--SlotCount = Number of tiles in Page
 		--Page = Menu
 	end
 		
@@ -536,7 +553,7 @@ function ManageTiles(Stat, Menu, Value, Type, AcquiredLocation)
 		
 		--Looking to update value of current tile
 		for i,tile in pairs (Page:GetChildren()) do
-			if tile:IsA("TextButton") then
+			if tile:IsA("TextButton") or tile:IsA("ImageButton") then
 				if tile.StatName.Value == tostring(Stat) and found == false then --Update Tile
 					
 					if Value > 0 then
@@ -545,9 +562,9 @@ function ManageTiles(Stat, Menu, Value, Type, AcquiredLocation)
 						found = true
 						local SlotNumber = i
 						
-						for i,tile in pairs (Page:GetChildren()) do
+						for i,tile in pairs (Page:GetChildren()) do --Move other tiles to fill in gap
 							if i > SlotNumber then
-								if tile:IsA("TextButton") then
+								if tile:IsA("TextButton") or tile:IsA("ImageButton") then
 									tile.Name = tostring("Slot" .. tostring(i - 1))
 									if Type == "Inventory" then
 										tile.Row.Value = tile.Row.Value - 1
@@ -577,7 +594,7 @@ function ManageTiles(Stat, Menu, Value, Type, AcquiredLocation)
 			local slotNumber = SlotCount + 1
 			tile.Name = "Slot" .. tostring(slotNumber)
 			
-			if Type == "Inventory" then
+			if Type == "Inventory" or Type == "Bags" then
 				if (slotNumber-1)%5 == 0 then
 					tile.Row.Value = PreviousTile.Row.Value + 1
 					tile.Column.Value = 0
@@ -619,6 +636,7 @@ function ManageTiles(Stat, Menu, Value, Type, AcquiredLocation)
 			InsertTileInfo(Type, FirstSlot, Stat, Value, nil, AcquiredLocation)
 		end
 	end
+	print("MANAGED TILES FOR " .. tostring(Stat))
 end
 
 
@@ -930,6 +948,33 @@ local function InsertNewBagPopUp(BagPopUp, BagPopUpGui, ItemTypeCount, BagCapaci
 end
 
 
+-------------------------------------<|PlayerMenu Functions|>--------------------------------------------------------------------------------------
+local UpdateEquippedItem = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateEquippedItem") --use later
+
+local PlayerMenu = DataMenu:FindFirstChild("PlayerMenu")
+local PlayerInfo = PlayerMenu["Default Menu"].PlayerInfo
+local thumbType = Enum.ThumbnailType.HeadShot
+local thumbSize = Enum.ThumbnailSize.Size420x420
+local PlayerProfilePicture = game.Players:GetUserThumbnailAsync(PlayerUserId, thumbType, thumbSize)
+PlayerInfo.PlayerThumbnail.Image = PlayerProfilePicture
+
+PlayerInfo.PlayerName.Text = tostring(Player)
+
+local RealBags = game.ReplicatedStorage.Equippable.Bags
+local BagInfo = PlayerMenu["Default Menu"].BagInfo
+
+--PlayerMenu functions will likely handle equipping, arranging of tiles in that inventory screen, adding new tiles
+--when the player has purchased something, ...
+
+
+
+
+
+
+
+
+
+
 -------------------------------------<High-Traffic Functions>---------------------------------------------------------------------------------------
 
 local UpdateInventory = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateInventory")
@@ -962,6 +1007,24 @@ UpdateInventory.OnClientEvent:Connect(function(Stat, File, Value, AmountAdded, T
 	end
 end)
 
+local UpdatePlayerMenu = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdatePlayerMenu")
+UpdatePlayerMenu.OnClientEvent:Connect(function(EquipType, ItemType, Item)
+	print(EquipType, ItemType, Item)
+	if EquipType == "Bags" then
+		local BagMenu = PlayerMenu:FindFirstChild(ItemType .. "Menu")
+		local Value = game.ReplicatedStorage.Equippable:FindFirstChild(EquipType):FindFirstChild(ItemType):FindFirstChild(Item).Value   
+		ManageTiles(Item, BagMenu, Value, EquipType, ItemType)
+		--ManagePlayerMenuTiles(Item, BagMenu, ItemType, EquipType)
+	else
+		--local ItemMenu
+		--ManageTiles()
+	end
+	
+	
+	
+	
+end)
+
 local UpdateItemCount = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateItemCount")
 UpdateItemCount.OnClientEvent:Connect(function(ItemTypeCount, BagCapacity, BagType, DeposittedInventory)
 	
@@ -986,13 +1049,4 @@ UpdateItemCount.OnClientEvent:Connect(function(ItemTypeCount, BagCapacity, BagTy
 	local Menu = DataMenu.InventoryMenu:FindFirstChild(BagType .. "Menu")
 	Menu:SetAttribute("ItemCount", ItemTypeCount)
 	Menu:SetAttribute("BagCapacity", BagCapacity)
-	
-	--PlayerMenuHandler will likely handle equipping, arranging of tiles in that inventory screen, adding new tiles
-	--when the player has purchased something, ...
 end)
-
-
-
-
-
-
