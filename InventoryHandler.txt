@@ -28,14 +28,16 @@ OpenDataMenuButton.Activated:Connect(function()
 		wait(.5)
 		OpenDataMenuButton.Active = true
 		
+		--Manage Tabs
 		if InventoryOpens == 0 then
 			InventoryOpens = 1
 			DataMenu.InventoryMenu.SelectedBagInfo.Visible = false
-			ReadyMenuButtons(DataMenu) --Manage Tabs
+			ReadyMenuButtons(DataMenu)
 			ReadyMenuButtons(DataMenu.PlayerMenu) --Prep menu buttons on default screen
 		else
 			CleanupMenuTabs(DataMenu)
 		end
+		
 		DataMenu.PlayerMenu.Visible = true
 		for i,menu in pairs (DataMenu.PlayerMenu["Default Menu"]:GetChildren()) do
 			menu.Visible = true
@@ -51,7 +53,6 @@ OpenDataMenuButton.Activated:Connect(function()
 		DataMenu.ItemViewer.Visible = false
 		OpenDataMenuButton.Active = true
 	end
-	print(DataMenu.PlayerMenu.Visible)
 end)
 
 MoveAllBaseScreenUI.Event:Connect(function(ChangeTo)
@@ -78,7 +79,8 @@ function ReadyMenuButtons(Menu)
 				local AssociatedMenuName = button:FindFirstChild("Menu").Value
 				local ButtonMenu = Menu:FindFirstChild(AssociatedMenuName)
 				
-				if ButtonMenu.Name ~= "PlayerMenu" then --Default Menu for Players
+				--Prep Default Menu 
+				if ButtonMenu.Name ~= "PlayerMenu" then
 					ButtonMenu.Visible = false
 				end
 				
@@ -100,6 +102,21 @@ function ReadyMenuButtons(Menu)
 						Menu.SelectedBagInfo.Text = tostring(ItemCount) .. "/" .. tostring(BagCapacity)
 						Menu.SelectedBagInfo.BagType.Text = string.gsub(tostring(ButtonMenu), "Menu", "")
 						Menu.SelectedBagInfo.Visible = true
+					elseif Menu.Name == "PlayerMenu" then
+						for i,gui in pairs (Menu:GetChildren()) do
+							if gui:IsA("ImageButton") and string.find(tostring(gui), "Bag") then
+								gui.Visible = false	
+							end
+						end
+					end
+					
+					--Make function for i,gui (for preparing default menu screens and ensuring bag buttons stay visible)
+					if tostring(ButtonMenu) == "PlayerMenu" then
+						for i,gui in pairs (ButtonMenu:GetChildren()) do
+							if gui:IsA("ImageButton") and string.find(tostring(gui), "Bag") then
+								gui.Visible = true
+							end
+						end
 					end
 
 					if Menu.Parent == DataMenu then --Menu of button
@@ -112,7 +129,11 @@ function ReadyMenuButtons(Menu)
 							end
 						else --Player has no items of this type
 							print("Menu has no pages!")
-							DataMenu.InventoryMenu.EmptyNotifier.Visible = true
+							if button:IsDescendantOf(DataMenu.PlayerMenu) then
+								
+							else
+								DataMenu.InventoryMenu.EmptyNotifier.Visible = true
+							end
 						end
 					else
 						--PageManager.Menu.Value = nil
@@ -139,12 +160,29 @@ function ReadyMenuButtons(Menu)
 end
 
 function CleanupMenuTabs(Menu)
+	
+	--Prep Default Menu
+	if Menu.Name == "DataMenu" or Menu.Name == "PlayerMenu" then
+		for i,gui in pairs (DataMenu.PlayerMenu:GetChildren()) do
+			if gui:IsA("ImageButton") and string.find(tostring(gui), "Bag") then
+				gui.Visible = true
+			elseif gui:IsA("Frame") and string.find(tostring(gui), "Menu") then
+				gui.Visible = false
+			end
+		end
+	end
+	
 	for i,button in pairs(Menu:GetChildren()) do
 		if (button:IsA("TextButton") or button:IsA("ImageButton")) and button:FindFirstChild("Menu") then
 			local AssociatedMenuName = button:FindFirstChild("Menu").Value
 			local ButtonMenu = Menu:FindFirstChild(AssociatedMenuName)
+
+			if Menu.Name == "PlayerMenu" then
+				ButtonMenu.Visible = false
+			end
 			
-			if button.Parent == DataMenu.InventoryMenu then
+			ButtonMenu.Visible = false
+			if Menu == DataMenu.InventoryMenu then
 				DataMenu.InventoryMenu.SelectedBagInfo.Visible = false
 			end
 		end
@@ -497,6 +535,12 @@ local function InsertTileInfo(Type, tile, Stat, Value, found, AcquiredLocation)
 				ItemViewerMenu.ItemWorth.Text = "Worth: " .. tostring(StatInfo.CurrencyValue.Value)
 				ItemViewerMenu.ItemDescription.Text = StatInfo["GUI Info"].Description.Value
 				
+			elseif Type == "Bags" then
+				ItemViewerMenu.ItemDescription.Text = StatInfo["GUI Info"].Description.Value
+				ItemViewerMenu.ItemAmount.Text = tostring(AcquiredLocation)
+				ItemViewerMenu.ItemWorth.Text = ""
+				ItemViewerMenu.ItemRarity.Text = ""
+				
 			else
 				ItemViewerMenu.ItemRarity.Text = ""
 				
@@ -566,7 +610,7 @@ function ManageTiles(Stat, Menu, Value, Type, AcquiredLocation)
 							if i > SlotNumber then
 								if tile:IsA("TextButton") or tile:IsA("ImageButton") then
 									tile.Name = tostring("Slot" .. tostring(i - 1))
-									if Type == "Inventory" then
+									if Type == "Inventory" or Type == "Bags" then
 										tile.Row.Value = tile.Row.Value - 1
 										tile.Column.Value = tile.Column.Value - 1
 										tile.Position = UDim2.new(0.017+0.196*tile.Column.Value, 0, 0.02+0.298*tile.Row.Value, 0)
@@ -623,7 +667,7 @@ function ManageTiles(Stat, Menu, Value, Type, AcquiredLocation)
 			FirstSlot.Name = "Slot1"
 			FirstSlot.Parent = Page
 			
-			if Type == "Inventory" then
+			if Type == "Inventory" or Type == "Bags" then
 				FirstSlot.Row.Value = 0
 				FirstSlot.Column.Value = 0
 				FirstSlot.Rarity.Value = Rarity
@@ -963,14 +1007,10 @@ PlayerInfo.PlayerName.Text = tostring(Player)
 local RealBags = game.ReplicatedStorage.Equippable.Bags
 local BagInfo = PlayerMenu["Default Menu"].BagInfo
 
+
+
 --PlayerMenu functions will likely handle equipping, arranging of tiles in that inventory screen, adding new tiles
 --when the player has purchased something, ...
-
-
-
-
-
-
 
 
 
@@ -1009,12 +1049,20 @@ end)
 
 local UpdatePlayerMenu = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdatePlayerMenu")
 UpdatePlayerMenu.OnClientEvent:Connect(function(EquipType, ItemType, Item)
+	
+	local RealInfo = game.ReplicatedStorage.Equippable:FindFirstChild(EquipType):FindFirstChild(ItemType):FindFirstChild(Item)
 	print(EquipType, ItemType, Item)
+	
 	if EquipType == "Bags" then
 		local BagMenu = PlayerMenu:FindFirstChild(ItemType .. "Menu")
+		local AssociatedButton = PlayerMenu:FindFirstChild(ItemType)
 		local Value = game.ReplicatedStorage.Equippable:FindFirstChild(EquipType):FindFirstChild(ItemType):FindFirstChild(Item).Value   
 		ManageTiles(Item, BagMenu, Value, EquipType, ItemType)
-		--ManagePlayerMenuTiles(Item, BagMenu, ItemType, EquipType)
+		
+		--Update Default Menu (Equipped) Item Pictures
+		if Item == AssociatedButton.CurrentlyEquipped.Value then
+			AssociatedButton.Image = RealInfo["GUI Info"].StatImage.Value
+		end
 	else
 		--local ItemMenu
 		--ManageTiles()
