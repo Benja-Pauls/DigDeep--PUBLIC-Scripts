@@ -993,7 +993,6 @@ end
 
 
 -------------------------------------<|PlayerMenu Functions|>--------------------------------------------------------------------------------------
-local UpdateEquippedItem = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateEquippedItem") --use later
 
 local PlayerMenu = DataMenu:FindFirstChild("PlayerMenu")
 local PlayerInfo = PlayerMenu["Default Menu"].PlayerInfo
@@ -1074,6 +1073,17 @@ UpdatePlayerMenu.OnClientEvent:Connect(function(EquipType, ItemType, Item)
 	
 end)
 
+local UpdateEquippedItem = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateEquippedItem")
+UpdateEquippedItem.OnClientEvent:Connect(function(ItemType,Item)
+	print("UPDATE EQUIPPED: ",ItemType,Item)
+	local CurrentlyEquipped = PlayerMenu:FindFirstChild(ItemType).CurrentlyEquipped.Value
+	CurrentlyEquipped = Item
+	
+	
+	
+	
+end)
+
 local UpdateItemCount = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateItemCount")
 UpdateItemCount.OnClientEvent:Connect(function(ItemTypeCount, BagCapacity, BagType, DeposittedInventory)
 	
@@ -1099,6 +1109,8 @@ UpdateItemCount.OnClientEvent:Connect(function(ItemTypeCount, BagCapacity, BagTy
 	Menu:SetAttribute("ItemCount", ItemTypeCount)
 	Menu:SetAttribute("BagCapacity", BagCapacity)
 end)
+
+
 
 
 
