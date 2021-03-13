@@ -12,6 +12,7 @@ local Utility = require(game.ServerScriptService:WaitForChild("Utility"))
 local UpdateInventory = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateInventory")
 local UpdateTycoonStorage = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateTycoonStorage")
 local UpdatePlayerMenu = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdatePlayerMenu")
+local UpdateEquippedItem = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateEquippedItem")
 local DepositInventory = game.ReplicatedStorage.Events.Utility:WaitForChild("DepositInventory")
 local SellItem = game.ReplicatedStorage.Events.Utility:WaitForChild("SellItem")
 local UpdateItemCount = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateItemCount")
@@ -354,6 +355,8 @@ function LoadPlayerData(PlayerDataFile,data,JoinedPlayer)
 			--Update Equipped Item Event (equipped in PMH, sent to PSM, then sent to PMH again) (here, just send to PMH)
 			--This will be for changing default screen icons and actually equipping them to character (if need be)
 			
+			
+			--Update GUI Menus (Inventory and Player Items Equips)
 			if tostring(equiptype) == "Bags" then
 				local EquippedBagValue = itemtype:FindFirstChild(data["Equipped" .. tostring(itemtype)])
 				if EquippedBagValue then
@@ -362,6 +365,8 @@ function LoadPlayerData(PlayerDataFile,data,JoinedPlayer)
 
 					local ItemCount = PlayerStatManager:getItemTypeCount(JoinedPlayer, string.gsub(tostring(itemtype), "Bag", ""))
 					DataMenu:WaitForChild("InventoryMenu"):FindFirstChild(MenuName):SetAttribute("ItemCount", ItemCount)
+					
+					UpdateEquippedItem:FireClient(tostring(itemtype), tostring(data["Equipped" .. tostring(itemtype)]))
 				end
 			end
 		end
