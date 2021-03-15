@@ -1,7 +1,6 @@
 (LocalScript)
 Visuals for asking if the player wants to buy the tycoon and loading the tycoon
 ------------------------------------------------------------------------------------------------------------------------------------------------
-
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ClaimTycoonGui = ReplicatedStorage.Events.Tycoon.ClaimTycoonGui
 local ClaimTycoon = ReplicatedStorage.Events.Tycoon.ClaimTycoon
@@ -12,7 +11,7 @@ local debounce = false
 local open
 local player = game.Players.LocalPlayer
 
-ClaimTycoonGui.OnClientInvoke = (function(tycoon)
+ClaimTycoonGui.OnClientEvent:Connect(function(tycoon)
 	if debounce == false then
 		local TycoonBuyAsk = script.Parent
 		TycoonBuyAsk.PopUp.Visible = true
