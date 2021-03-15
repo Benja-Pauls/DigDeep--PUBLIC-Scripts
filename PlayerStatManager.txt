@@ -172,6 +172,16 @@ function PlayerStatManager:ChangeStat(player, statName, value, File, Currency, s
 				UpdateTycoonStorage:FireClient(player, tostring(File), statName, value, nil, LocationOfAcquirement)
 			end
 			--later stat check for data type efficiency
+		else
+			print("Trying to update the value of a saved string in " .. tostring(playerUserId))
+			
+			if File == "Bags" then
+				--UpdateItemCount:FireClient(player, )
+			end
+			
+			local ItemType = string.gsub(statName, "Equipped", "")
+			UpdateEquippedItem:FireClient(player, File, ItemType, value)
+			--if certain equip type (bag), fire update item count event
 		end
 	end
 end
@@ -222,11 +232,25 @@ DepositInventory.OnServerEvent:Connect(function(Player)
 	return true
 end)
 
---local EquipItem
---EquipItem.OnServerEvent:Connect(function(Player)
---Update equipped folder so player's equipped tools are auto-equipped when they join back
---Also update "CurrentlyEquipped" value inside playermenu, baginfo buttons (from here so exploiters, if they change it, nothing happens other than GUI errors)
---end)
+--Fires when player equips new item (must be saved for when they join back)
+UpdateEquippedItem.OnServerEvent:Connect(function(Player, EquipType, ItemType, NewlyEquippedItem)
+	local playerUserId = Player.UserId
+	local PlayerDataFile = PlayerData:FindFirstChild(tostring(playerUserId))
+	local EquipValue = PlayerDataFile.Player.CurrentlyEquipped:FindFirstChild("Equipped" .. EquipType):FindFirstChild("Equipped" .. ItemType)
+	
+	--Check if value selected is not already equipped
+	if NewlyEquippedItem then
+		if NewlyEquippedItem ~= sessionData[playerUserId]["Equipped" .. ItemType] then
+			if sessionData[playerUserId][NewlyEquippedItem] == true then --Item is purchased
+				EquipValue.Value = NewlyEquippedItem
+				PlayerStatManager:ChangeStat(Player, "Equipped" .. ItemType, NewlyEquippedItem, EquipType)	
+			end
+		end
+	else --Unequipped Item, set value for equipped item to nil
+		EquipValue.Value = ""
+		sessionData[playerUserId]["Equipped" .. ItemType] = ""
+	end
+end)
 
 local function FindPlayerData(JoinedPlayer)
 	local PlayerDataFile = PlayerData:FindFirstChild(tostring(JoinedPlayer.UserId))
@@ -334,6 +358,9 @@ function LoadPlayerData(PlayerDataFile,data,JoinedPlayer)
 		
 		for i,itemtype in pairs (equiptype:GetChildren()) do
 			
+			--data["Equipped" .. tostring(itemtype)] is the player's equiped item
+			--data[tostring(item)] is if the item is purchased
+			
 			local ItemTypeFolder = CreateSaveFolder(EquipTypeFolder, tostring(itemtype))
 			for i,item in pairs (itemtype:GetChildren()) do
 				local Item = Instance.new("BoolValue",ItemTypeFolder) --true if purchased
@@ -358,15 +385,15 @@ function LoadPlayerData(PlayerDataFile,data,JoinedPlayer)
 			
 			--Update GUI Menus (Inventory and Player Items Equips)
 			if tostring(equiptype) == "Bags" then
-				local EquippedBagValue = itemtype:FindFirstChild(data["Equipped" .. tostring(itemtype)])
-				if EquippedBagValue then
+				local EquippedItemValue = itemtype:FindFirstChild(data["Equipped" .. tostring(itemtype)])
+				if EquippedItemValue then
 					local MenuName = string.gsub(tostring(itemtype), "Bag", "") .. "Menu"
-					DataMenu:WaitForChild("InventoryMenu"):FindFirstChild(MenuName):SetAttribute("BagCapacity", EquippedBagValue.Value)
+					DataMenu:WaitForChild("InventoryMenu"):FindFirstChild(MenuName):SetAttribute("BagCapacity", EquippedItemValue.Value)
 
 					local ItemCount = PlayerStatManager:getItemTypeCount(JoinedPlayer, string.gsub(tostring(itemtype), "Bag", ""))
 					DataMenu:WaitForChild("InventoryMenu"):FindFirstChild(MenuName):SetAttribute("ItemCount", ItemCount)
 					
-					UpdateEquippedItem:FireClient(tostring(itemtype), tostring(data["Equipped" .. tostring(itemtype)]))
+					UpdateEquippedItem:FireClient(JoinedPlayer, tostring(equiptype), tostring(itemtype), tostring(EquippedItemValue))
 				end
 			end
 		end
