@@ -11,6 +11,10 @@ local TweenService = game:GetService("TweenService")
 local GuiElements = game.ReplicatedStorage.GuiElements
 local PageManager = DataMenu.PageManager
 
+if DataMenu.Visible == true then
+	DataMenu.Visible = false
+end
+
 for i,v in pairs (DataMenu:GetChildren()) do
 	if v:IsA("Frame") and tostring(v) ~= "TopTabBar" then
 		v.Visible = false
@@ -466,7 +470,6 @@ end)
 local function InsertTileInfo(Type, tile, Stat, Value, found, AcquiredLocation)
 	local StatInfo
 	if Type == "Inventory" or Type == "Bags" then
-		print("Insert tile info INVENTORY/BAGS called for " .. tostring(Stat))
 		
 		if Type == "Inventory" then
 			StatInfo = game.ReplicatedStorage.ItemLocations:FindFirstChild(tostring(AcquiredLocation)):FindFirstChild(tostring(Stat))
@@ -517,7 +520,6 @@ local function InsertTileInfo(Type, tile, Stat, Value, found, AcquiredLocation)
 	end
 	
 	tile.Activated:Connect(function() --What happens when tile is clicked
-		print("tile was clicked")
 		if ItemViewerOpen == false then
 			ItemViewerOpen = true
 			local ItemViewerMenu = DataMenu.ItemViewer
@@ -535,34 +537,38 @@ local function InsertTileInfo(Type, tile, Stat, Value, found, AcquiredLocation)
 				ItemViewerMenu.ItemWorth.Text = "Worth: " .. tostring(StatInfo.CurrencyValue.Value)
 				ItemViewerMenu.ItemDescription.Text = StatInfo["GUI Info"].Description.Value
 				
+				ItemViewerMenu.EquipButton.Visible = false
+				
 			elseif Type == "Bags" then
 				ItemViewerMenu.ItemDescription.Text = StatInfo["GUI Info"].Description.Value
-				ItemViewerMenu.ItemAmount.Text = tostring(AcquiredLocation)
-				ItemViewerMenu.ItemWorth.Text = ""
+				ItemViewerMenu.ItemAmount.Text = AcquiredLocation
+				ItemViewerMenu.ItemWorth.Text = Type
 				ItemViewerMenu.ItemRarity.Text = ""
+				
+				local EquipButton = ItemViewerMenu.EquipButton
+				if DataMenu.PlayerMenu:FindFirstChild(AcquiredLocation).CurrentlyEquipped.Value == tostring(Stat) then
+					EquipButton.Text = "Unequip"
+					EquipButton.BackgroundColor3 = Color3.fromRGB(255, 96, 96)
+					EquipButton.BorderColor3 = Color3.fromRGB(255, 60, 60)
+					EquipButton.EquipStatus.Value = true
+				else
+					EquipButton.Text = "Equip"
+					EquipButton.BackgroundColor3 = Color3.fromRGB(0, 255, 72)
+					EquipButton.BorderColor3 = Color3.fromRGB(0, 170, 54)
+					EquipButton.EquipStatus.Value = false
+				end
+				
+				EquipButton.Visible = true
 				
 			else
 				ItemViewerMenu.ItemRarity.Text = ""
-				
 				ItemViewerMenu.ItemAmount.Text = "Total EXP: " .. tostring(Value)
+				
+				ItemViewerMenu.EquipButton.Visible = false
 			end
 			
 			ItemViewerMenu.ItemImage.Image = StatInfo["GUI Info"].StatImage.Value
 			ItemViewerMenu.ItemName.Text = tostring(Stat)
-			
-			--[[
-			if tile:FindFirstChild("AmountInStorage") then
-				--look for value inside storage gui, and make sure that the value exists before assigning gui number
-				local Storage = script.Parent.Parent.TycoonStorage.ComputerScreen
-				local StorageItemFile = Storage.ItemsPreview:FindFirstChild(tostring(File))
-				local StorageItem = StorageItemFile:FindFirstChild(StatInfo["GUI Info"].RarityName.Value):FindFirstChild(tostring(Stat))
-				if ItemViewerMenu.ItemName.Text == tile.StatName.Value then
-					ItemViewerMenu.ItemStorage.Text = "Storage: " .. tostring(StorageItem.AmountInStorage.Value)
-				end
-			else
-				ItemViewerMenu.ItemStorage.Text = ""
-			end
-			]]
 			
 			ItemViewerMenu.Visible = true 
 		end
@@ -995,6 +1001,7 @@ end
 -------------------------------------<|PlayerMenu Functions|>--------------------------------------------------------------------------------------
 
 local PlayerMenu = DataMenu:FindFirstChild("PlayerMenu")
+local UpdateEquippedItem = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateEquippedItem")
 local PlayerInfo = PlayerMenu["Default Menu"].PlayerInfo
 local thumbType = Enum.ThumbnailType.HeadShot
 local thumbSize = Enum.ThumbnailSize.Size420x420
@@ -1006,7 +1013,60 @@ PlayerInfo.PlayerName.Text = tostring(Player)
 local RealBags = game.ReplicatedStorage.Equippable.Bags
 local BagInfo = PlayerMenu["Default Menu"].BagInfo
 
+local EquipButton = DataMenu.ItemViewer.EquipButton
+EquipButton.Activated:Connect(function()
+	if EquipButton.Visible == true then
+		local ItemName = DataMenu.ItemViewer.ItemName.Text
+		local ItemType = DataMenu.ItemViewer.ItemAmount.Text
+		local EquipType = DataMenu.ItemViewer.ItemWorth.Text
+		
+		if EquipButton.EquipStatus.Value == false then --Equip item
+			EquipButton.Text = "Unequip"
+			EquipButton.BackgroundColor3 = Color3.fromRGB(255, 96, 96)
+			EquipButton.BorderColor3 = Color3.fromRGB(255, 60, 60)
+			EquipButton.EquipStatus.Value = true
+			
+			UpdateEquippedItem:FireServer(EquipType, ItemType, ItemName)
+		else --Unequip item
+			EquipButton.Text = "Equip"
+			EquipButton.BackgroundColor3 = Color3.fromRGB(0, 255, 72)
+			EquipButton.BorderColor3 = Color3.fromRGB(0, 170, 54)
+			EquipButton.EquipStatus.Value = false
+			
+			UpdateEquippedItem:FireServer(EquipType, ItemType)
+		end
+	end
+end)
 
+UpdateEquippedItem.OnClientEvent:Connect(function(EquipType, ItemType, Item)
+	local DefaultMenuButton = PlayerMenu:FindFirstChild(ItemType)
+	local ItemInfo = game.ReplicatedStorage.Equippable:FindFirstChild(EquipType):FindFirstChild(ItemType):FindFirstChild(Item)
+	local ItemImage = GetStatImage(ItemInfo)
+
+	DefaultMenuButton.CurrentlyEquipped.Value = Item
+	DefaultMenuButton.Image = ItemImage
+
+	local ItemTile
+	for i,page in pairs (PlayerMenu:FindFirstChild(ItemType .. "Menu"):GetChildren()) do
+		for i,tile in pairs (page:GetChildren()) do
+			if tile:IsA("TextButton") then
+				if tile.StatName.Value == Item then
+					ItemTile = tile
+				end
+			end
+		end
+	end
+	
+	if ItemTile then
+		ItemTile.BackgroundColor3 = Color3.fromRGB(85, 170, 255) --Brighter blue (or player's fav color later)
+	end
+
+	--Change equip button to say unequip
+
+
+
+
+end)
 
 --PlayerMenu functions will likely handle equipping, arranging of tiles in that inventory screen, adding new tiles
 --when the player has purchased something, ...
@@ -1014,7 +1074,7 @@ local BagInfo = PlayerMenu["Default Menu"].BagInfo
 
 
 
--------------------------------------<High-Traffic Functions>---------------------------------------------------------------------------------------
+-------------------------------------<High-Traffic Events>---------------------------------------------------------------------------------------
 
 local UpdateInventory = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateInventory")
 UpdateInventory.OnClientEvent:Connect(function(Stat, File, Value, AmountAdded, Type, Currency, AcquiredLocation)
@@ -1073,16 +1133,7 @@ UpdatePlayerMenu.OnClientEvent:Connect(function(EquipType, ItemType, Item)
 	
 end)
 
-local UpdateEquippedItem = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateEquippedItem")
-UpdateEquippedItem.OnClientEvent:Connect(function(ItemType,Item)
-	print("UPDATE EQUIPPED: ",ItemType,Item)
-	local CurrentlyEquipped = PlayerMenu:FindFirstChild(ItemType).CurrentlyEquipped.Value
-	CurrentlyEquipped = Item
-	
-	
-	
-	
-end)
+
 
 local UpdateItemCount = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateItemCount")
 UpdateItemCount.OnClientEvent:Connect(function(ItemTypeCount, BagCapacity, BagType, DeposittedInventory)
@@ -1109,11 +1160,5 @@ UpdateItemCount.OnClientEvent:Connect(function(ItemTypeCount, BagCapacity, BagTy
 	Menu:SetAttribute("ItemCount", ItemTypeCount)
 	Menu:SetAttribute("BagCapacity", BagCapacity)
 end)
-
-
-
-
-
-
 
 
