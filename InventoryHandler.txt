@@ -28,9 +28,9 @@ OpenDataMenuButton.Activated:Connect(function()
 		DataMenu.Visible = true
 		DataMenu.PlayerMenu.Visible = true
 		OpenDataMenuButton.Active = false
+		DataMenu.PlayerMenu.Visible = true
 		DataMenu:TweenPosition(UDim2.new(0.126, 0, 0.141, 0), "Out", "Quint", .5)
 		wait(.5)
-		OpenDataMenuButton.Active = true
 		
 		--Manage Tabs
 		if InventoryOpens == 0 then
@@ -47,6 +47,8 @@ OpenDataMenuButton.Activated:Connect(function()
 			menu.Visible = true
 		end
 		
+		OpenDataMenuButton.Active = true
+		
 	elseif DataMenu.Visible == true then
 		OpenDataMenuButton.Active = false
 		DataMenu:TweenPosition(UDim2.new(0.126, 0, -0.8, 0), "Out", "Quint", .5)
@@ -55,6 +57,7 @@ OpenDataMenuButton.Activated:Connect(function()
 		DataMenu.Position = UDim2.new(0.126, 0, 0.141, 0)
 		PageManager.Visible = false
 		DataMenu.ItemViewer.Visible = false
+		
 		OpenDataMenuButton.Active = true
 	end
 end)
@@ -1016,6 +1019,8 @@ local BagInfo = PlayerMenu["Default Menu"].BagInfo
 local EquipButton = DataMenu.ItemViewer.EquipButton
 EquipButton.Activated:Connect(function()
 	if EquipButton.Visible == true then
+		EquipButton.Active = false
+		
 		local ItemName = DataMenu.ItemViewer.ItemName.Text
 		local ItemType = DataMenu.ItemViewer.ItemAmount.Text
 		local EquipType = DataMenu.ItemViewer.ItemWorth.Text
@@ -1035,6 +1040,8 @@ EquipButton.Activated:Connect(function()
 			
 			UpdateEquippedItem:FireServer(EquipType, ItemType)
 		end
+		wait(1)
+		EquipButton.Active = true
 	end
 end)
 
@@ -1160,5 +1167,6 @@ UpdateItemCount.OnClientEvent:Connect(function(ItemTypeCount, BagCapacity, BagTy
 	Menu:SetAttribute("ItemCount", ItemTypeCount)
 	Menu:SetAttribute("BagCapacity", BagCapacity)
 end)
+
 
 
