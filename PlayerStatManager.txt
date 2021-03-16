@@ -369,8 +369,9 @@ function LoadPlayerData(PlayerDataFile,data,JoinedPlayer)
 				local SavedValue = CheckSaveData(data[tostring(item)])
 				ImportSaveData(data,SavedValue,ItemTypeFolder,Item)
 				
-				--Update Player Menu tiles for each (itemtype) menu
-				UpdatePlayerMenu:FireClient(JoinedPlayer, tostring(equiptype), tostring(itemtype), tostring(item))
+				if SavedValue == true then
+					UpdatePlayerMenu:FireClient(JoinedPlayer, tostring(equiptype), tostring(itemtype), tostring(item))
+				end
 			end
 			
 			local EquippedItem = Instance.new("StringValue", EquippedTypeFolder) --name of equipped item
