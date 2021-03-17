@@ -53,39 +53,9 @@ function getPlrTycoon(player)
 	--return nil 
 end
 
-
---When player joins
-game.Players.PlayerAdded:connect(function(player)
-	
-	if PlayerData:FindFirstChild(player.UserId) == nil then --Server startup, make new folder
-		local PlayerDataStorage = Instance.new('Folder', PlayerData) 
-		PlayerDataStorage.Name = tostring(player.UserId)
-	end
-	local PlayerDataFile = PlayerData:FindFirstChild(player.UserId)
-	
-	local isOwner = Instance.new("ObjectValue",PlayerDataFile)
-	isOwner.Name = "OwnsTycoon"
-	
-	player.CharacterAdded:connect(function(Character)
-		repeat wait() until Character:FindFirstChild("LowerTorso")
-		Character.Parent = game.Workspace:WaitForChild("Players")
-		
-		--Way to make this a softer glow?
-		local Light = Instance.new("PointLight")
-		Light.Brightness = 7
-		Light.Range = 7
-		Light.Parent = Character.Head
-	end)
-end)
-
 --When player leaves
 game.Players.PlayerRemoving:connect(function(player)
 
-	local plrStats = PlayerData:FindFirstChild(tostring(player.UserId))
-	if plrStats ~= nil then --Remove player from serverstorage
-		plrStats:Destroy()
-	end
-	
 	--Remove the tycoon when the player leaves
 	local tycoon = getPlrTycoon(player)
 	if tycoon then
