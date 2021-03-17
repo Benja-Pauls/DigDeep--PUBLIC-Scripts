@@ -13,15 +13,51 @@ local UpdateInventory = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateIn
 local UpdateTycoonStorage = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateTycoonStorage")
 local UpdatePlayerMenu = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdatePlayerMenu")
 local UpdateEquippedItem = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateEquippedItem")
-local DepositInventory = game.ReplicatedStorage.Events.Utility:WaitForChild("DepositInventory")
-local SellItem = game.ReplicatedStorage.Events.Utility:WaitForChild("SellItem")
 local UpdateItemCount = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateItemCount")
 
+-------------------------<|Set-Up Game|>---------------------------------------------------------------------------------------------------------------------
+
 local PlayerSave = DataStoreService:GetDataStore("Tycoon Test190") --Changing this will change the datastore info is taken from
+
+--When player joins
+game.Players.PlayerAdded:connect(function(JoinedPlayer)
+	if PlayerData:FindFirstChild(JoinedPlayer.UserId) == nil then --Server startup, make new folder
+		local PlayerDataStorage = Instance.new('Folder', PlayerData) 
+		PlayerDataStorage.Name = tostring(JoinedPlayer.UserId)
+	end
+	local PlayerDataFile = PlayerData:FindFirstChild(JoinedPlayer.UserId)
+
+	local isOwner = Instance.new("ObjectValue",PlayerDataFile)
+	isOwner.Name = "OwnsTycoon"
+	
+	FindPlayerData(JoinedPlayer)
+
+	JoinedPlayer.CharacterAdded:connect(function(Character)
+		repeat wait() until Character:FindFirstChild("LowerTorso")
+		Character.Parent = game.Workspace:WaitForChild("Players")
+
+		--Way to make this a softer glow?
+		local Light = Instance.new("PointLight")
+		Light.Brightness = 7
+		Light.Range = 7
+		Light.Parent = Character.Head
+	end)
+end)
+
+--When player leaves
+game.Players.PlayerRemoving:connect(function(JoinedPlayer)
+	local plrStats = PlayerData:FindFirstChild(tostring(JoinedPlayer.UserId))
+	if plrStats ~= nil then --Remove player from ServerStorage
+		plrStats:Destroy()
+	end
+	
+	--Tycoon is removed via TycoonControl script
+end)
 
 local sessionData = {}
 
 --------------------------<|Utility Functions|>------------------------------------------------------------------------------------------------------------
+
 local function CheckSaveData(Save)
 	if not Save then
 		return false
@@ -81,7 +117,6 @@ local function FindAssociatedFolder(MotherFolder, ItemType, ItemName)
 end
 
 -----------------------------------------------------------------------------------------------------------------------------------------------------------
-
 
 local function UpdateGUIForFile(DataTabName, PlayerDataFile, player, playerUserId, statName, value)
 	local DataTab = PlayerDataFile:FindFirstChild(DataTabName) --Example: (UserId).Experience
@@ -186,73 +221,7 @@ function PlayerStatManager:ChangeStat(player, statName, value, File, Currency, s
 	end
 end
 
-SellItem.OnServerEvent:Connect(function(Player, Menu, item, Percentage)--, Amount)
-	if Percentage >= 0 and Percentage <= 1 then
-		local playerUserId = game.Players:FindFirstChild(tostring(Player)).UserId
-		
-		local Item = FindItemInfo(item, tostring(Menu))
-		
-		if Item then
-			local ItemWorth = tonumber(Item.CurrencyValue.Value)
-			local Amount = math.ceil(Percentage * sessionData[playerUserId]["TycoonStorage" .. tostring(Item)])
-			local SellAmount = Amount*ItemWorth
-			
-			print("Selling " .. tostring(Amount) .. " " .. tostring(Item) .. "'s for $" .. tostring(SellAmount))
-			
-			PlayerStatManager:ChangeStat(Player, "Currency", SellAmount, "Currencies", true) --Update Currency
-			PlayerStatManager:ChangeStat(Player, "TycoonStorage" .. tostring(Item), -Amount, "TycoonStorage")
-		else
-			warn("Item could not be found to sell!")
-		end
-	--else
-		--exploiter warning
-	end
-end)
-
-DepositInventory.OnServerEvent:Connect(function(Player)
-	local PlayerDataFile = PlayerData:FindFirstChild(tostring(Player.UserId))
-	for i,folder in pairs (PlayerDataFile.Inventory:GetChildren()) do
-		for i,item in pairs (folder:GetChildren()) do
-			local InventoryValue = item.Value --the value of the item is one more than the actual value
-			if InventoryValue > 0 then
-				--Update Inventory
-				PlayerStatManager:ChangeStat(Player, tostring(item), 0, "Inventory", nil, "Zero")
-				item.Value = 0
-				
-				--Update Storage
-				PlayerStatManager:ChangeStat(Player, "TycoonStorage" .. tostring(item), InventoryValue, "TycoonStorage")
-				print(PlayerDataFile.Inventory:FindFirstChild(tostring(folder)):FindFirstChild(tostring(item)).Value)
-				
-				--Call Inventory to Wipe Previous Pages and Tiles
-				DepositInventory:FireClient(Player)
-			end
-		end
-	end
-
-	return true
-end)
-
---Fires when player equips new item (must be saved for when they join back)
-UpdateEquippedItem.OnServerEvent:Connect(function(Player, EquipType, ItemType, NewlyEquippedItem)
-	local playerUserId = Player.UserId
-	local PlayerDataFile = PlayerData:FindFirstChild(tostring(playerUserId))
-	local EquipValue = PlayerDataFile.Player.CurrentlyEquipped:FindFirstChild("Equipped" .. EquipType):FindFirstChild("Equipped" .. ItemType)
-	
-	--Check if value selected is not already equipped
-	if NewlyEquippedItem then
-		if NewlyEquippedItem ~= sessionData[playerUserId]["Equipped" .. ItemType] then
-			if sessionData[playerUserId][NewlyEquippedItem] == true then --Item is purchased
-				EquipValue.Value = NewlyEquippedItem
-				PlayerStatManager:ChangeStat(Player, "Equipped" .. ItemType, NewlyEquippedItem, EquipType)	
-			end
-		end
-	else --Unequipped Item, set value for equipped item to nil
-		EquipValue.Value = ""
-		sessionData[playerUserId]["Equipped" .. ItemType] = ""
-	end
-end)
-
-local function FindPlayerData(JoinedPlayer)
+function FindPlayerData(JoinedPlayer)
 	local PlayerDataFile = PlayerData:FindFirstChild(tostring(JoinedPlayer.UserId))
 	--local PlayerCash = PlayerDataFile:FindFirstChild("Currencies"):FindFirstChild("Currency")
 	local playerUserId = game.Players:FindFirstChild(tostring(JoinedPlayer)).UserId
@@ -282,8 +251,6 @@ local function FindPlayerData(JoinedPlayer)
 		warn("Couldn't Get or Set-Up Player Data For " .. tostring(JoinedPlayer))
 	end		
 end
-
-
 
 function LoadPlayerData(PlayerDataFile,data,JoinedPlayer)
 	print("Loading player data")
@@ -457,15 +424,6 @@ function savePlayerData(playerUserId)
 	end
 end
 
---[[ (REMOVED BECAUSE SAVED ALL PREVIOUS PLAYER'S DATA AS WELL)
-local function saveAllPlayerData() --maybe make a getchildren statement? and save for all children?
-		for playerUserId, _ in pairs(sessionData) do --Call for every player thats ever been in game
-			savePlayerData(playerUserId) --Save
-			print(playerUserId .. "'s held data was saved!")
-		end
-	end
-]]
-
 function PlayerStatManager:getPlayerData(player)
 	local playerUserId = game.Players:FindFirstChild(tostring(player)).UserId
 	return sessionData[playerUserId]
@@ -520,7 +478,98 @@ function PlayerStatManager:initiateSaving(player, statName, value)
 	--Other stats include purhcases, inventory, etc.
 end
 
-game.Players.PlayerAdded:Connect(FindPlayerData)
+--------------------------------<|Stat-Handling Events|>------------------------------------------------------------------------------------------
+
+local SellItem = game.ReplicatedStorage.Events.Utility:WaitForChild("SellItem")
+SellItem.OnServerEvent:Connect(function(Player, Menu, item, Percentage)--, Amount)
+	if Percentage >= 0 and Percentage <= 1 then
+		local playerUserId = game.Players:FindFirstChild(tostring(Player)).UserId
+
+		local Item = FindItemInfo(item, tostring(Menu))
+
+		if Item then
+			local ItemWorth = tonumber(Item.CurrencyValue.Value)
+			local Amount = math.ceil(Percentage * sessionData[playerUserId]["TycoonStorage" .. tostring(Item)])
+			local SellAmount = Amount*ItemWorth
+
+			print("Selling " .. tostring(Amount) .. " " .. tostring(Item) .. "'s for $" .. tostring(SellAmount))
+
+			PlayerStatManager:ChangeStat(Player, "Currency", SellAmount, "Currencies", true) --Update Currency
+			PlayerStatManager:ChangeStat(Player, "TycoonStorage" .. tostring(Item), -Amount, "TycoonStorage")
+		else
+			warn("Item could not be found to sell!")
+		end
+		--else
+		--exploiter warning
+	end
+end)
+
+local DepositInventory = game.ReplicatedStorage.Events.Utility:WaitForChild("DepositInventory")
+DepositInventory.OnServerEvent:Connect(function(Player)
+	local PlayerDataFile = PlayerData:FindFirstChild(tostring(Player.UserId))
+	for i,folder in pairs (PlayerDataFile.Inventory:GetChildren()) do
+		for i,item in pairs (folder:GetChildren()) do
+			local InventoryValue = item.Value --the value of the item is one more than the actual value
+			if InventoryValue > 0 then
+				--Update Inventory
+				PlayerStatManager:ChangeStat(Player, tostring(item), 0, "Inventory", nil, "Zero")
+				item.Value = 0
+
+				--Update Storage
+				PlayerStatManager:ChangeStat(Player, "TycoonStorage" .. tostring(item), InventoryValue, "TycoonStorage")
+				print(PlayerDataFile.Inventory:FindFirstChild(tostring(folder)):FindFirstChild(tostring(item)).Value)
+
+				--Call Inventory to Wipe Previous Pages and Tiles
+				DepositInventory:FireClient(Player)
+			end
+		end
+	end
+
+	return true
+end)
+
+--Fires when player equips new item (must be saved for when they join back)
+UpdateEquippedItem.OnServerEvent:Connect(function(Player, EquipType, ItemType, NewlyEquippedItem)
+	local playerUserId = Player.UserId
+	local PlayerDataFile = PlayerData:FindFirstChild(tostring(playerUserId))
+	local EquipValue = PlayerDataFile.Player.CurrentlyEquipped:FindFirstChild("Equipped" .. EquipType):FindFirstChild("Equipped" .. ItemType)
+
+	--Check if value selected is not already equipped
+	if NewlyEquippedItem then
+		if NewlyEquippedItem ~= sessionData[playerUserId]["Equipped" .. ItemType] then
+			if sessionData[playerUserId][NewlyEquippedItem] == true then --Item is purchased
+				EquipValue.Value = NewlyEquippedItem
+				PlayerStatManager:ChangeStat(Player, "Equipped" .. ItemType, NewlyEquippedItem, EquipType)	
+			end
+		end
+	else --Unequipped Item, set value for equipped item to nil
+		EquipValue.Value = ""
+		sessionData[playerUserId]["Equipped" .. ItemType] = ""
+	end
+end)
+
+local HandleDropMaterialsEvent = game.ReplicatedStorage.Events.Tycoon:WaitForChild("HandleDropMaterials")
+local function HandleDropMaterials(Tycoon, Drop) --Update Tycoon Storage for drop's worth
+	local Player = Tycoon:FindFirstChild("Owner").Value
+	local playerUserId = game.Players:FindFirstChild(tostring(Player)).UserId
+	local PlayerDataFile = PlayerData:FindFirstChild(playerUserId)
+	local OwnedTycoon = PlayerDataFile:FindFirstChild("OwnsTycoon").Value
+	
+	--Match player with saved Tycoon value in player data storage (prevent exploiters)
+	if tostring(Tycoon) == tostring(OwnedTycoon) then
+		if Drop:FindFirstChild("Materials") then	
+			for i,file in pairs (Drop.Materials:GetChildren()) do
+				for i,material in pairs (file:GetChildren()) do
+					PlayerStatManager:ChangeStat(Player, "TycoonStorage" .. tostring(material), material.Value, "TycoonStorage")
+
+					PlayerStatManager:ChangeStat(Player,tostring(material) .. "Discovered", true, tostring(file))
+				end
+			end
+		end
+	end
+end
+HandleDropMaterialsEvent.Event:Connect(HandleDropMaterials)
+
 
 
 return PlayerStatManager
