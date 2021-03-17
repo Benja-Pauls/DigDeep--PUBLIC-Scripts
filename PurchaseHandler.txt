@@ -2,8 +2,8 @@
 Handles the processes that happen when the player tries to purchase something
 
 ------------------------------------------------------------------------------------------------------------------------------------------------
-
 local Objects = {}
+local Tycoon = script.Parent
 local TeamColor = script.Parent:WaitForChild("TeamColor").Value
 local CollectibleCash = script.Parent.CurrencyToCollect
 local Debris = game:GetService('Debris')
@@ -45,27 +45,13 @@ local function CheckDependencies(Dependencies)
 	return CompletedDependencies
 end
 
-local function HandleDropMaterials(Drop) --Update Tycoon Storage for drop's worth
-	local Tycoon = script.Parent
-	local Player = Tycoon:FindFirstChild("Owner").Value
-	if Drop:FindFirstChild("Materials") then
-		for i,file in pairs (Drop.Materials:GetChildren()) do
-			for i,material in pairs (file:GetChildren()) do
-				PlayerStatManager:ChangeStat(Player, "TycoonStorage" .. tostring(material), material.Value, "TycoonStorage")
-
-				PlayerStatManager:ChangeStat(Player,tostring(material) .. "Discovered", true, tostring(file))
-			end
-		end
-	end
-end
-
---Maybe have tycoon drop storage for every tycoon? (easier to manage)
 --DropCollector Processing, Checks Current Terminal Amount Cap
+local HandleDropMaterialsEvent = game.ReplicatedStorage.Events.Tycoon:WaitForChild("HandleDropMaterials")
 for i,v in pairs(script.Parent.Essentials:GetChildren()) do 
 	if v.Name == "DropCollector" then 
 		v.Touched:connect(function(Part)
 			if Part:FindFirstChild("Cash") then
-				HandleDropMaterials(Part)
+				HandleDropMaterialsEvent:Fire(Tycoon, Part)
 				local TerminalLevels = script.Parent.Essentials.TerminalLevel:GetChildren()
 				if #TerminalLevels == 1 then --Can make this more efficient, value check for <=
 					if Part.Cash.Value + CollectibleCash.Value <= 100 then
@@ -113,6 +99,9 @@ coroutine.resume(coroutine.create(function()
 											local ListedPlayer = game.Players:FindFirstChild(tostring(player))
 											if ListedPlayer ~= nil then
 												PlaySound(v, SoundEffects.Tycoon.Collect) 
+												
+												--Update value for currency event?
+												
 												PlayerCash.Value = PlayerCash.Value + CollectibleCash.Value --add dropper cash to player cash
 
 												Utility:UpdateMoneyDisplay(hit.Parent.Name, PlayerCash.Value)
