@@ -1,5 +1,5 @@
-(LocalScript)
-Mining visuals handler (mining progress bar, denoting selected block, and return to surface button)
+--(LocalScript)
+--Mining visuals handler (mining progress bar, denoting selected block, and return to surface button)
 -----------------------------------------------------------------------------------------------------------------------------------------------
 local MiningGui = script.Parent
 local OreLabel = MiningGui:WaitForChild("OreLabel")
