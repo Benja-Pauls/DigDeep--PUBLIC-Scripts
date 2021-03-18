@@ -1,5 +1,5 @@
-(Script)
-Handles mining, mine generation, and ore generation after ore is mined (generates a new block around mined block that were previously nothing)
+--(Script)
+--Handles mining, mine generation, and ore generation after ore is mined (generates a new block around mined block that were previously nothing)
 
 ------------------------------------------------------------------------------------------------------------------------------------------------
 local PlayerStatManager = require(game.ServerScriptService:WaitForChild("PlayerStatManager"))
@@ -421,10 +421,11 @@ function GenerateOre(x,y,z,Override,PresetPoint,Region,Player)
 	end		
 end
 
-
+local MineOre = game.ReplicatedStorage.Events.Utility:WaitForChild("MineOre")
 local UpdateItemCount = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateItemCount")
 
-function game.ServerStorage.MineOre.OnInvoke(Player,Ore)
+MineOre.Event:Connect(function(Player,Ore)
+	print("MineOre has been invoked")
 	local RealMineshaftItem
 	if Ore.Name == "Target" then
 		RealMineshaftItem = game.ReplicatedStorage.ItemLocations.Mineshaft:FindFirstChild(Ore.Parent.Name)
@@ -488,6 +489,7 @@ function game.ServerStorage.MineOre.OnInvoke(Player,Ore)
 				local experience = PlayerStatManager:getStat(Player, "MiningSkill")
 				--print(typeof(mined),typeof(experience))
 				if typeof(mined) == "number" and typeof(experience) == "number" then
+					
 					PlayerStatManager:ChangeStat(Player, Ore.Name, 1, "Inventory", true)
 					
 					local InitialOreExperience = RealMineshaftItem.Experience.Value
@@ -528,13 +530,18 @@ function game.ServerStorage.MineOre.OnInvoke(Player,Ore)
 			end
 		else
 			--Notify player that their inventory is full and they should sell/deposit their items 
+			--(Pop Up GUI: Inventory Capacity Warning)
 		end
 	else
 		--Notify player they have no bag they can fill
+		--(Pop Up GUI: No Associated Bag Warning)
 	end
-end
+end)
 
 function MakeDustParticles(OrePosition, OreColor)
+	--Perhaps have an event fire to all players to check if player has particles enabled?
+	--(Could also be used to check magnitude to mined position to see if they need to be made for their screen at all)
+	
 	coroutine.resume(coroutine.create(function()
 		local LeftoverDust = game.ReplicatedStorage.GuiElements.BlockDestroy:Clone()
 
