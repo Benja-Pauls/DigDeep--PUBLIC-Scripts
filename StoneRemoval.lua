@@ -1,5 +1,5 @@
-(Script)
-Simple dev test script that removes all stone the player has in their inventory
+--(Script)
+--Simple dev test script that removes all stone the player has in their inventory
 -----------------------------------------------------------------------------------------------------------------------------------------------
 
 local StoneRemovalButton = game.Workspace:WaitForChild("StoneRemoval")
