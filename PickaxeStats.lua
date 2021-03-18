@@ -1,5 +1,5 @@
-(ModuleScript)
-ModuleScript that every level of pickaxe will have to easily access it's information
+--(ModuleScript)
+--ModuleScript that every level of pickaxe will have to easily access it's information
 -----------------------------------------------------------------------------------------------------------------------------------------------
 
 local Pickaxe = {}
