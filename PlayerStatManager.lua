@@ -1,38 +1,44 @@
-(ModuleScript)
-Handles all saving that occurs. Any true saving (ROBLOX data store assigning)
+--(ModuleScript)
+--Handles all saving that occurs. Any true saving (ROBLOX data store assigning)
 -------------------------------------------------------------------------------------------------------------------------------------------------
 local PlayerStatManager = {}
 
 local tycoons = game.Workspace["Tycoon Game"]:WaitForChild("Tycoons"):GetChildren()
 
-local serverStorage = game:GetService("ServerStorage")
-local PlayerData = serverStorage:FindFirstChild("PlayerData")
-local DataStoreService = game:GetService("DataStoreService") 
+local PlayerData = game.ServerStorage:FindFirstChild("PlayerData")
 local Utility = require(game.ServerScriptService:WaitForChild("Utility"))
-local UpdateInventory = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateInventory")
-local UpdateTycoonStorage = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateTycoonStorage")
-local UpdatePlayerMenu = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdatePlayerMenu")
-local UpdateEquippedItem = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateEquippedItem")
-local UpdateItemCount = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateItemCount")
+
+local EventsFolder = game.ReplicatedStorage.Events
+local UpdateInventory = EventsFolder.GUI:WaitForChild("UpdateInventory")
+local UpdateTycoonStorage = EventsFolder.GUI:WaitForChild("UpdateTycoonStorage")
+local UpdatePlayerMenu = EventsFolder.GUI:WaitForChild("UpdatePlayerMenu")
+local UpdateEquippedItem = EventsFolder.GUI:WaitForChild("UpdateEquippedItem")
+local UpdateItemCount = EventsFolder.GUI:WaitForChild("UpdateItemCount")
 
 -------------------------<|Set-Up Game|>---------------------------------------------------------------------------------------------------------------------
 
+local DataStoreService = game:GetService("DataStoreService") 
 local PlayerSave = DataStoreService:GetDataStore("Tycoon Test190") --Changing this will change the datastore info is taken from
 
 --When player joins
-game.Players.PlayerAdded:connect(function(JoinedPlayer)
+game.Players.PlayerAdded:Connect(function(JoinedPlayer)
+	print(tostring(JoinedPlayer) .. " has joined the game")
 	if PlayerData:FindFirstChild(JoinedPlayer.UserId) == nil then --Server startup, make new folder
 		local PlayerDataStorage = Instance.new('Folder', PlayerData) 
 		PlayerDataStorage.Name = tostring(JoinedPlayer.UserId)
 	end
-	local PlayerDataFile = PlayerData:FindFirstChild(JoinedPlayer.UserId)
 
-	local isOwner = Instance.new("ObjectValue",PlayerDataFile)
+	local PlayerDataFile = PlayerData:FindFirstChild(JoinedPlayer.UserId)
+	
+	local isOwner = Instance.new("ObjectValue", PlayerDataFile)
 	isOwner.Name = "OwnsTycoon"
 	
 	FindPlayerData(JoinedPlayer)
 
-	JoinedPlayer.CharacterAdded:connect(function(Character)
+	--JoinedPlayer.CharacterAdded:Connect(function(Character) Doesn't seem to be working anymore...
+	if game.Workspace:WaitForChild(tostring(JoinedPlayer)) then
+		local Character = game.Workspace:FindFirstChild(tostring(JoinedPlayer))
+		
 		repeat wait() until Character:FindFirstChild("LowerTorso")
 		Character.Parent = game.Workspace:WaitForChild("Players")
 
@@ -41,16 +47,17 @@ game.Players.PlayerAdded:connect(function(JoinedPlayer)
 		Light.Brightness = 7
 		Light.Range = 7
 		Light.Parent = Character.Head
-	end)
+	end
 end)
 
+
 --When player leaves
-game.Players.PlayerRemoving:connect(function(JoinedPlayer)
-	local plrStats = PlayerData:FindFirstChild(tostring(JoinedPlayer.UserId))
-	if plrStats ~= nil then --Remove player from ServerStorage
-		plrStats:Destroy()
-	end
+game.Players.PlayerRemoving:Connect(function(JoinedPlayer)
+	local PlayerDataFile = PlayerData:FindFirstChild(tostring(JoinedPlayer.UserId))
 	
+	if PlayerDataFile ~= nil then --Remove player from ServerStorage
+		PlayerDataFile:Destroy()
+	end
 	--Tycoon is removed via TycoonControl script
 end)
 
@@ -224,21 +231,22 @@ end
 function FindPlayerData(JoinedPlayer)
 	local PlayerDataFile = PlayerData:FindFirstChild(tostring(JoinedPlayer.UserId))
 	--local PlayerCash = PlayerDataFile:FindFirstChild("Currencies"):FindFirstChild("Currency")
-	local playerUserId = game.Players:FindFirstChild(tostring(JoinedPlayer)).UserId
+	local playerUserId = JoinedPlayer.UserId
 	
 	local success,data = pcall(function()
-		return PlayerSave:GetAsync(playerUserId) --Get save saved as playerUserId
+		return PlayerSave:GetAsync(playerUserId) --Get save data saved as playerUserId
 	end)
 	
 	if success then
-		--print(success)
 		wait(5) --Allow tycoon to be categorized
 		if data then --load data
 			print("DataStore was Accessed for " .. JoinedPlayer.Name .. " (" .. tostring(JoinedPlayer.UserId) .. ")")
 			sessionData[playerUserId] = data
 			
 			local PlayerCash = LoadPlayerData(PlayerDataFile,data,JoinedPlayer)
+			print(tostring(JoinedPlayer) .. " has $" .. tostring(PlayerCash))
 			SetTycoonPurchases(JoinedPlayer, PlayerCash, playerUserId)
+			print("SETTYCOONPURCHASES HAS FINISHED")
 			
 		else --New player
 			print(tostring(JoinedPlayer) .. " is a new player!")
@@ -389,17 +397,17 @@ end
 
 function SetTycoonPurchases(JoinedPlayer, PlayerCash, playerUserId)
 	for i = 1,#tycoons,1 do 
-		local PurchaseHandler = require(tycoons[i]:WaitForChild("PurchaseHandler"))
+		local TycoonAssetsHandler = require(tycoons[i]:WaitForChild("TycoonAssetsHandler")) --Tycoon's possible purchases (table)
 		local data = sessionData[playerUserId]
 		
 		--Set-up Entrance Save
 		local Entrance = tycoons[i].Entrance.Name
-		if data[Entrance] == nil then
-			print("Setting Entrance to false1")
+		if data[Entrance] == nil then --Change name of entrance for multiple tycoon purchases
+			print("Setting Entrance to Unbought")
 			data[Entrance] = false
 		end
 		
-		for key,_ in pairs(PurchaseHandler) do
+		for key,_ in pairs(TycoonAssetsHandler) do
 			if data[key] == nil then --if a value of the object hasn't been placed in player's sessiondata,
 				--Make one, and set it equal to false (so it can be set to true later)
 				--print(key) --= displays names of items that can be bought (NOT BUTTON NAMES)
@@ -411,7 +419,7 @@ function SetTycoonPurchases(JoinedPlayer, PlayerCash, playerUserId)
 	end
 end
 
-function savePlayerData(playerUserId)
+function SavePlayerData(playerUserId)
 	if sessionData[playerUserId] then --if there is a sessiondata value with the player's userid...
 		local success = pcall(function() --Check to make sure it is saving
 			PlayerSave:SetAsync(playerUserId, sessionData[playerUserId]) --save sessionData[playerUserId] as playerUserId
@@ -450,31 +458,29 @@ end
 
 function PlayerStatManager:getEquippedData(player, Equippable, Type)
 	local playerUserId = game.Players:FindFirstChild(tostring(player)).UserId
+	local PlayerDataFile = game.ServerStorage.PlayerData:FindFirstChild(tostring(playerUserId))
 	
-	if game.ServerStorage.PlayerData:FindFirstChild(tostring(playerUserId)).Player.CurrentlyEquipped:FindFirstChild(Equippable) then
-		local EquippedItem = game.ServerStorage.PlayerData:FindFirstChild(tostring(playerUserId)).Player.Equipped:FindFirstChild(Equippable)
+	print(player, Equippable, Type)
+	
+	if PlayerDataFile.Player.CurrentlyEquipped:FindFirstChild("Equipped" .. Type):FindFirstChild("Equipped" .. Equippable) then
+		local EquippedItem = PlayerDataFile.Player.CurrentlyEquipped:FindFirstChild("Equipped" .. Type):FindFirstChild("Equipped" .. Equippable)
 		local EquipmentName = EquippedItem.Value
-		print(player, Equippable, Type, EquipmentName)
-		print(game.ReplicatedStorage.Equippable:FindFirstChild(Type))
-		print(game.ReplicatedStorage.Equippable:FindFirstChild(Type):FindFirstChild(Equippable))
-		print(game.ReplicatedStorage.Equippable:FindFirstChild(Type):FindFirstChild(Equippable):FindFirstChild(EquipmentName))
 		local EquipmentStats = game.ReplicatedStorage.Equippable:FindFirstChild(Type):FindFirstChild(Equippable):FindFirstChild(EquipmentName)
-		print("1")
+		
 		return EquipmentStats
+	else
+		warn("Could not find equippable for " .. tostring(player) .. " with name: " .. Equippable)
 	end
 end
 
 function PlayerStatManager:initiateSaving(player, statName, value)
-	print("Saving Data for player: " .. tostring(player))
+	print("Saving Data for Player: " .. tostring(player))
 	local playerUserId = game.Players:FindFirstChild(tostring(player)).UserId
-	--if typeof(sessionData[playerUserId][statName]) == "number" and statName ~= "Currency" then
-	--sessionData[playerUserId][statName] = sessionData[playerUserId][statName] + value
-	--else
-	sessionData[playerUserId][statName] = value --data["Currency"] in FindPlayerData
-	--end
+
+	sessionData[playerUserId][statName] = value 
+	print(tostring(player) .. "'s Money: $" .. tostring(sessionData[playerUserId]["Currency"]))
 	
-	print("Money: " .. tostring(sessionData[playerUserId]["Currency"]))
-	savePlayerData(playerUserId) --After saving money amount, update datastore for other stats!
+	SavePlayerData(playerUserId) --After saving money amount, update datastore for other stats!
 	--Other stats include purhcases, inventory, etc.
 end
 
