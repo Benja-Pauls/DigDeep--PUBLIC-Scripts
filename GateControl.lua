@@ -1,5 +1,5 @@
-(Script)
-Entrance to everyone's business, the door you have to go through in order to purchase any plot/structure
+--(Script)
+--Entrance to everyone's business, the door you have to go through in order to purchase any plot/structure
 -----------------------------------------------------------------------------------------------------------------------------------------------
 local PlayerStatManager = require(game.ServerScriptService:WaitForChild("PlayerStatManager"))
 
@@ -45,7 +45,9 @@ script.Parent.Head.Touched:connect(function(hit)
 						print(tostring(player) .. " has re-loaded " .. tostring(tycoon))
 
 						script.Parent.Parent.Parent.Owner.Value = player 
+						print("1")
 						ownstycoon.Value = script.Parent.Parent.Parent
+						print("2")
 						LocalLoadTycoon:FireClient(player,tycoon)
 						wait(2) --allow savehandler to load buttons (stats == false)
 						script.Parent.Name = player.Name.."'s Facility" 
