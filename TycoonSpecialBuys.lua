@@ -1,5 +1,5 @@
-(Script)
-Handles special processes that occur with some purchases
+--(Script)
+--Handles special processes that occur with some purchases
 ----------------------------------------------------------------------------------------------------------------------------------------------
 
 
