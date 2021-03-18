@@ -1,5 +1,5 @@
-(LocalScript)
-Visuals for data menu associated with items inside of the tycoon's (business) storage
+--(LocalScript)
+--Visuals for data menu associated with items inside of the tycoon's (business) storage
 
 -----------------------------------------------------------------------------------------------------------------------------------------------
 local Players = game:GetService("Players")
@@ -190,7 +190,7 @@ UpdateTycoonStorage.OnClientEvent:Connect(function(File, Stat, StatValue, Amount
 		Stat = string.gsub(Stat, "TycoonStorage", "")
 	else --Bool for Discovered
 		Stat = string.gsub(Stat, "Discovered", "")
-		print(AcquiredLocation, game.ReplicatedStorage.ItemLocations:FindFirstChild(tostring(AcquiredLocation)))
+		--print(AcquiredLocation, game.ReplicatedStorage.ItemLocations:FindFirstChild(tostring(AcquiredLocation)))
 		local RarityName = game.ReplicatedStorage.ItemLocations:FindFirstChild(tostring(AcquiredLocation)):FindFirstChild(tostring(Stat)):FindFirstChild("GUI Info").RarityName.Value
 		ItemsPreview:FindFirstChild(tostring(File)):FindFirstChild(RarityName):WaitForChild(tostring(Stat)).Discovered.Value = StatValue
 	end
