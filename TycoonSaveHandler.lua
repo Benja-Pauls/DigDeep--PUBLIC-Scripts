@@ -1,16 +1,16 @@
-(Script)
-Responsible for autosaving (at bottom, will probably be moved), and purchase management (called buttons)
+--(Script)
+--Responsible for autosaving (at bottom, will probably be moved), and purchase management (called buttons)
 
 ----------------------------------------------------------------------------------------------------------------------------------------
 
 local PlayerStatManager = require(game.ServerScriptService:WaitForChild("PlayerStatManager"))
 
-local tycoonsFolder = script.Parent:WaitForChild("Tycoons")
+local tycoonsFolder = game.Workspace["Tycoon Game"]:WaitForChild("Tycoons")
 local tycoons = tycoonsFolder:GetChildren() --All teams in the game
 
 local serverStorage = game:GetService("ServerStorage")
 local PlayerData = serverStorage:WaitForChild("PlayerData")
-local purchaseHandler = script:WaitForChild("PurchaseHandler")
+local tycoonAssetsHandler = script:WaitForChild("TycoonAssetsHandler")
 local players = game:GetService("Players")
 local specialBuy = game.ServerScriptService:WaitForChild("TycoonSpecialBuys")
 local GateControl = script:WaitForChild("GateControl")
@@ -79,15 +79,15 @@ local function PrepareTycoon(Tycoon)
 		DestroyableModel[d].Transparency = 0
 	end
 		
-	if Tycoon:FindFirstChild("PurchaseHandler") == nil then
-		purchaseHandler:Clone().Parent = Tycoon
+	if Tycoon:FindFirstChild("TycoonAssetsHandler") == nil then
+		tycoonAssetsHandler:Clone().Parent = Tycoon
 	end
 		
 	if Tycoon:FindFirstChild("TycoonSpecialBuys") == nil then
 		specialBuy:Clone().Parent = Tycoon
 	end
 	
-	local PurchaseHandler = require(Tycoon.PurchaseHandler)
+	local TycoonAssetsHandler = require(Tycoon.TycoonAssetsHandler) --Tycoon's possible purchases (table)
 		
 	--Load data
 	local debounce = true
@@ -104,10 +104,12 @@ local function PrepareTycoon(Tycoon)
 					if ownsTycoon ~= nil and ownsTycoon.Value == tycoon then
 						PlayerClaimHead.Transparency = 1
 						debounce = false
+						
 						if player ~= nil and PlayerClaimHead ~= nil then
 							--Load previously purchased objects
-							local data = PlayerStatManager:getPlayerData(player) --Player_(ID Here)
-							for key, object in pairs(PurchaseHandler) do
+							local data = PlayerStatManager:getPlayerData(player)
+							
+							for key, object in pairs(TycoonAssetsHandler) do
 								if data[key] == true then --Looking through sessionData table in Playerstat manager for dropper name
 									local Buttons = Tycoon.Buttons:GetChildren()
 									for i,v in pairs(Buttons) do
@@ -123,7 +125,7 @@ local function PrepareTycoon(Tycoon)
 								end
 							end
 							wait(1.5) --"Pressing" previously purchased 
-							for key,_ in pairs (PurchaseHandler) do
+							for key,_ in pairs (TycoonAssetsHandler) do
 								if data[key] == true then
 									local buttonName = key
 									local buttons = Tycoon.Buttons
@@ -147,13 +149,14 @@ local function PrepareTycoon(Tycoon)
 		purchasedObjects.ChildAdded:Connect(function(instance)
 			local player = tostring(owner.Value)
 			--print(instance.Name) = all purhcased objects (also prints when new object is bought)
+			
 			if player ~= nil then
-				local bought = PlayerStatManager:getStat(player, instance.Name) --(Player_###, DrillDropper2)
-				if player ~= nil and bought == false then
+				local bought = PlayerStatManager:getStat(player, instance.Name)
+				if bought == false then
 					print("Button (" .. tostring(instance) .. ") will be saved")
 					PlayerStatManager:ChangeStat(player, instance.Name, true) --change player stat that will be saved later
 				else
-					print(instance.Name .. " bought == true")
+					print(instance.Name .. " has been bought in a previous game session")
 				end
 			end
 		end)
