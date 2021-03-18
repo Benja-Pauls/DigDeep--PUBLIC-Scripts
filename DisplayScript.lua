@@ -1,5 +1,5 @@
-(LocalScript)
-Updates money amount display, also waits for player to press the display's hide button
+--(LocalScript)
+--Updates money amount display, also waits for player to press the display's hide button
 ---------------------------------------------------------------------------------------------------------------------------------------------
 local TweenService = game:GetService("TweenService")
 local MoveAllBaseScreenUI = game.ReplicatedStorage.Events.GUI.MoveAllBaseScreenUI
