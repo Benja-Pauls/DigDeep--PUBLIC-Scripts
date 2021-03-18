@@ -1,5 +1,5 @@
-(Script)
-Initial set-up and model managment for leaving and joining players (updating "plots" with model data)
+--(Script)
+--Initial set-up and model managment for leaving and joining players (updating "plots" with model data)
 
 ----------------------------------------------------------------------------------------------------------------------------------------------
 local TycoonTable = {}
