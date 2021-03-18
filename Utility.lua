@@ -1,5 +1,5 @@
-(ModuleScript)
-Small module script for repetitive processes
+--(ModuleScript)
+--Small module script for repetitive processes
 ------------------------------------------------------------------------------------------------------------------------------------------------
 local Utility = {}
 
