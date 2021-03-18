@@ -1,5 +1,5 @@
-(LocalScript)
-Visual handler for mining, alerts other similar scripts
+--(LocalScript)
+--Visual handler for mining, alerts other similar scripts
 ----------------------------------------------------------------------------------------------------------------------------------------------
 local Player = game.Players.LocalPlayer
 local PlayerCharacterList = workspace:WaitForChild("Players")
