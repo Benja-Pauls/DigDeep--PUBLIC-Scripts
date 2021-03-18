@@ -1,5 +1,5 @@
-(LocalScript)
-Inventory graphical menu handler
+--(LocalScript)
+--Inventory graphical menu handler
 
 -------------------------------------------------------------------------------------------------------------------------------------------------
 local Player = game.Players.LocalPlayer
@@ -386,7 +386,7 @@ local function FindStatPage(Stat, Menu, MaxAmount, RaritySort, AcquiredLocation)
 	end
 	
 	if found == false then
-		print("Making new page since " .. tostring(Stat) .. " has rarity " .. tostring(StatRarity))
+		--print("Making new page since " .. tostring(Stat) .. " has rarity " .. tostring(StatRarity))
 		
 		local NewPage = GuiElements.MenuPage:Clone()
 		NewPage.Rarity.Value = StatRarity
@@ -689,50 +689,57 @@ function ManageTiles(Stat, Menu, Value, Type, AcquiredLocation)
 			InsertTileInfo(Type, FirstSlot, Stat, Value, nil, AcquiredLocation)
 		end
 	end
-	print("MANAGED TILES FOR " .. tostring(Stat))
+	--print("MANAGED TILES FOR " .. tostring(Stat))
 end
 
 
 ------------------<|Material PopUp Functions|>-----------------------------------------------------
 
 local MaterialPopUpAmount
-local function InsertNewMaterialPopUp(ItemPopUp, AcquiredLocation, Object, AmountAdded, Currency)
+local function InsertNewMaterialPopUp(ItemPopUp, AcquiredLocation, Item, AmountAdded, Currency)
 	--print("New PopUp: " .. tostring(Object))
 	local OriginalPopUpGUI = GuiElements:FindFirstChild("PopUpSlot")
 	
 	--Move other tiles upward
 	for i,slot in pairs (ItemPopUp:GetChildren()) do
-		--slot.Position = UDim2.new(slot.Position.X.Scale, 0, slot.Position.Y.Scale - .1, 0)
 		slot:TweenPosition(UDim2.new(slot.Position.X.Scale, 0, slot.Position.Y.Scale - .105, 0), "Out", "Quint", .8)
 	end
 	
-	local RealObject = game.ReplicatedStorage.ItemLocations:FindFirstChild(AcquiredLocation):FindFirstChild(tostring(Object))
-	local Rarity = RealObject["GUI Info"].RarityName.Value
-	local RarityFile = game.ReplicatedStorage.GuiElements.RarityColors:FindFirstChild(Rarity)
-	local NewPopUp = OriginalPopUpGUI:Clone()
-	NewPopUp.Parent = ItemPopUp
-	NewPopUp.Amount.Text = tostring(AmountAdded)
-	NewPopUp.DisplayName.Text = tostring(Object)
-	NewPopUp.Position = UDim2.new(0.835, 0,1, 0)
-	MaterialPopUpAmount = #ItemPopUp:GetChildren()
-	NewPopUp.Name = "PopUp" .. tostring(MaterialPopUpAmount)
-	NewPopUp.Object.Value = tostring(Object)
-	
-	if Currency then --just shows player the amount of cash they lost/gained (skipped tile management)
-		--possibly give money their own popup color or shape?
+	local RealObject
+	if Currency then --Possibly give currency its own type later
+		
+		--Display the pop up for currency via the PurchaseHandler since that will be the only script
+		--Handling currency, or possibly fire UpdateInventory through PurchaseHandler
+		
+		RealObject = game.ReplicatedStorage.Currencies:FindFirstChild(Item)
+		--just shows player the amount of cash they lost/gained (skipped tile management since no inventory tile)
+		--possibly give money exclusive popup color or shape?
+	else
+		RealObject = game.ReplicatedStorage.ItemLocations:FindFirstChild(AcquiredLocation):FindFirstChild(tostring(Item))
 	end
 	
+	local Rarity = RealObject["GUI Info"].RarityName.Value
+	local RarityFile = game.ReplicatedStorage.GuiElements.RarityColors:FindFirstChild(Rarity)
+	local NewItemPopUp = OriginalPopUpGUI:Clone()
+	NewItemPopUp.Parent = ItemPopUp
+	NewItemPopUp.Amount.Text = tostring(AmountAdded)
+	NewItemPopUp.DisplayName.Text = tostring(Item)
+	NewItemPopUp.Position = UDim2.new(0.835, 0,1, 0)
+	MaterialPopUpAmount = #ItemPopUp:GetChildren()
+	NewItemPopUp.Name = "PopUp" .. tostring(MaterialPopUpAmount)
+	NewItemPopUp.Object.Value = tostring(Item)
+	
 	local ItemImage = GetStatImage(RealObject)
-	NewPopUp.Picture.Image = ItemImage
+	NewItemPopUp.Picture.Image = ItemImage
 	
-	NewPopUp.BackgroundColor3 = RarityFile.TileColor.Value
-	NewPopUp.BorderColor3 = RarityFile.Value
-	NewPopUp.CircleBorder.BackgroundColor3 = RarityFile.Value
-	NewPopUp["Round Edge"].BackgroundColor3 = RarityFile.Value
-	NewPopUp["Round Edge"].Inner.BackgroundColor3 = RarityFile.TileColor.Value
+	NewItemPopUp.BackgroundColor3 = RarityFile.TileColor.Value
+	NewItemPopUp.BorderColor3 = RarityFile.Value
+	NewItemPopUp.CircleBorder.BackgroundColor3 = RarityFile.Value
+	NewItemPopUp["Round Edge"].BackgroundColor3 = RarityFile.Value
+	NewItemPopUp["Round Edge"].Inner.BackgroundColor3 = RarityFile.TileColor.Value
 	
-	NewPopUp:TweenPosition(UDim2.new(0.835, 0,0.8, 0), "Out" , "Quint", .45)
-	CountdownPopUp(ItemPopUp, NewPopUp, 5, .2, 0)
+	NewItemPopUp:TweenPosition(UDim2.new(0.835, 0,0.8, 0), "Out" , "Quint", .45)
+	CountdownPopUp(ItemPopUp, NewItemPopUp, 5, .2, 0)
 end
 
 local PrevItem
@@ -1087,25 +1094,31 @@ local UpdateInventory = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateIn
 UpdateInventory.OnClientEvent:Connect(function(Stat, File, Value, AmountAdded, Type, Currency, AcquiredLocation)
 	local TypeSlots = DataMenu:FindFirstChild(tostring(Type) .. "Menu")
 	local Slots
+	
 	if File then
 		Slots = TypeSlots:FindFirstChild(File .. "Menu") or TypeSlots:FindFirstChild(File)
 	else
 		warn("No File associated with non-currency inventory update. Stat Name: " .. tostring(Stat))
 	end
 	
-	if Type == "Inventory" then
-		ManageMaterialPopups(Stat, AcquiredLocation, AmountAdded, Currency) --remove file once location can be attached to skill
-		
+	if Type == "Inventory" then --Includes Currency
+		ManageMaterialPopups(Stat, AcquiredLocation, AmountAdded, Currency) 
 
-	elseif Type == "Experience" then --Later, possibly have tile/pop-up manager handle types
-		
+	elseif Type == "Experience" then 
 		--Experience tiles are also unlocked once you get at least one point of exp
-		--Would be fun to have a "You've unlocked a new skill!" animated gui (or levelling up animation)
+		--Would be fun to have a "You've unlocked a new skill!" animated gui popup
+		
 		if string.find(tostring(Stat), "Skill") then
 			Stat = string.gsub(tostring(Stat), "Skill", "") --Remove "Skill" from string
 		end
+		
 		ManageEXPPopUp(Stat, Value, AmountAdded)
 	end
+	
+	--On levelling-up...
+	--Inventory, on next open, would then display what the player now has access too with their new level
+	--Level-up data could be in Server Storage, grabbed by PlayerStatManager
+	
 	if Currency == nil then
 		if tonumber(Value) ~= 0 then
 			ManageTiles(Stat, Slots, Value, Type, AcquiredLocation)
@@ -1167,6 +1180,5 @@ UpdateItemCount.OnClientEvent:Connect(function(ItemTypeCount, BagCapacity, BagTy
 	Menu:SetAttribute("ItemCount", ItemTypeCount)
 	Menu:SetAttribute("BagCapacity", BagCapacity)
 end)
-
 
 
