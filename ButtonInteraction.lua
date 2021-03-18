@@ -1,7 +1,8 @@
-(LocalScript)
-GUI handler for purchases around the tycoon (still refered to as buttons)
+--(LocalScript)
+--GUI handler for purchases around the tycoon (still refered to as buttons)
 ------------------------------------------------------------------------------------------------------------------------------------------------
 game.StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList,false)
+wait(1)
 
 local Player = game.Players.LocalPlayer
 local Tycoons = workspace["Tycoon Game"]:WaitForChild("Tycoons") 
@@ -9,17 +10,21 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local HumanoidRootPart = game.Workspace.Players:WaitForChild(tostring(Player)):WaitForChild("HumanoidRootPart")
 local Mouse = Player:GetMouse()
-local PressButton = ReplicatedStorage.Events.Utility.PressButton
-local LocalLoadTycoon = ReplicatedStorage.Events.Tycoon.LocalLoadTycoon
+local PurchaseObject = ReplicatedStorage.Events.Utility.PurchaseObject
+local LocalLoadTycoon = ReplicatedStorage.Events.Tycoon:WaitForChild("LocalLoadTycoon")
 local UIS = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
 
 local Menu = script.Parent.Menu
 local ButtonGui = script:WaitForChild("ButtonGUI")
 
 script.Parent.IgnoreGuiInset = true
 
+if LocalLoadTycoon then
+	print("Local Load Tycoon Event has been found")
+end
+
 LocalLoadTycoon.OnClientEvent:Connect(function(tycoon)
+	print("LocalLoadTycoon event has been fired")
 	local Buttons = tycoon.Buttons:GetChildren()
 	for i,button in pairs (Buttons) do
 		ButtonGui:Clone().Parent = button
@@ -132,6 +137,7 @@ end
 local press = false
 
 function EInteract(PlayerTycoon)
+	print("EInteract has been called")
 	UIS.InputBegan:Connect(function(input)
 		if input.KeyCode == Enum.KeyCode.E then	
 			if Mouse.Target and (Mouse.Target.Position - HumanoidRootPart.Position).magnitude < 20 then
@@ -151,17 +157,17 @@ function EInteract(PlayerTycoon)
 								--EFFICIENCY NOTE: it still runs through
 								--every button thats been interacted with in the current session
 								press = true
-								PressButton:FireServer(Button)
+								PurchaseObject:FireServer(Button)
 								wait(.1) --Wait For PurchaseHandler Money Check to Finish
-								if Menu.CashWarning.Visible == true then
-									press = false
-								else
+								
+								if Menu.CashWarning.Visible == false then
 									Menu.Visible = false
 									wait(1)
-									press = false
 									DestroyButtonVisuals(Button)
 									--Should set Mouse.Target to nil?
 								end
+								
+								press = false
 							end
 						end)
 						
