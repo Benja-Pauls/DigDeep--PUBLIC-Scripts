@@ -1,6 +1,6 @@
-(Script)
-"Droppers" are responsible for building passive wealth (they "drop" something that is collected, usually at the end of a conveyor belt like
-a factory)
+--(Script)
+--"Droppers" are responsible for building passive wealth (they "drop" something that is collected, usually at the end of a conveyor belt like
+--a factory)
 ----------------------------------------------------------------------------------------------------------------------------------------------
 
 wait(2)
