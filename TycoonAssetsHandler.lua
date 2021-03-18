@@ -1,5 +1,5 @@
-(ModuleScript)
-Handles the assets in each player tycoon (drop collectors, drops, purchaseable objects)
+--(ModuleScript)
+--Handles the assets in each player tycoon (drop collectors, drops, purchaseable objects)
 
 ------------------------------------------------------------------------------------------------------------------------------------------------
 local Objects = {}
