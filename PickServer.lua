@@ -1,11 +1,12 @@
-(Script)
-Script (Server-sided) so exploiters don't have access to sensitive information in this script: player location relative to block.
+--(Script)
+--Script (Server-sided) so exploiters don't have access to sensitive information in this script: player location relative to block.
 -----------------------------------------------------------------------------------------------------------------------------------------------
 local tool = script.Parent
 local Player = script.Parent.Parent.Parent --Maybe set this more accordingly? SetTarget may mess up?
 local MineshaftItems = game.ReplicatedStorage.ItemLocations.Mineshaft
+local MineOre = game.ReplicatedStorage.Events.Utility:WaitForChild("MineOre")
 
---When the player barely hovers over the UI, the pickaxe continues to mine... mouse.target check must be getting confused
+--When the player barely hovers over the UI, the pickaxe mines continuously... mouse.target check must be getting confused
 
 function script.Parent.SetTarget.OnServerInvoke(player,Selection)
 	script.Parent.Target.Value = Selection
@@ -67,7 +68,7 @@ local function StartMining()
 				
 				local mined = true
 				if WaitTime >= TimeToMine and mined then
-					game.ServerStorage.MineOre:Invoke(Player, Target)
+					MineOre:Fire(Player, Target)
 					mined = false
 				else
 					Target.Reflectance = 0
