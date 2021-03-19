@@ -124,9 +124,24 @@ local function PrepButton(Button, Parts)
 	end
 end
 
+local function GetPlayer(WantedPlayer)
+	print("WANTED PLAYER: " .. tostring(WantedPlayer))
+	local Players = game.Players:GetChildren()
+	local lookingForPlayer = true
+	for i,v in pairs(Players) do
+		if tostring(v.UserId) == WantedPlayer then
+			lookingForPlayer = false
+			return v
+		end
+	end
+	if lookingForPlayer == true then
+		warn("Something went wrong, cannot find player")
+	end
+end
+
 script.Parent:WaitForChild("Buttons")
 
---Prepping purchases
+--Prepping Tycoon Purchases
 for i,button in pairs(script.Parent.Buttons:GetChildren()) do
 
 	coroutine.resume(coroutine.create(function()
