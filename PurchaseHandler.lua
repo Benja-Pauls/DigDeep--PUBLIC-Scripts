@@ -1,7 +1,6 @@
 --(Script)
 --Script in ServerScriptService that handles any purchases the player makes
 -----------------------------------------------------------------------------------------------------------------------------------------------------------
-
 local PlayerStatManager = require(game.ServerScriptService:WaitForChild("PlayerStatManager"))
 local Utility = require(game.ServerScriptService:WaitForChild("Utility"))
 local SoundEffects = require(game.ServerScriptService.Utility:WaitForChild("SoundEffects"))
@@ -41,7 +40,7 @@ local function CheckMaterialCosts(Inventory, Storage, Button)
 				local cost = material.Value
 				local sum = currentInventoryGroup:FindFirstChild(tostring(material)).Value + currentStorageGroup:FindFirstChild("TycoonStorage" .. tostring(material)).Value
 				if sum >= cost then
-					AffordabilityCount = AffordabilityCount + 1
+					AffordabilityCount = AffordabilityCount + 1 --Criteria for this material has been met
 				end
 			end
 		end
@@ -52,7 +51,7 @@ local function CheckMaterialCosts(Inventory, Storage, Button)
 			return false
 		end
 	else
-		return nil
+		return nil --Not a material-based purchase
 	end	
 end
 
@@ -62,7 +61,7 @@ function Purchase(Table, Tycoon, Material)
 	local item = Table[2]
 	local stat = Table[3] 
 	
-	local PurchaseableObjects = require(Tycoon:FindFirstChild("TycoonPurchaseHandler"))
+	local PurchaseableObjects = require(Tycoon:FindFirstChild("TycoonAssetsHandler"))
 
 	if Material then
 		local Menu = Material.Parent
@@ -74,23 +73,23 @@ function Purchase(Table, Tycoon, Material)
 
 		for i,menu in pairs (stat:GetChildren()) do
 			if menu == stat:FindFirstChild(tostring(Menu)) then
-				for i,v in pairs(menu:GetChildren()) do
-					if v.Name == tostring(Material) then
-						print(tostring(v) .. "'s value has been subtracted by " .. tostring(cost))
-						v.Value = v.Value - cost
+				for i,item in pairs(menu:GetChildren()) do
+					if item.Name == tostring(Material) then
+						print(tostring(item) .. "'s value has been subtracted by " .. tostring(cost))
+						item.Value = item.Value - cost
 
-						PlayerStatManager:ChangeStat(Player, v.Name, -cost, tostring(stat), true)
-						--PlayerStatManager is updated here because mats only updated when "harvested" otherwise
+						PlayerStatManager:ChangeStat(Player, item.Name, -cost, tostring(stat), true)
+						--PlayerStatManager is updated here because materials are only updated when "harvested" otherwise
 
-						if v.Value < 0 then --replace inventory with storage
+						if item.Value < 0 then --replace inventory with storage
 							local PlayerDataFile = stat.Parent
 							local PlayerStorage = PlayerDataFile:FindFirstChild("TycoonStorage")
 							local MaterialStorage = PlayerStorage:FindFirstChild("TycoonStorage" .. tostring(Menu))
 
 							--Zero inventory material
 							--Subtract the absolute value of the material's previous value
-							PlayerStatManager:ChangeStat(Player, "TycoonStorage" .. v.Name, v.Value, tostring(PlayerStorage), true)
-							PlayerStatManager:ChangeStat(Player, v.Name, 0, tostring(stat), true, "Zero")
+							PlayerStatManager:ChangeStat(Player, "TycoonStorage" .. item.Name, item.Value, tostring(PlayerStorage), true)
+							PlayerStatManager:ChangeStat(Player, item.Name, 0, tostring(stat), true, "Zero")
 						end
 					end
 				end
@@ -103,8 +102,7 @@ function Purchase(Table, Tycoon, Material)
 		UpdateInventory:FireClient(Player, "Currency", "Currencies", nil, -cost, "Inventory", "Money1")
 	end
 
-	--Objects[item.Object.Value] is created in for _,v in pairs (script.Parent.Buttons:GetChildren())
-	--Position Replicated Storage Object Clone to true position
+	--Position ReplicatedStorage-Object Clone to true position
 	if PurchaseableObjects[item.Object.Value]:FindFirstChild("Root") ~= nil then
 		local MovedModel = PurchaseableObjects[item.Object.Value]
 		MovedModel.PrimaryPart = MovedModel.Root
@@ -117,9 +115,8 @@ function Purchase(Table, Tycoon, Material)
 		MovedModel.PrimaryPart:Destroy()
 	end
 
-	if script.Parent.PurchasedObjects:FindFirstChild(tostring(PurchaseableObjects[item.Object.Value])) == nil then
-		--Shouldn't I clone it, does it get rid of it from file?
-		PurchaseableObjects[item.Object.Value].Parent = script.Parent.PurchasedObjects
+	if Tycoon.PurchasedObjects:FindFirstChild(tostring(PurchaseableObjects[item.Object.Value])) == nil then
+		PurchaseableObjects[item.Object.Value].Parent = Tycoon.PurchasedObjects
 	end
 
 	if item.Visible.Value == true then	
@@ -134,12 +131,12 @@ end
 
 PurchaseObject.OnServerEvent:Connect(function(player, target)
 	
-	--target.Parent.Parent = associated tycoon
+	local AssociatedTycoon = target.Parent.Parent
 	--target = button 
 	
 	if target.CanCollide == true then
 		if player ~= nil then
-			if script.Parent.Owner.Value == player then
+			if AssociatedTycoon.Owner.Value == player then
 
 				local PlayerDataFile = PlayerData:FindFirstChild(tostring(player.UserId))
 				if PlayerDataFile ~= nil then 
@@ -151,7 +148,7 @@ PurchaseObject.OnServerEvent:Connect(function(player, target)
 					--If it's a gamepass button
 					if (target:FindFirstChild('Gamepass')) and (target.Gamepass.Value >= 1) then
 						if game:GetService("MarketplaceService"):PlayerOwnsAsset(player,target.Gamepass.Value) then
-							Purchase({[1] = target.Price.Value,[2] = target,[3] = PlayerCash})
+							Purchase({[1] = target.Price.Value,[2] = target,[3] = PlayerCash}, AssociatedTycoon)
 						else
 							game:GetService('MarketplaceService'):PromptPurchase(player,target.Gamepass.Value)
 						end
@@ -162,7 +159,7 @@ PurchaseObject.OnServerEvent:Connect(function(player, target)
 
 						--Normal Button, player can afford it
 					elseif PlayerCash.Value >= target.Price.Value and MaterialCostCheck == nil then
-						Purchase({[1] = target.Price.Value,[2] = target,[3] = PlayerCash})
+						Purchase({[1] = target.Price.Value,[2] = target,[3] = PlayerCash}, AssociatedTycoon)
 						SoundEffects:PlaySound(target, SoundEffects.Tycoon.Purchase)
 
 					elseif PlayerCash.Value >= target.Price.Value and MaterialCostCheck == true then
@@ -172,12 +169,12 @@ PurchaseObject.OnServerEvent:Connect(function(player, target)
 							for i,material in pairs (typeGroup:GetChildren()) do
 								local cost = material.Value
 
-								Purchase({[1] = cost, [2] = target, [3] = PlayerInventory}, material)
+								Purchase({[1] = cost, [2] = target, [3] = PlayerInventory}, AssociatedTycoon, material)
 								--extra ",material" at end to say what specifically in the [3]'s menu that's affected)
 								wait(.51) --Delay between purchases to successfully stack material popups
 							end
 						end
-						Purchase({[1] = target.Price.Value,[2] = target,[3] = PlayerCash})
+						Purchase({[1] = target.Price.Value,[2] = target,[3] = PlayerCash}, AssociatedTycoon)
 						SoundEffects:PlaySound(target, SoundEffects.Tycoon.Purchase)
 
 
