@@ -114,19 +114,13 @@ function Purchase(Table, Tycoon, Material)
 		item.PrimaryPartPosition:Destroy()
 		MovedModel.PrimaryPart:Destroy()
 	end
+	
+	PurchaseableObjects[item.Object.Value]:FindFirstChild("Visible").Value = true
 
 	if Tycoon.PurchasedObjects:FindFirstChild(tostring(PurchaseableObjects[item.Object.Value])) == nil then
 		PurchaseableObjects[item.Object.Value].Parent = Tycoon.PurchasedObjects
 	end
 
-	if item.Visible.Value == true then	
-		local ButtonParts = item.Model:GetChildren()
-		item.Visible.Value = false
-		for bp = 1,#ButtonParts,1 do
-			ButtonParts[bp].Transparency = 1
-			item.CanCollide = false
-		end
-	end
 end
 
 PurchaseObject.OnServerEvent:Connect(function(player, target)
@@ -183,7 +177,7 @@ PurchaseObject.OnServerEvent:Connect(function(player, target)
 
 					else --If the player can't afford it
 						print("Cannot afford")
-						local CashWarning = game.Players:FindFirstChild(tostring(player)).PlayerGui.ButtonHandler.Menu.CashWarning
+						local CashWarning = game.Players:FindFirstChild(tostring(player)).PlayerGui.EInteractionGui.TycoonPurchaseMenu.CashWarning
 						CashWarning.Visible = true
 						SoundEffects:PlaySound(target, SoundEffects.Tycoon.ErrorBuy)
 						wait(2)
