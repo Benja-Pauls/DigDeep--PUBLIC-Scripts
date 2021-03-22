@@ -2,9 +2,11 @@
 --Handles special processes that occur with some purchases
 ----------------------------------------------------------------------------------------------------------------------------------------------
 
-
 --the amount of local functions can definetely be made more efficient with an overall check,
---but the seperate function increase readability
+--but the seperate functions may increase readability
+
+--Fix: a lot of if statements can be removed by checking in one place
+repeat wait() until script.Parent ~= game.ServerScriptService
 
 local Tycoon = script.Parent
 local PurchasedObjectsModel = Tycoon:WaitForChild("PurchasedObjects")
@@ -189,9 +191,7 @@ end
 
 --When Object is Purchased
 PurchasedObjectsModel.ChildAdded:Connect(function(purchase)
-	
 	--Make associated name with purchase find function name or some other, more efficient, way
-	
 	if purchase:FindFirstChild("Material1") ~= nil then
 		local Group = purchase.AffectedGroup1.Value
 		changeMaterial(purchase,Group,"1")
