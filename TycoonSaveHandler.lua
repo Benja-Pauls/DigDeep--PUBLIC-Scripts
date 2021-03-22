@@ -1,11 +1,9 @@
 --(Script)
 --Responsible for autosaving (at bottom, will probably be moved), and purchase management (called buttons)
-
 ----------------------------------------------------------------------------------------------------------------------------------------
-
 local PlayerStatManager = require(game.ServerScriptService:WaitForChild("PlayerStatManager"))
 
-local tycoonsFolder = game.Workspace["Tycoon Game"]:WaitForChild("Tycoons")
+local tycoonsFolder = game.Workspace:WaitForChild("Tycoons")
 local tycoons = tycoonsFolder:GetChildren() --All teams in the game
 
 local serverStorage = game:GetService("ServerStorage")
@@ -23,12 +21,14 @@ local allObjects = {}
 --Hide buttons from previous games
 local function hideButton(name,buttons)
 	local allButtons = buttons:GetChildren() 
+	
 	local item 
 	for i = 1,#allButtons,1 do 
 		if allButtons[i].Object.Value == name then 
 			item = allButtons[i] --item = button name (Example: Buy Dropper1 - [$70])
 		end
 	end
+	
 	if item ~= nil then 
 		local buttonCheck = item:FindFirstChild("Object")
 		if buttonCheck ~= nil then 
@@ -119,16 +119,16 @@ local function PrepareTycoon(Tycoon)
 											wait()
 										end
 									end
-									--print("Putting " .. tostring(value) .. "in PurchasedObjects from " .. tostring(player) .. "'s previous join")
 								else
 									print(tostring(object).." hasn't been bought for " .. tostring(tycoon) .. " because data = " .. tostring(data[key]))
 								end
 							end
-							wait(1.5) --"Pressing" previously purchased 
-							for key,_ in pairs (TycoonAssetsHandler) do
+							wait(2) --"Pressing" previously purchased 
+							for key,v in pairs (TycoonAssetsHandler) do
 								if data[key] == true then
 									local buttonName = key
 									local buttons = Tycoon.Buttons
+									print("HIDING BUTTON FOR",v)
 									hideButton(buttonName,buttons)
 								end
 							end
