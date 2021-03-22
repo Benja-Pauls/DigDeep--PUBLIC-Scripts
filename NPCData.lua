@@ -1,3 +1,6 @@
+--(Module Script)
+--Provides an overall table with nested tables of every NPC's important data. Stored in ServerStorage, accessed by PurchaseHandler
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 local RS = game.ReplicatedStorage
 
 local NPCData = {
