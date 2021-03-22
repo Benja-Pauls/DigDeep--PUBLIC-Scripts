@@ -11,7 +11,6 @@ local PurchaseObject = EventsFolder.Utility.PurchaseObject
 local UpdateInventory = EventsFolder.GUI.UpdateInventory
 
 local function GetPlayer(WantedPlayer)
-	print("WANTED PLAYER: " .. tostring(WantedPlayer))
 	local Players = game.Players:GetChildren()
 	local lookingForPlayer = true
 	for i,v in pairs(Players) do
@@ -21,8 +20,19 @@ local function GetPlayer(WantedPlayer)
 		end
 	end
 	if lookingForPlayer == true then
-		warn("Something went wrong, cannot find player")
+		warn("Cannot find player: " .. WantedPlayer)
 	end
+end
+
+local function CloneTable(OriginalTable)
+	local copy = {}
+	for i,tbl in pairs(OriginalTable) do
+		if type(tbl) == "table" then
+			tbl = CloneTable(tbl)
+		end
+		copy[i] = tbl
+	end
+	return copy
 end
 
 -------------------------------<|Tycoon Purchases|>----------------------------------------------------------------------------------------------------------
@@ -114,13 +124,19 @@ function Purchase(Table, Tycoon, Material)
 		item.PrimaryPartPosition:Destroy()
 		MovedModel.PrimaryPart:Destroy()
 	end
-	
-	PurchaseableObjects[item.Object.Value]:FindFirstChild("Visible").Value = true
 
 	if Tycoon.PurchasedObjects:FindFirstChild(tostring(PurchaseableObjects[item.Object.Value])) == nil then
 		PurchaseableObjects[item.Object.Value].Parent = Tycoon.PurchasedObjects
 	end
-
+	
+	if item.Visible.Value == true then	
+		local ButtonParts = item.Model:GetChildren()
+		item.Visible.Value = false
+		for bp = 1,#ButtonParts,1 do
+			ButtonParts[bp].Transparency = 1
+			item.CanCollide = false
+		end
+	end
 end
 
 PurchaseObject.OnServerEvent:Connect(function(player, target)
@@ -177,7 +193,7 @@ PurchaseObject.OnServerEvent:Connect(function(player, target)
 
 					else --If the player can't afford it
 						print("Cannot afford")
-						local CashWarning = game.Players:FindFirstChild(tostring(player)).PlayerGui.EInteractionGui.TycoonPurchaseMenu.CashWarning
+						local CashWarning = game.Players:FindFirstChild(tostring(player)).PlayerGui.HotkeyInteractionGui.TycoonPurchaseMenu.CashWarning
 						CashWarning.Visible = true
 						SoundEffects:PlaySound(target, SoundEffects.Tycoon.ErrorBuy)
 						wait(2)
@@ -191,5 +207,22 @@ PurchaseObject.OnServerEvent:Connect(function(player, target)
 	end
 end)
 
+-------------------------------<|StoreFront Purchase Functions|>---------------------------------------------------------------------------------------------------------
+
+local AllNPCData = require(game.ServerStorage:WaitForChild("NPCData"))
+local StoreFrontInteract = EventsFolder.HotKeyInteract:WaitForChild("StoreFrontInteract")
+local UpdateStoreFront = EventsFolder.GUI:WaitForChild("UpdateStoreFront")
+
+StoreFrontInteract.OnServerEvent:Connect(function(player, NPC)
+	local npcData = CloneTable(AllNPCData[tostring(NPC)])
+	
+	UpdateStoreFront:FireClient(player, NPC, npcData)
+end)
+
+--Have an event that is fired by the player's StoreFrontHandler when they finally press purchase button 
+--This event will determine if they have funds and will call PlayerStatManager to update player's stats
+
+--If they do not have the funds, do not use a remotefunction, instead show visual that warns player
+--they do not have the funds to purchase that item (You need $### more to purchase tostring(item))
 
 
