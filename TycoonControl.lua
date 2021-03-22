@@ -1,6 +1,5 @@
 --(Script)
 --Initial set-up and model managment for leaving and joining players (updating "plots" with model data)
-
 ----------------------------------------------------------------------------------------------------------------------------------------------
 local TycoonTable = {}
 local TeamService = game:GetService('Teams')
