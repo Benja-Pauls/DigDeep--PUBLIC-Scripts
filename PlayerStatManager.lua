@@ -3,7 +3,7 @@
 -------------------------------------------------------------------------------------------------------------------------------------------------
 local PlayerStatManager = {}
 
-local tycoons = game.Workspace["Tycoon Game"]:WaitForChild("Tycoons"):GetChildren()
+local tycoons = game.Workspace:WaitForChild("Tycoons"):GetChildren()
 
 local PlayerData = game.ServerStorage:FindFirstChild("PlayerData")
 local Utility = require(game.ServerScriptService:WaitForChild("Utility"))
@@ -47,6 +47,8 @@ game.Players.PlayerAdded:Connect(function(JoinedPlayer)
 		Light.Brightness = 7
 		Light.Range = 7
 		Light.Parent = Character.Head
+		
+		--Put Proximity Prompt here? (if players need to interact with each other
 	end
 end)
 
