@@ -1,9 +1,9 @@
 --(LocalScript)
 --Visuals for data menu associated with items inside of the tycoon's (business) storage
-
 -----------------------------------------------------------------------------------------------------------------------------------------------
 local Players = game:GetService("Players")
 local Player = Players.LocalPlayer
+local PlayerGui = Player:WaitForChild("PlayerGui")
 local LocalLoadTycoon = game.ReplicatedStorage.Events.Tycoon.LocalLoadTycoon
 local MoveAllBaseScreenUI = game.ReplicatedStorage.Events.GUI.MoveAllBaseScreenUI
 local ComputerIsOn = false
@@ -16,6 +16,7 @@ local ComputerScreen = TycoonStorageGui.ComputerScreen
 local SelectionMenu = TycoonStorageGui.ComputerScreen.SelectionMenu
 local BackButton = ComputerScreen.Taskbar.BackButton
 local FadeOut = ComputerScreen.FadeOut
+
 local function StartUpComputer()
 	ComputerScreen.Visible = true
 	FadeOut.BackgroundTransparency = 0
@@ -29,7 +30,6 @@ local function ShutDownComputer()
 		wait(.02)
 		FadeOut.BackgroundTransparency = FadeOut.BackgroundTransparency - 0.05
 	end
-	CurrentStorage.InteractedModel:WaitForChild("E GUI").Enabled = false
 	TycoonStorageGui.ComputerScreen.Visible = false
 	SelectionMenu.Visible = false
 	
@@ -104,8 +104,10 @@ function OpenDataTabScreen() --Problem, with every time it opens: repeats button
 	for i,button in pairs (DataTabSelect:GetChildren()) do
 		if button:IsA("ImageButton") then --and tostring(button) ~= "ShutDown" then
 			button.Activated:Connect(function()
-				BeepSound:Play()
-				OpenAffiliatedItemPreview(button)
+				if DataTabSelect.Visible == true and SelectionMenu.Visible == false then
+					BeepSound:Play()
+					OpenAffiliatedItemPreview(button)
+				end
 			end)
 		end
 	end
@@ -280,19 +282,21 @@ local SellMenu = ComputerScreen.SelectionMenu.SellMenu
 local SellItem = game.ReplicatedStorage.Events.Utility.SellItem
 
 SelectionMenu.SelectItem.Activated:Connect(function()
-	local ItemName = SelectionMenu.CurrentSelection.Value
-	local ItemAmount = tonumber(SelectionMenu.Amount.Text)
-	SellMenu.MaxAmount.Value = ItemAmount
-	
-	local ItemInfo = FindItemInfo(ItemName, tostring(CurrentMenu))
-	
-	if ItemInfo then
-		SellMenu.SelectedItem.Value = ItemInfo
-		SellMenu.Visible = true	
-		SellMenu.SnapAmount.Value = math.ceil(SellMenu.SliderBar.AbsoluteSize.X/(ItemAmount)) --+1 for 0th
-		SellMenu.SellAll.Text = "Sell All: $" .. tostring(tonumber(ItemAmount*SellMenu.SelectedItem.Value.CurrencyValue.Value))
+	if SelectionMenu.Visible == true then
+		local ItemName = SelectionMenu.CurrentSelection.Value
+		local ItemAmount = tonumber(SelectionMenu.Amount.Text)
+		SellMenu.MaxAmount.Value = ItemAmount
 		
-		CalculateSliderPosition()
+		local ItemInfo = FindItemInfo(ItemName, tostring(CurrentMenu))
+		
+		if ItemInfo then
+			SellMenu.SelectedItem.Value = ItemInfo
+			SellMenu.Visible = true	
+			SellMenu.SnapAmount.Value = math.ceil(SellMenu.SliderBar.AbsoluteSize.X/(ItemAmount)) --+1 for 0th
+			SellMenu.SellAll.Text = "Sell All: $" .. tostring(tonumber(ItemAmount*SellMenu.SelectedItem.Value.CurrencyValue.Value))
+			
+			CalculateSliderPosition()
+		end
 	end
 end)
 
@@ -336,86 +340,88 @@ local function ChangeToTileInMenu(Menu, CurrentSelection, SeekedSlotValue)
 end
 
 function MoveToTile(Menu, amount, RaritySkip)
-	local CurrentSelectionName = SelectionMenu.CurrentSelection.Value
-	local CurrentRarityName = SelectionMenu.CurrentRarity.Value
-	local CurrentRarityMenu = ItemsPreview:FindFirstChild(tostring(Menu)):FindFirstChild(CurrentRarityName)
-	local CurrentSelection = CurrentRarityMenu:FindFirstChild(CurrentSelectionName)
-	
-	local AmountOfSlots = 0
-	for i,item in pairs (CurrentRarityMenu:GetChildren()) do
-		if item:IsA("Frame") then
-			AmountOfSlots = AmountOfSlots + 1
-		end
-	end
-	
-	local LowestRarityMenu = CurrentRarityMenu
-	local HighestRarityMenu = CurrentRarityMenu
-	local NextRarityMenu = CurrentRarityMenu
-	local PreviousRarityMenu = CurrentRarityMenu
-	
-	for i,rarity in pairs (ItemsPreview:FindFirstChild(tostring(Menu)):GetChildren()) do
-		if rarity:IsA("TextLabel") then
-			if rarity.DisplayOrder.Value < LowestRarityMenu.DisplayOrder.Value then
-				LowestRarityMenu = rarity
-			end
-			if rarity.DisplayOrder.value > HighestRarityMenu.DisplayOrder.Value then
-				HighestRarityMenu = rarity
-			end
-			if rarity.DisplayOrder.Value + 1 == CurrentRarityMenu.DisplayOrder.Value then
-				PreviousRarityMenu = rarity
-			end
-			if rarity.DisplayOrder.Value - 1 == CurrentRarityMenu.DisplayOrder.Value then
-				NextRarityMenu = rarity
+	if SelectionMenu.Visible == true then
+		local CurrentSelectionName = SelectionMenu.CurrentSelection.Value
+		local CurrentRarityName = SelectionMenu.CurrentRarity.Value
+		local CurrentRarityMenu = ItemsPreview:FindFirstChild(tostring(Menu)):FindFirstChild(CurrentRarityName)
+		local CurrentSelection = CurrentRarityMenu:FindFirstChild(CurrentSelectionName)
+		
+		local AmountOfSlots = 0
+		for i,item in pairs (CurrentRarityMenu:GetChildren()) do
+			if item:IsA("Frame") then
+				AmountOfSlots = AmountOfSlots + 1
 			end
 		end
-	end
-	
-	local HighestTileOfHighRarity = 0
-	for i,tile in pairs (HighestRarityMenu:GetChildren()) do
-		if tile:IsA("Frame") then
-			if tile.SlotNumber.Value > HighestTileOfHighRarity then
-				HighestTileOfHighRarity = tile.SlotNumber.Value
-			end
-		end
-	end
-	
-	--local NumberOfRarities = #ItemsPreview:FindFirstChild(tostring(Menu)):GetChildren()
-	local CurrentSelectionSlotValue = CurrentSelection.SlotNumber.Value
-	if amount then
-		if CurrentSelectionSlotValue + amount > AmountOfSlots or CurrentSelectionSlotValue + amount <= 0 then --Moving to next rarity menu			
-				--Move to lowest rarity 
-			if CurrentRarityMenu.DisplayOrder.Value == NextRarityMenu.DisplayOrder.Value and amount > 0 then
-				ChangeToTileInMenu(LowestRarityMenu, CurrentSelection, 1)
-				
-				--Move to highest rarity
-			elseif CurrentRarityMenu.DisplayOrder.Value == LowestRarityMenu.DisplayOrder.Value and amount < 0 then
-				ChangeToTileInMenu(HighestRarityMenu, CurrentSelection, HighestTileOfHighRarity)
-				
-			else
-				if amount > 0 then
-					--First of next rarity
-					ChangeToTileInMenu(NextRarityMenu, CurrentSelection, 1)
-				else 
-					--Highest of 'previous' rarity
-					ChangeToTileInMenu(PreviousRarityMenu, CurrentSelection, 0)
+		
+		local LowestRarityMenu = CurrentRarityMenu
+		local HighestRarityMenu = CurrentRarityMenu
+		local NextRarityMenu = CurrentRarityMenu
+		local PreviousRarityMenu = CurrentRarityMenu
+		
+		for i,rarity in pairs (ItemsPreview:FindFirstChild(tostring(Menu)):GetChildren()) do
+			if rarity:IsA("TextLabel") then
+				if rarity.DisplayOrder.Value < LowestRarityMenu.DisplayOrder.Value then
+					LowestRarityMenu = rarity
+				end
+				if rarity.DisplayOrder.value > HighestRarityMenu.DisplayOrder.Value then
+					HighestRarityMenu = rarity
+				end
+				if rarity.DisplayOrder.Value + 1 == CurrentRarityMenu.DisplayOrder.Value then
+					PreviousRarityMenu = rarity
+				end
+				if rarity.DisplayOrder.Value - 1 == CurrentRarityMenu.DisplayOrder.Value then
+					NextRarityMenu = rarity
 				end
 			end
-			--end
-		else --Just move to next tile in the rarity
-			ChangeToTileInMenu(CurrentRarityMenu, CurrentSelection, CurrentSelectionSlotValue + amount)
 		end
-	elseif RaritySkip then
-		if RaritySkip == "Next" then
-			if CurrentRarityMenu.DisplayOrder.Value ~= NextRarityMenu.DisplayOrder.Value then
-				ChangeToTileInMenu(NextRarityMenu, CurrentSelection, 1)
-			else --Moving to lowest rarity
-				ChangeToTileInMenu(LowestRarityMenu, CurrentSelection, 1)
+		
+		local HighestTileOfHighRarity = 0
+		for i,tile in pairs (HighestRarityMenu:GetChildren()) do
+			if tile:IsA("Frame") then
+				if tile.SlotNumber.Value > HighestTileOfHighRarity then
+					HighestTileOfHighRarity = tile.SlotNumber.Value
+				end
 			end
-		elseif RaritySkip == "Previous" then
-			if CurrentRarityMenu.DisplayOrder.Value ~= PreviousRarityMenu.DisplayOrder.Value then
-				ChangeToTileInMenu(PreviousRarityMenu, CurrentSelection, 1)
-			else --Moving to highest rarity
-				ChangeToTileInMenu(HighestRarityMenu, CurrentSelection, 1)
+		end
+		
+		--local NumberOfRarities = #ItemsPreview:FindFirstChild(tostring(Menu)):GetChildren()
+		local CurrentSelectionSlotValue = CurrentSelection.SlotNumber.Value
+		if amount then
+			if CurrentSelectionSlotValue + amount > AmountOfSlots or CurrentSelectionSlotValue + amount <= 0 then --Moving to next rarity menu			
+					--Move to lowest rarity 
+				if CurrentRarityMenu.DisplayOrder.Value == NextRarityMenu.DisplayOrder.Value and amount > 0 then
+					ChangeToTileInMenu(LowestRarityMenu, CurrentSelection, 1)
+					
+					--Move to highest rarity
+				elseif CurrentRarityMenu.DisplayOrder.Value == LowestRarityMenu.DisplayOrder.Value and amount < 0 then
+					ChangeToTileInMenu(HighestRarityMenu, CurrentSelection, HighestTileOfHighRarity)
+					
+				else
+					if amount > 0 then
+						--First of next rarity
+						ChangeToTileInMenu(NextRarityMenu, CurrentSelection, 1)
+					else 
+						--Highest of 'previous' rarity
+						ChangeToTileInMenu(PreviousRarityMenu, CurrentSelection, 0)
+					end
+				end
+				--end
+			else --Just move to next tile in the rarity
+				ChangeToTileInMenu(CurrentRarityMenu, CurrentSelection, CurrentSelectionSlotValue + amount)
+			end
+		elseif RaritySkip then
+			if RaritySkip == "Next" then
+				if CurrentRarityMenu.DisplayOrder.Value ~= NextRarityMenu.DisplayOrder.Value then
+					ChangeToTileInMenu(NextRarityMenu, CurrentSelection, 1)
+				else --Moving to lowest rarity
+					ChangeToTileInMenu(LowestRarityMenu, CurrentSelection, 1)
+				end
+			elseif RaritySkip == "Previous" then
+				if CurrentRarityMenu.DisplayOrder.Value ~= PreviousRarityMenu.DisplayOrder.Value then
+					ChangeToTileInMenu(PreviousRarityMenu, CurrentSelection, 1)
+				else --Moving to highest rarity
+					ChangeToTileInMenu(HighestRarityMenu, CurrentSelection, 1)
+				end
 			end
 		end
 	end
@@ -580,54 +586,51 @@ function MoveOtherRaritiesDown(RarityMenu)
 	end
 end
 
--------------<Storage Depositing>--------------------------------------------------------------------------
+-------------------------------------------------<|Storage Depositing|>---------------------------------------------------------------------------------------------------------------
+
+local DepositInteract = game.ReplicatedStorage.Events.HotKeyInteract:WaitForChild("DepositInteract")
 local DepositInventory = game.ReplicatedStorage.Events.Utility:WaitForChild("DepositInventory")
-for i,storage in pairs (game.Workspace.Storages.Deposits:GetChildren()) do
-	local repeatDebounce = false
-	coroutine.resume(coroutine.create(function()
-		while true do
-			wait(.1)
-			if not repeatDebounce and not ComputerIsOn then
-				if (storage.InteractedModel:WaitForChild("Main").Position - HumanoidRootPart.Position).magnitude < 7 then
-					repeatDebounce = true
-					print("The player is close to a storage:" .. tostring(storage))
-					
-					--Delete the tiles from the inventory (or set their amounts to zero)
-					for i,menu in pairs (script.Parent.Parent.DataMenu.DataMenu.InventoryMenu:GetChildren()) do
-						if menu:IsA("Frame") then
-							for i,page in pairs (menu:GetChildren()) do
-								for i,tile in pairs (page:GetChildren()) do
-									if tile:IsA("TextButton") then
-										tile:Destroy()
-									end
-								end
-							end
+
+local repeatDebounce = false
+local function HandleDepositInventory()
+	if not repeatDebounce and not ComputerIsOn then
+		repeatDebounce = true
+		
+		--Delete the tiles from the inventory (or set their amounts to zero)
+		for i,menu in pairs (PlayerGui.DataMenu.DataMenu.InventoryMenu:GetChildren()) do
+			if menu:IsA("Frame") then
+				for i,page in pairs (menu:GetChildren()) do
+					for i,tile in pairs (page:GetChildren()) do
+						if tile:IsA("TextButton") then
+							tile:Destroy()
 						end
 					end
-					
-					local finished = DepositInventory:FireServer(Player)
-					wait(finished)
-					
-					--notify player that they deposited their inventory
-					TycoonStorageGui.DepositNotify.Visible = true
-					TycoonStorageGui.DepositNotify:TweenPosition(UDim2.new(0.358,0,0.85,0), "Out", "Quint", 1)
-					wait(1)
-					TycoonStorageGui.DepositNotify:TweenPosition(UDim2.new(0.358,0,1.1,0), "In", "Quint", 1.5)
-					wait(3)
-					TycoonStorageGui.DepositNotify.Visible = false
-					
-					repeatDebounce = false
 				end
 			end
 		end
-	end))
+
+		local finished = DepositInventory:FireServer(Player)
+		wait(finished)
+
+		--notify player that they deposited their inventory
+		TycoonStorageGui.DepositNotify.Visible = true
+		TycoonStorageGui.DepositNotify:TweenPosition(UDim2.new(0.358,0,0.85,0), "Out", "Quint", 1)
+		wait(1)
+		TycoonStorageGui.DepositNotify:TweenPosition(UDim2.new(0.358,0,1.1,0), "In", "Quint", 1.5)
+		wait(3)
+		TycoonStorageGui.DepositNotify.Visible = false
+
+		repeatDebounce = false	
+	end	
 end
 
+DepositInteract.Event:Connect(HandleDepositInventory)
 
 -------------<E Interaction>---------------------------------------------------------------------------
 local UIS = game:GetService("UserInputService")
 local Mouse = Player:GetMouse()
 
+--[[
 function EInteract()
 	local debounce2 = false
 	UIS.InputBegan:Connect(function(input)
@@ -672,8 +675,9 @@ function EInteract()
 		end
 	end
 end
+]]
 
-----------------<Cutscene Manager>-------------------------------------------------------------
+---------------------------------------------------<|Cutscene Manager|>-----------------------------------------------------------------------------------------------------------
 local Camera = game.Workspace.CurrentCamera
 
 function MoveCamera(StartPart, EndPart, Duration, EasingStyle, EasingDirection)
@@ -684,9 +688,14 @@ function MoveCamera(StartPart, EndPart, Duration, EasingStyle, EasingDirection)
 	wait(Duration)
 end
 
---VIDEO TUTORIAL:
+--CUTSCENE VIDEO TUTORIAL:
 --https://www.bing.com/videos/search?q=roblox+2020+cutscene+editor&&view=detail&mid=BEC7BCBD747366BD75C8BEC7BCBD747366BD75C8&rvsmid=E7AB6D6F25AAAC254ED0E7AB6D6F25AAAC254ED0&FORM=VDRVRV
-function StartUpCutscene()
+local StorageInteract = game.ReplicatedStorage.Events.HotKeyInteract:WaitForChild("StorageInteract")
+
+function StartUpCutscene(promptObject)
+	CurrentStorage = promptObject.Parent.Parent.Parent
+	promptObject.Enabled = false
+	
 	local CutsceneFolder = CurrentStorage:FindFirstChild("CutsceneCameras")
 	MoveCamera(Camera, CutsceneFolder.Camera1, 1.5, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
 	MoveAllBaseScreenUI:Fire("Hide") --Move "surface screen" tiles away
@@ -694,6 +703,8 @@ function StartUpCutscene()
 	
 	StartUpComputer()
 end
+
+StorageInteract.Event:Connect(StartUpCutscene)
 
 function ShutDownCutscene()
 	local CutsceneFolder = CurrentStorage:FindFirstChild("CutsceneCameras")
@@ -703,10 +714,9 @@ function ShutDownCutscene()
 	wait(.8)
 	Camera.CameraType = Enum.CameraType.Custom
 	Camera.CameraSubject = game.Players.LocalPlayer.Character:WaitForChild("Humanoid")
-	CurrentStorage.InteractedModel:WaitForChild("E GUI").Enabled = true
+	CurrentStorage.InteractedModel.Main.DisplayButtonGUI.Enabled = true
+	
 end
-
-
 
 for i,button in pairs (TycoonStorageGui.ComputerScreen.DataTabSelect:GetChildren()) do
 	if button:IsA("ImageButton") then
@@ -714,10 +724,3 @@ for i,button in pairs (TycoonStorageGui.ComputerScreen.DataTabSelect:GetChildren
 	end
 end
 
-local EGUI = script:FindFirstChild("E GUI")               --Possibly move to EInteract function call for organization
-for i,storage in pairs (workspace.Storages.Computers:GetChildren()) do
-	local EGUIClone = EGUI:Clone()
-	EGUIClone.Parent = storage:FindFirstChild("InteractedModel")
-end
-
-EInteract()
