@@ -15,7 +15,7 @@ local UpdatePlayerMenu = EventsFolder.GUI:WaitForChild("UpdatePlayerMenu")
 local UpdateEquippedItem = EventsFolder.GUI:WaitForChild("UpdateEquippedItem")
 local UpdateItemCount = EventsFolder.GUI:WaitForChild("UpdateItemCount")
 
--------------------------<|Set-Up Game|>---------------------------------------------------------------------------------------------------------------------
+-------------------------<|Set Up Game|>--------------------------------------------------------------------------------------------------------------------------------------
 
 local DataStoreService = game:GetService("DataStoreService") 
 local PlayerSave = DataStoreService:GetDataStore("Tycoon Test190") --Changing this will change the datastore info is taken from
@@ -52,7 +52,6 @@ game.Players.PlayerAdded:Connect(function(JoinedPlayer)
 	end
 end)
 
-
 --When player leaves
 game.Players.PlayerRemoving:Connect(function(JoinedPlayer)
 	local PlayerDataFile = PlayerData:FindFirstChild(tostring(JoinedPlayer.UserId))
@@ -65,7 +64,7 @@ end)
 
 local sessionData = {}
 
---------------------------<|Utility Functions|>------------------------------------------------------------------------------------------------------------
+--------------------------<|Utility Functions|>----------------------------------------------------------------------------------------------------------------------------------
 
 local function CheckSaveData(Save)
 	if not Save then
@@ -125,7 +124,20 @@ local function FindAssociatedFolder(MotherFolder, ItemType, ItemName)
 	end
 end
 
------------------------------------------------------------------------------------------------------------------------------------------------------------
+local function SavePlayerData(playerUserId)
+	if sessionData[playerUserId] then --if there is a sessiondata value with the player's userid...
+		local success = pcall(function() --Check to make sure it is saving
+			PlayerSave:SetAsync(playerUserId, sessionData[playerUserId]) --save sessionData[playerUserId] as playerUserId
+			print(playerUserId .. "'s held data was SAVED!")
+			--playerUserId = string (key), and sessionData[playerUserId] = variant (value of given key)
+		end)
+		if not success then
+			warn("Cannot save data for " .. tostring(playerUserId))
+		end
+	end
+end
+
+---------------------<|High-Traffic Functions|>--------------------------------------------------------------------------------------------------------------------------------------
 
 local function UpdateGUIForFile(DataTabName, PlayerDataFile, player, playerUserId, statName, value)
 	local DataTab = PlayerDataFile:FindFirstChild(DataTabName) --Example: (UserId).Experience
@@ -225,10 +237,11 @@ function PlayerStatManager:ChangeStat(player, statName, value, File, Currency, s
 			
 			local ItemType = string.gsub(statName, "Equipped", "")
 			UpdateEquippedItem:FireClient(player, File, ItemType, value)
-			--if certain equip type (bag), fire update item count event
 		end
 	end
 end
+
+------------------------------<|Set Up Player Data|>-----------------------------------------------------------------------------------------------------------------------
 
 function FindPlayerData(JoinedPlayer)
 	local PlayerDataFile = PlayerData:FindFirstChild(tostring(JoinedPlayer.UserId))
@@ -262,7 +275,7 @@ function FindPlayerData(JoinedPlayer)
 	end		
 end
 
-function LoadPlayerData(PlayerDataFile,data,JoinedPlayer)
+function LoadPlayerData(PlayerDataFile, data, JoinedPlayer)
 	print("Loading player data")
 	local playerUserId = game.Players:FindFirstChild(tostring(JoinedPlayer)).UserId
 	local DataMenu = JoinedPlayer.PlayerGui:WaitForChild("DataMenu"):WaitForChild("DataMenu")
@@ -278,7 +291,7 @@ function LoadPlayerData(PlayerDataFile,data,JoinedPlayer)
 	local PlayerStatItems = CreateSaveFolder(PlayerDataFile, "Player")
 	local EquippedItems = CreateSaveFolder(PlayerStatItems, "CurrentlyEquipped")
 	
-	--*Write a function that handles the i,v in pairs for importing save data (Will clean code for readability)*	
+	--Once new experience folder is available, make for all experience folders
 	local RealSkills = game.ReplicatedStorage:WaitForChild("Skills")
 	for i,skill in pairs (RealSkills:GetChildren()) do
 		local Skill = Instance.new("IntValue",SkillsFolder)
@@ -347,6 +360,7 @@ function LoadPlayerData(PlayerDataFile,data,JoinedPlayer)
 				ImportSaveData(data,SavedValue,ItemTypeFolder,Item)
 				
 				if SavedValue == true then
+					--Add tile to player menu
 					UpdatePlayerMenu:FireClient(JoinedPlayer, tostring(equiptype), tostring(itemtype), tostring(item))
 				end
 			end
@@ -357,23 +371,23 @@ function LoadPlayerData(PlayerDataFile,data,JoinedPlayer)
 			local SavedValue = CheckSaveData(data["Equipped" .. tostring(itemtype)])
 			ImportSaveData(data,SavedValue,EquippedTypeFolder,EquippedItem)
 			
-			--Update Equipped Item Event (equipped in PMH, sent to PSM, then sent to PMH again) (here, just send to PMH)
-			--This will be for changing default screen icons and actually equipping them to character (if need be)
-			
-			
-			--Update GUI Menus (Inventory and Player Items Equips)
-			if tostring(equiptype) == "Bags" then
-				local EquippedItemValue = itemtype:FindFirstChild(data["Equipped" .. tostring(itemtype)])
+			local EquippedItemValue = itemtype:FindFirstChild(data["Equipped" .. tostring(itemtype)])
+
+			if tostring(equiptype) == "Bags" then --Update GUI Menus (Inventory Bag # Limits)
 				if EquippedItemValue then
 					local MenuName = string.gsub(tostring(itemtype), "Bag", "") .. "Menu"
 					DataMenu:WaitForChild("InventoryMenu"):FindFirstChild(MenuName):SetAttribute("BagCapacity", EquippedItemValue.Value)
 
 					local ItemCount = PlayerStatManager:getItemTypeCount(JoinedPlayer, string.gsub(tostring(itemtype), "Bag", ""))
 					DataMenu:WaitForChild("InventoryMenu"):FindFirstChild(MenuName):SetAttribute("ItemCount", ItemCount)
-					
-					UpdateEquippedItem:FireClient(JoinedPlayer, tostring(equiptype), tostring(itemtype), tostring(EquippedItemValue))
 				end
 			end
+			
+			if tostring(equiptype) == "Tools" and EquippedItemValue then
+				UpdateToolbar(JoinedPlayer, tostring(itemtype), tostring(EquippedItemValue))
+			end
+			
+			UpdateEquippedItem:FireClient(JoinedPlayer, tostring(equiptype), tostring(itemtype), tostring(EquippedItemValue))
 		end
 	end
 	
@@ -401,14 +415,14 @@ function SetTycoonPurchases(JoinedPlayer, PlayerCash, playerUserId)
 	for i = 1,#tycoons,1 do 
 		local TycoonAssetsHandler = require(tycoons[i]:WaitForChild("TycoonAssetsHandler")) --Tycoon's possible purchases (table)
 		local data = sessionData[playerUserId]
-		
+
 		--Set-up Entrance Save
 		local Entrance = tycoons[i].Entrance.Name
 		if data[Entrance] == nil then --Change name of entrance for multiple tycoon purchases
 			print("Setting Entrance to Unbought")
 			data[Entrance] = false
 		end
-		
+
 		for key,_ in pairs(TycoonAssetsHandler) do
 			if data[key] == nil then --if a value of the object hasn't been placed in player's sessiondata,
 				--Make one, and set it equal to false (so it can be set to true later)
@@ -416,23 +430,12 @@ function SetTycoonPurchases(JoinedPlayer, PlayerCash, playerUserId)
 				data[key] = false --Set the objects as not bought
 			end
 		end	
-		
+
 		Utility:UpdateMoneyDisplay(JoinedPlayer, Utility:ConvertShort(PlayerCash.Value))
 	end
 end
 
-function SavePlayerData(playerUserId)
-	if sessionData[playerUserId] then --if there is a sessiondata value with the player's userid...
-		local success = pcall(function() --Check to make sure it is saving
-			PlayerSave:SetAsync(playerUserId, sessionData[playerUserId]) --save sessionData[playerUserId] as playerUserId
-			print(playerUserId .. "'s held data was SAVED!")
-			--playerUserId = string (key), and sessionData[playerUserId] = variant (value of given key)
-		end)
-		if not success then
-			warn("Cannot save data for " .. tostring(playerUserId))
-		end
-	end
-end
+----------------------------------------<|Get Item Info Functions|>------------------------------------------------------------------------------------------------------
 
 function PlayerStatManager:getPlayerData(player)
 	local playerUserId = game.Players:FindFirstChild(tostring(player)).UserId
@@ -484,6 +487,25 @@ function PlayerStatManager:initiateSaving(player, statName, value)
 	
 	SavePlayerData(playerUserId) --After saving money amount, update datastore for other stats!
 	--Other stats include purhcases, inventory, etc.
+end
+
+--------------------------------<|Equip Functions|>----------------------------------------------------------------------------------------------
+
+function UpdateToolbar(Player, ItemType, NewlyEquippedItem)
+	print(ItemType, NewlyEquippedItem)
+	local ItemTypeFolder = game.ReplicatedStorage.Equippable.Tools:FindFirstChild(ItemType)
+	
+	--Delete existing items of type from backpack
+	for i,item in pairs (Player.Backpack:GetChildren()) do
+		if ItemTypeFolder:FindFirstChild(tostring(item)) then
+			item:Destroy()
+		end
+	end
+	
+	if NewlyEquippedItem then
+		local Tool = ItemTypeFolder:FindFirstChild(NewlyEquippedItem):Clone()
+		Tool.Parent = Player.Backpack
+	end
 end
 
 --------------------------------<|Stat-Handling Events|>------------------------------------------------------------------------------------------
@@ -544,13 +566,21 @@ UpdateEquippedItem.OnServerEvent:Connect(function(Player, EquipType, ItemType, N
 
 	--Check if value selected is not already equipped
 	if NewlyEquippedItem then
-		if NewlyEquippedItem ~= sessionData[playerUserId]["Equipped" .. ItemType] then
+		if NewlyEquippedItem ~= sessionData[playerUserId]["Equipped" .. ItemType] then --If not already equipped
 			if sessionData[playerUserId][NewlyEquippedItem] == true then --Item is purchased
+				if EquipType == "Tools" then --must update player hotbar
+					UpdateToolbar(Player, ItemType, NewlyEquippedItem)
+				end
+					
 				EquipValue.Value = NewlyEquippedItem
 				PlayerStatManager:ChangeStat(Player, "Equipped" .. ItemType, NewlyEquippedItem, EquipType)	
 			end
 		end
 	else --Unequipped Item, set value for equipped item to nil
+		if EquipType == "Tools" then
+			UpdateToolbar(Player, ItemType)
+		end
+		
 		EquipValue.Value = ""
 		sessionData[playerUserId]["Equipped" .. ItemType] = ""
 	end
@@ -577,7 +607,6 @@ local function HandleDropMaterials(Tycoon, Drop) --Update Tycoon Storage for dro
 	end
 end
 HandleDropMaterialsEvent.Event:Connect(HandleDropMaterials)
-
 
 
 return PlayerStatManager
