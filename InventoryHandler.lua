@@ -1,6 +1,5 @@
 --(LocalScript)
 --Inventory graphical menu handler
-
 -------------------------------------------------------------------------------------------------------------------------------------------------
 local Player = game.Players.LocalPlayer
 local PlayerUserId = Player.UserId
@@ -72,6 +71,7 @@ MoveAllBaseScreenUI.Event:Connect(function(ChangeTo)
 end)
 
 --------------<|Utility Functions|>-----------------------------------------------------------------------------
+
 local ItemViewerOpen = false
 local PageDebounce = false
 local ButtonPresses = {}
@@ -286,7 +286,6 @@ function FinalizePageChange(Page)
 	wait(.25)
 	ManagePageInvis(Page)
 end
-
 
 PageManager.Previous.Activated:Connect(function()
 	if PageDebounce == false then
@@ -787,7 +786,7 @@ local function ManageMaterialPopups(ObjectName, AcquiredLocation, AmountAdded, C
 end
 
 
---------------------<|Countdown Functions|>-----------------------------------------------------
+----------------------------<|Countdown Functions|>--------------------------------------------------------------------------------------------------------------------------
 
 function CountdownPopUp(PopUpGui, Slot, TimeBeforeExpire, XJumpDistance, YJumpDistance, XJumpDistance2, YJumpDistance2)
 	if Slot:FindFirstChild("TimeLeft") then
@@ -868,7 +867,7 @@ local function CountdownDifference(Difference, OriginalProgressBar, Percentage, 
 end
 
 
------------------<|EXPBar PopUp Functions|>--------------------------------------------------
+----------------------------<|EXPBar PopUp Functions|>------------------------------------------------------------------------------------------------------------
 
 function EXPPopUp(ExpBar, Value, Pace)
 	local RealEXPPopUp = GuiElements:FindFirstChild("EXPPopUp")
@@ -980,7 +979,7 @@ local function ManageEXPPopUp(Stat, Value, AmountAdded)
 	
 end
 
---------------------<|Bag Information GUI Functions|>-----------------------------------------------------------------------------------------------
+-------------------------<|Bag Information GUI Functions|>----------------------------------------------------------------------------------------------------------
 
 local function InsertNewBagPopUp(BagPopUp, BagPopUpGui, ItemTypeCount, BagCapacity, BagType, PopUpAlreadyExists)
 	if PopUpAlreadyExists then
@@ -1008,7 +1007,7 @@ local function InsertNewBagPopUp(BagPopUp, BagPopUpGui, ItemTypeCount, BagCapaci
 end
 
 
--------------------------------------<|PlayerMenu Functions|>--------------------------------------------------------------------------------------
+-------------------------------------<|PlayerMenu Functions|>------------------------------------------------------------------------------------------------------------
 
 local PlayerMenu = DataMenu:FindFirstChild("PlayerMenu")
 local UpdateEquippedItem = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateEquippedItem")
@@ -1059,36 +1058,22 @@ UpdateEquippedItem.OnClientEvent:Connect(function(EquipType, ItemType, Item)
 
 	DefaultMenuButton.CurrentlyEquipped.Value = Item
 	DefaultMenuButton.Image = ItemImage
-
-	local ItemTile
+	
+	--Highlight Equipped Item
 	for i,page in pairs (PlayerMenu:FindFirstChild(ItemType .. "Menu"):GetChildren()) do
 		for i,tile in pairs (page:GetChildren()) do
 			if tile:IsA("TextButton") then
 				if tile.StatName.Value == Item then
-					ItemTile = tile
+					tile.BackgroundColor3 = Color3.fromRGB(85, 170, 255) --Brighter blue (or player's fav color later)
 				end
 			end
 		end
 	end
-	
-	if ItemTile then
-		ItemTile.BackgroundColor3 = Color3.fromRGB(85, 170, 255) --Brighter blue (or player's fav color later)
-	end
-
-	--Change equip button to say unequip
-
-
-
 
 end)
 
---PlayerMenu functions will likely handle equipping, arranging of tiles in that inventory screen, adding new tiles
---when the player has purchased something, ...
 
-
-
-
--------------------------------------<High-Traffic Events>---------------------------------------------------------------------------------------
+-------------------------------------<High-Traffic Events>-------------------------------------------------------------------------------------------------------------
 
 local UpdateInventory = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateInventory")
 UpdateInventory.OnClientEvent:Connect(function(Stat, File, Value, AmountAdded, Type, Currency, AcquiredLocation)
@@ -1153,8 +1138,6 @@ UpdatePlayerMenu.OnClientEvent:Connect(function(EquipType, ItemType, Item)
 	
 end)
 
-
-
 local UpdateItemCount = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateItemCount")
 UpdateItemCount.OnClientEvent:Connect(function(ItemTypeCount, BagCapacity, BagType, DeposittedInventory)
 	
@@ -1180,5 +1163,3 @@ UpdateItemCount.OnClientEvent:Connect(function(ItemTypeCount, BagCapacity, BagTy
 	Menu:SetAttribute("ItemCount", ItemTypeCount)
 	Menu:SetAttribute("BagCapacity", BagCapacity)
 end)
-
-
