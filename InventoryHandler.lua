@@ -1069,7 +1069,6 @@ UpdateEquippedItem.OnClientEvent:Connect(function(EquipType, ItemType, Item)
 			end
 		end
 	end
-
 end)
 
 
@@ -1163,3 +1162,9 @@ UpdateItemCount.OnClientEvent:Connect(function(ItemTypeCount, BagCapacity, BagTy
 	Menu:SetAttribute("ItemCount", ItemTypeCount)
 	Menu:SetAttribute("BagCapacity", BagCapacity)
 end)
+
+
+
+
+
+
