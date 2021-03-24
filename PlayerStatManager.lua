@@ -68,12 +68,13 @@ local sessionData = {}
 
 local function CheckSaveData(Save)
 	if not Save then
-		return false
+		return false --Nothing, not even 0, "", or false, have been recorded for this save value
 	else
 		return true
 	end
 end
 
+--Update ServerStorage Folders With Data
 local function ImportSaveData(data,SaveCheck,Folder,Stat)
 	if SaveCheck == false then
 		if typeof(Stat) == "number" then
@@ -348,8 +349,8 @@ function LoadPlayerData(PlayerDataFile, data, JoinedPlayer)
 		
 		for i,itemtype in pairs (equiptype:GetChildren()) do
 			
-			--data["Equipped" .. tostring(itemtype)] is the player's equiped item
-			--data[tostring(item)] is if the item is purchased
+			--data["Equipped" .. tostring(itemtype)] is the player's equipped item (string)
+			--data[tostring(item)] is if the item is purchased (boolean)
 			
 			local ItemTypeFolder = CreateSaveFolder(EquipTypeFolder, tostring(itemtype))
 			for i,item in pairs (itemtype:GetChildren()) do
@@ -369,25 +370,33 @@ function LoadPlayerData(PlayerDataFile, data, JoinedPlayer)
 			EquippedItem.Name = "Equipped" .. tostring(itemtype)
 
 			local SavedValue = CheckSaveData(data["Equipped" .. tostring(itemtype)])
+			
+			--[[ For testing:
+			if not SavedValue and tostring(itemtype) == "Pickaxes" then
+				SavedValue = "Pickaxe"
+				data["Equipped" .. tostring(itemtype)] = "Pickaxe"
+			end
+			]]
+			
 			ImportSaveData(data,SavedValue,EquippedTypeFolder,EquippedItem)
 			
-			local EquippedItemValue = itemtype:FindFirstChild(data["Equipped" .. tostring(itemtype)])
-
-			if tostring(equiptype) == "Bags" then --Update GUI Menus (Inventory Bag # Limits)
-				if EquippedItemValue then
+			local EquippedItem = itemtype:FindFirstChild(data["Equipped" .. tostring(itemtype)])
+			
+			if EquippedItem then
+				if tostring(equiptype) == "Bags" then --Update GUI Menus (Inventory Bag # Limits)
 					local MenuName = string.gsub(tostring(itemtype), "Bag", "") .. "Menu"
-					DataMenu:WaitForChild("InventoryMenu"):FindFirstChild(MenuName):SetAttribute("BagCapacity", EquippedItemValue.Value)
+					DataMenu:WaitForChild("InventoryMenu"):FindFirstChild(MenuName):SetAttribute("BagCapacity", EquippedItem.Value)
 
 					local ItemCount = PlayerStatManager:getItemTypeCount(JoinedPlayer, string.gsub(tostring(itemtype), "Bag", ""))
 					DataMenu:WaitForChild("InventoryMenu"):FindFirstChild(MenuName):SetAttribute("ItemCount", ItemCount)
 				end
-			end
+				
+				if tostring(equiptype) == "Tools" then
+					UpdateToolbar(JoinedPlayer, tostring(itemtype), tostring(EquippedItem))
+				end
 			
-			if tostring(equiptype) == "Tools" and EquippedItemValue then
-				UpdateToolbar(JoinedPlayer, tostring(itemtype), tostring(EquippedItemValue))
+				UpdateEquippedItem:FireClient(JoinedPlayer, tostring(equiptype), tostring(itemtype), tostring(EquippedItem))
 			end
-			
-			UpdateEquippedItem:FireClient(JoinedPlayer, tostring(equiptype), tostring(itemtype), tostring(EquippedItemValue))
 		end
 	end
 	
@@ -607,6 +616,7 @@ local function HandleDropMaterials(Tycoon, Drop) --Update Tycoon Storage for dro
 	end
 end
 HandleDropMaterialsEvent.Event:Connect(HandleDropMaterials)
+
 
 
 return PlayerStatManager
