@@ -158,20 +158,21 @@ PurchaseObject.OnServerEvent:Connect(function(player, target)
 					--If it's a gamepass button
 					if (target:FindFirstChild('Gamepass')) and (target.Gamepass.Value >= 1) then
 						if game:GetService("MarketplaceService"):PlayerOwnsAsset(player,target.Gamepass.Value) then
-							Purchase({[1] = target.Price.Value,[2] = target,[3] = PlayerCash}, AssociatedTycoon)
+							Purchase({target.Price.Value, target, PlayerCash}, AssociatedTycoon)
 						else
 							game:GetService('MarketplaceService'):PromptPurchase(player,target.Gamepass.Value)
 						end
 
-						--If it's a DevProduct button
+					--If it's a DevProduct button
 					elseif (target:FindFirstChild('DevProduct')) and (target.DevProduct.Value >= 1) then
 						game:GetService('MarketplaceService'):PromptProductPurchase(player,target.DevProduct.Value)
 
-						--Normal Button, player can afford it
+					--Normal Button, player can afford it
 					elseif PlayerCash.Value >= target.Price.Value and MaterialCostCheck == nil then
-						Purchase({[1] = target.Price.Value,[2] = target,[3] = PlayerCash}, AssociatedTycoon)
+						Purchase({target.Price.Value, target, PlayerCash}, AssociatedTycoon)
 						SoundEffects:PlaySound(target, SoundEffects.Tycoon.Purchase)
-
+						
+					--Material Button, player can afford it
 					elseif PlayerCash.Value >= target.Price.Value and MaterialCostCheck == true then
 						local DataGroups = target.MaterialPrice:GetChildren()
 						for i,typeGroup in pairs (DataGroups) do
@@ -179,14 +180,13 @@ PurchaseObject.OnServerEvent:Connect(function(player, target)
 							for i,material in pairs (typeGroup:GetChildren()) do
 								local cost = material.Value
 
-								Purchase({[1] = cost, [2] = target, [3] = PlayerInventory}, AssociatedTycoon, material)
+								Purchase({cost, target, PlayerInventory}, AssociatedTycoon, material)
 								--extra ",material" at end to say what specifically in the [3]'s menu that's affected)
 								wait(.51) --Delay between purchases to successfully stack material popups
 							end
 						end
-						Purchase({[1] = target.Price.Value,[2] = target,[3] = PlayerCash}, AssociatedTycoon)
+						Purchase({target.Price.Value, target, PlayerCash}, AssociatedTycoon)
 						SoundEffects:PlaySound(target, SoundEffects.Tycoon.Purchase)
-
 
 						--put another for only materials required to purchase "buttons"
 						--Make more efficient, remove elseifs or decrease the amount of elseifs
@@ -224,5 +224,4 @@ end)
 
 --If they do not have the funds, do not use a remotefunction, instead show visual that warns player
 --they do not have the funds to purchase that item (You need $### more to purchase tostring(item))
-
 
