@@ -4,11 +4,13 @@
 local Utility = {}
 
 function Utility:UpdateMoneyDisplay(Player, NewPlayerCash)
-	local MoneyDisplay = game.Players:FindFirstChild(tostring(Player)).PlayerGui:WaitForChild("MoneyDisplay")
+	local PlayerGui = game.Players:FindFirstChild(tostring(Player)).PlayerGui
+	
+	local MoneyDisplay = PlayerGui:WaitForChild("MoneyDisplay")
 	MoneyDisplay.Display.Frame.Money.Text = "$" .. tostring(NewPlayerCash)
 	
 	--Also updates where money is displayed in PlayerMenu
-	Player.PlayerGui.DataMenu.DataMenu.PlayerMenu["Default Menu"].PlayerInfo.PlayerCash.Text = "$" .. tostring(NewPlayerCash)
+	PlayerGui.DataMenu.DataMenu.PlayerMenu["Default Menu"].PlayerInfo.PlayerCash.Text = tostring(NewPlayerCash)
 end
 
 function Utility:ConvertShort(Filter_Num)
