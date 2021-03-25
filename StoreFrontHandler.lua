@@ -9,6 +9,8 @@ UpdateStoreFront.OnClientEvent:Connect(function(NPC, npcData)
 	
 	--Continue to hide players that are nearby until the player exits the store front
 	
+	--Prevent player from moving
+	
 	--Move camera into position, use transition screen to hide GUI being updated
 	
 	local Items = npcData["Items"]
