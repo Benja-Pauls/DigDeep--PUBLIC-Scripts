@@ -15,6 +15,18 @@ for i,tycoon in pairs (Tycoons:GetChildren()) do
 	end
 end
 
+local TycoonPurchases = game.ReplicatedStorage:WaitForChild("TycoonPurchases")
+local Droppers = TycoonPurchases:FindFirstChild("Dropper")
+local DropperScript = game.ServerScriptService.TycoonSaveHandler.DropperScript
+
+for i, dropper in pairs (Droppers:GetChildren()) do
+	if dropper:FindFirstChild("DropperScript") == nil then
+		local DropScriptClone = DropperScript:Clone()
+		DropScriptClone.Parent = dropper
+		DropScriptClone.Disabled = false
+	end
+end
+
 --Initial Team
 local teamHire = Instance.new('Team', TeamService)
 teamHire.TeamColor = BrickColor.new('White')
@@ -28,18 +40,6 @@ for i,tycoon in pairs(Tycoons:GetChildren()) do
 	tycoonTeam.Name = tycoon.Name 
 	tycoonTeam.TeamColor = tycoon.TeamColor.Value 
 	tycoonTeam.AutoAssignable = false
-end
-
-local TycoonPurchases = game.ReplicatedStorage:WaitForChild("TycoonPurchases")
-local Droppers = TycoonPurchases:FindFirstChild("Dropper")
-local DropperScript = game.ServerScriptService:WaitForChild("TycoonSaveHandler").DropperScript
-
-for i, dropper in pairs (Droppers:GetChildren()) do
-	if dropper:FindFirstChild("DropperScript") == nil then
-		local DropScriptClone = DropperScript:Clone()
-		DropScriptClone.Parent = dropper
-		DropScriptClone.Disabled = false
-	end
 end
 
 function getPlrTycoon(player)
