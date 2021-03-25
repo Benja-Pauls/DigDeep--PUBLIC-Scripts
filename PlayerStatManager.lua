@@ -231,12 +231,20 @@ function PlayerStatManager:ChangeStat(player, statName, value, File, Currency, s
 			--later stat check for data type efficiency
 		else
 			print("Trying to update the value of a saved string in " .. tostring(playerUserId))
+			local ItemType = string.gsub(statName, "Equipped", "")
 			
-			if File == "Bags" then
-				--UpdateItemCount:FireClient(player, )
+			if File == "Bags" then --Update Equipped Bag (change bag capacity)
+				local TypeAmount = PlayerStatManager:getItemTypeCount(player, string.gsub(ItemType, "Bag", ""))
+				local MaxItemAmount
+				if value and value ~= "" then
+					MaxItemAmount = PlayerStatManager:getEquippedData(player, ItemType, "Bags").Value
+				else	
+					MaxItemAmount = 0
+				end
+				
+				UpdateItemCount:FireClient(player, TypeAmount, MaxItemAmount, ItemType)
 			end
 			
-			local ItemType = string.gsub(statName, "Equipped", "")
 			UpdateEquippedItem:FireClient(player, File, ItemType, value)
 		end
 	end
@@ -358,6 +366,13 @@ function LoadPlayerData(PlayerDataFile, data, JoinedPlayer)
 				Item.Name = tostring(item)
 
 				local SavedValue = CheckSaveData(data[tostring(item)])
+				
+				if tostring(equiptype) == "Bags" then --include "not SavedValue" for only first time
+					print("CHANGING ALL BAGS TO PURCHASED")
+					SavedValue = true
+					data[tostring(item)] = true
+				end
+				
 				ImportSaveData(data,SavedValue,ItemTypeFolder,Item)
 				
 				if SavedValue == true then
@@ -371,12 +386,10 @@ function LoadPlayerData(PlayerDataFile, data, JoinedPlayer)
 
 			local SavedValue = CheckSaveData(data["Equipped" .. tostring(itemtype)])
 			
-			--[[ For testing:
-			if not SavedValue and tostring(itemtype) == "Pickaxes" then
-				SavedValue = "Pickaxe"
+			if tostring(itemtype) == "Pickaxes" then
+				SavedValue = true
 				data["Equipped" .. tostring(itemtype)] = "Pickaxe"
 			end
-			]]
 			
 			ImportSaveData(data,SavedValue,EquippedTypeFolder,EquippedItem)
 			
@@ -396,6 +409,8 @@ function LoadPlayerData(PlayerDataFile, data, JoinedPlayer)
 				end
 			
 				UpdateEquippedItem:FireClient(JoinedPlayer, tostring(equiptype), tostring(itemtype), tostring(EquippedItem))
+			else
+				UpdateEquippedItem:FireClient(JoinedPlayer, tostring(equiptype), tostring(itemtype), "")
 			end
 		end
 	end
@@ -458,8 +473,9 @@ function PlayerStatManager:getStat(player, statName) --Stat Check
 end 
 
 function PlayerStatManager:getItemTypeCount(player, Type) --For Amount in Bag Checking
-	local playerUserId = game.Players:FindFirstChild(tostring(player)).UserId
-	local TypeSaveFolder = game.ServerStorage.PlayerData:FindFirstChild(tostring(playerUserId)).Inventory:FindFirstChild(Type)
+	local playerUserId = player.UserId
+	local PlayerDataFile = game.ServerStorage.PlayerData:FindFirstChild(tostring(playerUserId))
+	local TypeSaveFolder = PlayerDataFile.Inventory:FindFirstChild(Type)
 	
 	if TypeSaveFolder then
 		local Amount = 0
@@ -569,6 +585,10 @@ end)
 
 --Fires when player equips new item (must be saved for when they join back)
 UpdateEquippedItem.OnServerEvent:Connect(function(Player, EquipType, ItemType, NewlyEquippedItem)
+	
+	--Ensure Item Type for bag is 0 if under else statement; otherwise, exploiter changed values
+	
+	
 	local playerUserId = Player.UserId
 	local PlayerDataFile = PlayerData:FindFirstChild(tostring(playerUserId))
 	local EquipValue = PlayerDataFile.Player.CurrentlyEquipped:FindFirstChild("Equipped" .. EquipType):FindFirstChild("Equipped" .. ItemType)
@@ -591,7 +611,9 @@ UpdateEquippedItem.OnServerEvent:Connect(function(Player, EquipType, ItemType, N
 		end
 		
 		EquipValue.Value = ""
-		sessionData[playerUserId]["Equipped" .. ItemType] = ""
+		PlayerStatManager:ChangeStat(Player, "Equipped" .. ItemType, "", EquipType)	
+		
+		--sessionData[playerUserId]["Equipped" .. ItemType] = ""
 	end
 end)
 
