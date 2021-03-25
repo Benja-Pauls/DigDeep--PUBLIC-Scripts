@@ -3,12 +3,19 @@
 -----------------------------------------------------------------------------------------------------------------------------------------------
 local Players = game:GetService("Players")
 local Player = Players.LocalPlayer
+
+local Character = game.Workspace.Players:WaitForChild(tostring(Player))
+local DefaultWalkSpeed = Character.Humanoid.WalkSpeed
+local DefaultJumpPower = Character.Humanoid.JumpPower
+
 local PlayerGui = Player:WaitForChild("PlayerGui")
+
 local LocalLoadTycoon = game.ReplicatedStorage.Events.Tycoon.LocalLoadTycoon
 local MoveAllBaseScreenUI = game.ReplicatedStorage.Events.GUI.MoveAllBaseScreenUI
 local ComputerIsOn = false
 local TweenService = game:GetService("TweenService")
 local HumanoidRootPart = game.Workspace.Players:WaitForChild(tostring(Player)):WaitForChild("HumanoidRootPart")
+
 local CurrentStorage
 
 local TycoonStorageGui = script.Parent
@@ -16,6 +23,8 @@ local ComputerScreen = TycoonStorageGui.ComputerScreen
 local SelectionMenu = TycoonStorageGui.ComputerScreen.SelectionMenu
 local BackButton = ComputerScreen.Taskbar.BackButton
 local FadeOut = ComputerScreen.FadeOut
+
+
 
 local function StartUpComputer()
 	ComputerScreen.Visible = true
@@ -693,6 +702,9 @@ end
 local StorageInteract = game.ReplicatedStorage.Events.HotKeyInteract:WaitForChild("StorageInteract")
 
 function StartUpCutscene(promptObject)
+	Character.Humanoid.WalkSpeed = 0
+	Character.Humanoid.JumpPower = 0
+	
 	CurrentStorage = promptObject.Parent.Parent.Parent
 	promptObject.Enabled = false
 	
@@ -716,6 +728,8 @@ function ShutDownCutscene()
 	Camera.CameraSubject = game.Players.LocalPlayer.Character:WaitForChild("Humanoid")
 	CurrentStorage.InteractedModel.Main.DisplayButtonGUI.Enabled = true
 	
+	Character.Humanoid.WalkSpeed = DefaultWalkSpeed
+	Character.Humanoid.JumpPower = DefaultJumpPower
 end
 
 for i,button in pairs (TycoonStorageGui.ComputerScreen.DataTabSelect:GetChildren()) do
@@ -723,4 +737,3 @@ for i,button in pairs (TycoonStorageGui.ComputerScreen.DataTabSelect:GetChildren
 		SetupTycoonStorageTiles(button)
 	end
 end
-
