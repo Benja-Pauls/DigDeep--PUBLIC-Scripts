@@ -14,6 +14,8 @@ if DataMenu.Visible == true then
 	DataMenu.Visible = false
 end
 
+script.Parent.OpenDataMenuButton.Active = false --re-enable when script is ready
+
 for i,v in pairs (DataMenu:GetChildren()) do
 	if v:IsA("Frame") and tostring(v) ~= "TopTabBar" then
 		v.Visible = false
@@ -89,6 +91,9 @@ function ReadyMenuButtons(Menu)
 				--Prep Default Menu 
 				if ButtonMenu.Name ~= "PlayerMenu" then
 					ButtonMenu.Visible = false
+				else
+					ButtonMenu.Visible = true
+					UpdateBagDisplays(Menu, ButtonMenu)		
 				end
 				
 				button.Activated:Connect(function()
@@ -116,8 +121,7 @@ function ReadyMenuButtons(Menu)
 							end
 						end
 					end
-					
-					--Make function for i,gui (for preparing default menu screens and ensuring bag buttons stay visible)
+
 					if tostring(ButtonMenu) == "PlayerMenu" then
 						for i,gui in pairs (ButtonMenu:GetChildren()) do
 							if gui:IsA("ImageButton") and string.find(tostring(gui), "Bag") then
@@ -136,11 +140,13 @@ function ReadyMenuButtons(Menu)
 							end
 						else --Player has no items of this type
 							print("Menu has no pages!")
-							if button:IsDescendantOf(DataMenu.PlayerMenu) then
-								
-							else
-								DataMenu.InventoryMenu.EmptyNotifier.Visible = true
-							end
+							ButtonMenu.Parent.EmptyNotifier.Visible = true
+							
+							--if button:IsDescendantOf(DataMenu.PlayerMenu) then
+								--Empty notifier specific for PlayerMenu
+							--else
+							--	DataMenu.InventoryMenu.EmptyNotifier.Visible = true
+							--end
 						end
 					else
 						--PageManager.Menu.Value = nil
@@ -549,6 +555,8 @@ local function InsertTileInfo(Type, tile, Stat, Value, found, AcquiredLocation)
 				
 				local EquipButton = ItemViewerMenu.EquipButton
 				if DataMenu.PlayerMenu:FindFirstChild(AcquiredLocation).CurrentlyEquipped.Value == tostring(Stat) then
+					print("Making equip button say unequip:",Stat,DataMenu.PlayerMenu:FindFirstChild(AcquiredLocation).CurrentlyEquipped.Value)
+					
 					EquipButton.Text = "Unequip"
 					EquipButton.BackgroundColor3 = Color3.fromRGB(255, 96, 96)
 					EquipButton.BorderColor3 = Color3.fromRGB(255, 60, 60)
@@ -587,14 +595,16 @@ function ManageTiles(Stat, Menu, Value, Type, AcquiredLocation)
 	local SlotCount
 	local OriginalMaterialSlot
 	if Type == "Inventory" then
-		OriginalMaterialSlot = GuiElements:FindFirstChild("InventoryMaterialSlot")
-		--print("Page being associated with item: " .. tostring(Stat) .. " worth " .. tostring(Value))
+		OriginalMaterialSlot = GuiElements.InventoryMaterialSlot
 		Rarity,Page,SlotCount = FindStatPage(Stat, Menu, 15, true, AcquiredLocation)
 	elseif Type == "Bags" then
-		OriginalMaterialSlot = GuiElements:FindFirstChild("InventoryMaterialSlot")
+		OriginalMaterialSlot = GuiElements.InventoryMaterialSlot
 		Rarity,Page,SlotCount = FindStatPage(Stat, Menu, 15, false, AcquiredLocation)
+	elseif Type == "Tools" then
+		--OriginalMaterialSlot = GuiElements.ToolSlot
+		--Rarity,Page,SlotCount = FindStatPage(Stat, Menu, 8, false, AcquiredLocation)
 	else
-		OriginalMaterialSlot = GuiElements:FindFirstChild("ExperienceSlot")
+		OriginalMaterialSlot = GuiElements.ExperienceSlot
 		Rarity,Page,SlotCount = FindStatPage(Stat, Menu, 4, false, AcquiredLocation) --no rarity sort
 		--SlotCount = Number of tiles in Page
 		--Page = Menu
@@ -1036,38 +1046,88 @@ EquipButton.Activated:Connect(function()
 			EquipButton.BackgroundColor3 = Color3.fromRGB(255, 96, 96)
 			EquipButton.BorderColor3 = Color3.fromRGB(255, 60, 60)
 			EquipButton.EquipStatus.Value = true
-			
+				
 			UpdateEquippedItem:FireServer(EquipType, ItemType, ItemName)
 		else --Unequip item
-			EquipButton.Text = "Equip"
-			EquipButton.BackgroundColor3 = Color3.fromRGB(0, 255, 72)
-			EquipButton.BorderColor3 = Color3.fromRGB(0, 170, 54)
-			EquipButton.EquipStatus.Value = false
+			local AssociatedInventoryMenu = DataMenu.InventoryMenu:FindFirstChild(string.gsub(ItemType, "Bag", "") .. "Menu")
+			local ItemCount = AssociatedInventoryMenu:GetAttribute("ItemCount")
 			
-			UpdateEquippedItem:FireServer(EquipType, ItemType)
+			print("ITEMCOUNT:",ItemCount)
+			
+			if ItemCount == 0 then
+				EquipButton.Text = "Equip"
+				EquipButton.BackgroundColor3 = Color3.fromRGB(0, 255, 72)
+				EquipButton.BorderColor3 = Color3.fromRGB(0, 170, 54)
+				EquipButton.EquipStatus.Value = false
+			
+				UpdateEquippedItem:FireServer(EquipType, ItemType)
+			else
+				print("Cannot unequip a bag with items in it")
+				--Warning message
+			end
 		end
 		wait(1)
 		EquipButton.Active = true
 	end
 end)
 
-UpdateEquippedItem.OnClientEvent:Connect(function(EquipType, ItemType, Item)
-	local DefaultMenuButton = PlayerMenu:FindFirstChild(ItemType)
-	local ItemInfo = game.ReplicatedStorage.Equippable:FindFirstChild(EquipType):FindFirstChild(ItemType):FindFirstChild(Item)
-	local ItemImage = GetStatImage(ItemInfo)
-
-	DefaultMenuButton.CurrentlyEquipped.Value = Item
-	DefaultMenuButton.Image = ItemImage
+local function UpdateBagButtonBar(Button, RelatedInvMenu)
+	local BagCapacity = RelatedInvMenu:GetAttribute("BagCapacity")
+	local ItemCount = RelatedInvMenu:GetAttribute("ItemCount")
+	local ProgressBar = Button.Progress.Progress
 	
-	--Highlight Equipped Item
-	for i,page in pairs (PlayerMenu:FindFirstChild(ItemType .. "Menu"):GetChildren()) do
-		for i,tile in pairs (page:GetChildren()) do
-			if tile:IsA("TextButton") then
-				if tile.StatName.Value == Item then
-					tile.BackgroundColor3 = Color3.fromRGB(85, 170, 255) --Brighter blue (or player's fav color later)
+	if BagCapacity > 0 then
+		ProgressBar.Size = UDim2.new(ItemCount/BagCapacity, 0, 1, 0)
+	else
+		ProgressBar.Size = UDim2.new(1, 0, 1, 0)
+	end
+end
+
+function UpdateBagDisplays(Menu, ButtonMenu)
+	for i,button in pairs (ButtonMenu:GetChildren()) do
+		if button:IsA("ImageButton") then
+			if string.find(tostring(button), "Bags") then
+				local SingularName = string.gsub(tostring(button), "Bags", "")
+				local PluralName = SingularName .. "s"
+				local RelatedInvMenu = Menu.InventoryMenu:FindFirstChild(PluralName .. "Menu")
+				
+				if RelatedInvMenu then
+					UpdateBagButtonBar(button, RelatedInvMenu)
 				end
 			end
 		end
+	end
+end
+
+UpdateEquippedItem.OnClientEvent:Connect(function(EquipType, ItemType, Item)
+	local DefaultMenuButton = PlayerMenu:FindFirstChild(ItemType)
+	DefaultMenuButton.CurrentlyEquipped.Value = Item
+	
+	if Item and Item ~= "" then
+		local ItemInfo = game.ReplicatedStorage.Equippable:FindFirstChild(EquipType):FindFirstChild(ItemType):FindFirstChild(Item)
+		local ItemImage = GetStatImage(ItemInfo)
+
+		DefaultMenuButton.Image = ItemImage
+		
+		--Highlight Equipped Item
+		for i,page in pairs (PlayerMenu:FindFirstChild(ItemType .. "Menu"):GetChildren()) do
+			for i,tile in pairs (page:GetChildren()) do
+				if tile:IsA("TextButton") then
+					if tile.StatName.Value == Item then
+						tile.BackgroundColor3 = Color3.fromRGB(85, 170, 255) --Brighter blue (or player's fav color later)
+					else
+						tile.BackgroundColor3 = Color3.fromRGB(47, 95, 143)
+					end
+				end
+			end
+		end
+		
+	else
+		
+	end
+	
+	if ItemType == "Bags" then
+		UpdateBagDisplays(DataMenu, DataMenu.PlayerMenu)
 	end
 end)
 
@@ -1114,35 +1174,31 @@ local UpdatePlayerMenu = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateP
 UpdatePlayerMenu.OnClientEvent:Connect(function(EquipType, ItemType, Item)
 	
 	local RealInfo = game.ReplicatedStorage.Equippable:FindFirstChild(EquipType):FindFirstChild(ItemType):FindFirstChild(Item)
-	print(EquipType, ItemType, Item)
+	local AssociatedMenu = PlayerMenu:FindFirstChild(ItemType .. "Menu")
+	local AssociatedButton = PlayerMenu:FindFirstChild(ItemType)
 	
 	if EquipType == "Bags" then
-		local BagMenu = PlayerMenu:FindFirstChild(ItemType .. "Menu")
-		local AssociatedButton = PlayerMenu:FindFirstChild(ItemType)
-		local Value = game.ReplicatedStorage.Equippable:FindFirstChild(EquipType):FindFirstChild(ItemType):FindFirstChild(Item).Value   
-		ManageTiles(Item, BagMenu, Value, EquipType, ItemType)
-		
-		--Update Default Menu (Equipped) Item Pictures
-		if Item == AssociatedButton.CurrentlyEquipped.Value then
-			AssociatedButton.Image = RealInfo["GUI Info"].StatImage.Value
-		end
+		local Value = RealInfo.Value   
+		ManageTiles(Item, AssociatedMenu, Value, EquipType, ItemType)
 	else
-		--local ItemMenu
-		--ManageTiles()
+		local ItemStats = require(RealInfo:FindFirstChild(Item .. "Stats"))
+		local Value = ItemStats.Efficiency
+		ManageTiles(Item, AssociatedMenu, Value, EquipType, ItemType)
 	end
 	
-	--Could possibly include this in UpdateInventory RemoteEvent, but player menu may need special differences
-	--that cannot be integrated alongside the fairly similar experience and inventory menus
-	
-	
+	--Update Default Menu (Equipped) Item Pictures
+	if Item == AssociatedButton.CurrentlyEquipped.Value then
+		AssociatedButton.Image = RealInfo["GUI Info"].StatImage.Value
+	end
 end)
 
 local UpdateItemCount = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateItemCount")
-UpdateItemCount.OnClientEvent:Connect(function(ItemTypeCount, BagCapacity, BagType, DeposittedInventory)
+UpdateItemCount.OnClientEvent:Connect(function(ItemTypeCount, BagCapacity, BagType, DepositedInventory)
+	print("UPDATING ITEM COUNT:",ItemTypeCount,BagCapacity,BagType,DepositInventory)
 	
 	--print(tostring(BagType) .. ": " .. tostring(ItemTypeCount) .. "/" .. tostring(BagCapacity))
 	
-	if not DeposittedInventory then
+	if not DepositedInventory then
 		local BagPopUp = GuiElements:FindFirstChild("BagPopUp")
 		local BagPopUpGui = script.Parent.Parent.PopUps:FindFirstChild("CurrentBagPopUp")
 		if #BagPopUpGui:GetChildren() ~= 0 then --Menu already present
@@ -1158,10 +1214,29 @@ UpdateItemCount.OnClientEvent:Connect(function(ItemTypeCount, BagCapacity, BagTy
 		end
 	end
 	
-	local Menu = DataMenu.InventoryMenu:FindFirstChild(BagType .. "Menu")
-	Menu:SetAttribute("ItemCount", ItemTypeCount)
-	Menu:SetAttribute("BagCapacity", BagCapacity)
+	local ItemType
+	if string.find(BagType, "Bag") then
+		ItemType = string.gsub(BagType, "Bags", "") .. "s"
+	else
+		ItemType = BagType
+		BagType = string.gsub(ItemType, "s", "") .. "Bags"
+	end
+	
+	--Update bag counts in inventory
+	local InventoryMenu = DataMenu.InventoryMenu:FindFirstChild(ItemType .. "Menu")
+	
+	InventoryMenu:SetAttribute("ItemCount", ItemTypeCount)
+	InventoryMenu:SetAttribute("BagCapacity", BagCapacity)
+
+	--Update bag counts in playermenu
+	local BagButton = DataMenu.PlayerMenu:FindFirstChild(BagType)
+	if BagButton and InventoryMenu then
+		UpdateBagButtonBar(BagButton, InventoryMenu)
+	end
 end)
+
+wait(5)
+script.Parent.OpenDataMenuButton.Active = true
 
 
 
