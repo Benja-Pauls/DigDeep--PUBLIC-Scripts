@@ -3,38 +3,36 @@
 ----------------------------------------------------------------------------------------------------------------------------------------------
 local Player = game.Players.LocalPlayer
 local PlayerCharacterList = workspace:WaitForChild("Players")
-local MiningGui = Player.PlayerGui:WaitForChild("MiningGui")
-local OreLabel = MiningGui:WaitForChild("OreLabel")
-local RegionLabel = MiningGui:WaitForChild("RegionLabel") 
-local CoordLabel = MiningGui:WaitForChild("CoordLabel")
-local MiningGui = Player.PlayerGui:FindFirstChild("MiningGui")
 local HRP = PlayerCharacterList:WaitForChild(tostring(Player)):WaitForChild("HumanoidRootPart")
-local OriginalSelectOreColor = Player.PlayerGui:WaitForChild("MiningGui"):WaitForChild("SelectedOre").Color3
-local PickaxeStats = require(script.Parent:FindFirstChild("PickaxeStats"))
-print("HumanoidRootPart has been found")
 
---local Selected = false
+local ItemInteractionGui = Player.PlayerGui:WaitForChild("ItemInteractionGui")
+local ItemLabel = ItemInteractionGui:WaitForChild("ItemLabel")
+local RegionLabel = ItemInteractionGui:WaitForChild("RegionLabel") 
+local CoordLabel = ItemInteractionGui:WaitForChild("CoordLabel")
+local OriginalSelectOreColor = ItemInteractionGui:WaitForChild("SelectedOre").Color3
+
+local Tool = script.Parent
+local ToolStats = require(Tool:FindFirstChild(tostring(Tool) .. "Stats"))
 
 local Equipped = false
-
 local Active = false
 
 local function SelectOre(Ore)
 	if Ore:IsDescendantOf(workspace.Mine) then--and (Ore.Position - script.Parent.Parent.UpperTorso.Position).Magnitude <= 7 then
-		if (Ore.Position - HRP.Position).magnitude <= PickaxeStats.Reach * 6.3 then
+		if (Ore.Position - HRP.Position).magnitude <= ToolStats.Reach * 6.3 then
 			
 			--CONTROLS WHAT MOUSE HAS SELECTED
 			if Ore.Name == "Target" then
 				--Ore = Ore.Parent:FindFirstChild("MeshPart")
-				OreLabel.Text = Ore.Parent.Name
+				ItemLabel.Text = Ore.Parent.Name
 			else
-				OreLabel.Text = Ore.Name
+				ItemLabel.Text = Ore.Name
 			end
 			workspace.CurrentCamera.SelectedItem.Value = Ore
 			script.Parent.SetTarget:InvokeServer(Ore)
 			
-			if OreLabel.Visible == false then
-				OreLabel.Visible = true
+			if ItemLabel.Visible == false then
+				ItemLabel.Visible = true
 			end
 			
 			--Ore color doesn't match no region color
@@ -60,7 +58,7 @@ local function SelectOre(Ore)
 		else
 			Deactivate()
 			Unselect()
-			local SelectedOre = MiningGui.SelectedOre
+			local SelectedOre = ItemInteractionGui.SelectedOre
 			SelectedOre.Color3 = OriginalSelectOreColor
 			SelectedOre.SurfaceColor3 = OriginalSelectOreColor
 		end
@@ -75,8 +73,8 @@ function Unselect()
 		workspace.CurrentCamera.SelectedItem.Value = nil
 		script.Parent.SetTarget:InvokeServer(nil)
 		--Selected = false
-		MiningGui:WaitForChild("SelectedOre").Adornee = nil
-		MiningGui.OreLabel.Visible = false
+		ItemInteractionGui:WaitForChild("SelectedOre").Adornee = nil
+		ItemLabel.Visible = false
 		wait(.5)
 		UnselectDebounce = false
 	end
@@ -126,18 +124,18 @@ script.Parent.Equipped:Connect(function(Mouse)
 					Ore.Size = Vector3.new(0.01,0.01,0.01) --Cannot delete, used for positional reference
 					Ore = Ore.Parent:FindFirstChild("Target")
 				end
-				if Ore:IsDescendantOf(game.workspace.Mine) then
+				if Ore:IsDescendantOf(game.workspace.Mine) then --if item has Selectable string value, associated type with string value
 					SelectOre(Ore)
 					--print(tostring(Ore) .. " has been selected")
 				else
 					Unselect()
-					if OreLabel.Visible == true then
-						OreLabel.Visible = false
+					if ItemLabel.Visible == true then
+						ItemLabel.Visible = false
 					end
 				end
 			else
-				if OreLabel.Visible == true then
-					OreLabel.Visible = false
+				if ItemLabel.Visible == true then
+					ItemLabel.Visible = false
 				end
 			end
 		end
@@ -173,5 +171,4 @@ script.Parent.Unequipped:Connect(function()
 	Deactivate()
 	Unselect()
 end)
-
 
