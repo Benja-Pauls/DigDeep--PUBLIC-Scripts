@@ -25,7 +25,6 @@ local BackButton = ComputerScreen.Taskbar.BackButton
 local FadeOut = ComputerScreen.FadeOut
 
 
-
 local function StartUpComputer()
 	ComputerScreen.Visible = true
 	FadeOut.BackgroundTransparency = 0
@@ -116,6 +115,7 @@ function OpenDataTabScreen() --Problem, with every time it opens: repeats button
 				if DataTabSelect.Visible == true and SelectionMenu.Visible == false then
 					BeepSound:Play()
 					OpenAffiliatedItemPreview(button)
+					DataTabSelect.Visible = false
 				end
 			end)
 		end
@@ -126,6 +126,7 @@ ComputerScreen.Taskbar.ShutDown.Activated:Connect(function()
 	SelectionMenu.CurrentSelection.Value = ""
 	SelectionMenu.CurrentRarity.Value = ""
 	SelectionMenu.PreviousSelection.Value = ""
+	
 	--Move "back button" back
 	ShutDownComputer()
 end)
@@ -162,6 +163,18 @@ local function FindItemInfo(statName, bagType)
 		end
 	end	
 	return ItemInformation
+end
+
+local function DataTabButtonActiveState(State)
+	for i,button in pairs (DataTabSelect:GetChildren()) do
+		if button:IsA("ImageButton") then
+			if State == true then
+				button.Active = true
+			else
+				button.Active = false
+			end
+		end
+	end
 end
 
 
@@ -310,10 +323,13 @@ SelectionMenu.SelectItem.Activated:Connect(function()
 end)
 
 BackButton.Activated:Connect(function()
+	DataTabButtonActiveState(false)
 	ItemsPreview.Visible = false
 	SelectionMenu.Visible = false
 	SelectionMenu.SellMenu.Visible = false
 	BackButton:TweenPosition(UDim2.new(BackButton.Position.X.Scale, 0, 1, 0), "Out", "Quint", 0.5)
+	wait(.5)
+	DataTabButtonActiveState(true)
 end)
 
 local function ChangeToTileInMenu(Menu, CurrentSelection, SeekedSlotValue)
@@ -414,7 +430,6 @@ function MoveToTile(Menu, amount, RaritySkip)
 						ChangeToTileInMenu(PreviousRarityMenu, CurrentSelection, 0)
 					end
 				end
-				--end
 			else --Just move to next tile in the rarity
 				ChangeToTileInMenu(CurrentRarityMenu, CurrentSelection, CurrentSelectionSlotValue + amount)
 			end
@@ -737,3 +752,4 @@ for i,button in pairs (TycoonStorageGui.ComputerScreen.DataTabSelect:GetChildren
 		SetupTycoonStorageTiles(button)
 	end
 end
+
