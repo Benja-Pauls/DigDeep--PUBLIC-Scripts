@@ -15,6 +15,11 @@ local UpdatePlayerMenu = EventsFolder.GUI:WaitForChild("UpdatePlayerMenu")
 local UpdateEquippedItem = EventsFolder.GUI:WaitForChild("UpdateEquippedItem")
 local UpdateItemCount = EventsFolder.GUI:WaitForChild("UpdateItemCount")
 
+local GetBagCount = EventsFolder.Utility:WaitForChild("GetBagCount")
+local SellItem = EventsFolder.Utility:WaitForChild("SellItem")
+local DepositInventory = EventsFolder.Utility:WaitForChild("DepositInventory")
+
+local HandleDropMaterialsEvent = EventsFolder.Tycoon:WaitForChild("HandleDropMaterials")
 -------------------------<|Set Up Game|>--------------------------------------------------------------------------------------------------------------------------------------
 
 local DataStoreService = game:GetService("DataStoreService") 
@@ -65,6 +70,14 @@ end)
 local sessionData = {}
 
 --------------------------<|Utility Functions|>----------------------------------------------------------------------------------------------------------------------------------
+
+GetBagCount.OnInvoke = function(Player, ItemInfo)
+	local ItemType = string.gsub(ItemInfo.Bag.Value, "Bag", "")
+	local Amount = PlayerStatManager:getItemTypeCount(Player, ItemType .. "s")
+	local MaxAmount = PlayerStatManager:getEquippedData(Player, ItemInfo.Bag.Value .. "s", "Bags").Value
+	
+	return Amount,MaxAmount
+end
 
 local function CheckSaveData(Save)
 	if not Save then
@@ -490,8 +503,6 @@ function PlayerStatManager:getEquippedData(player, Equippable, Type)
 	local playerUserId = game.Players:FindFirstChild(tostring(player)).UserId
 	local PlayerDataFile = game.ServerStorage.PlayerData:FindFirstChild(tostring(playerUserId))
 	
-	print(player, Equippable, Type)
-	
 	if PlayerDataFile.Player.CurrentlyEquipped:FindFirstChild("Equipped" .. Type):FindFirstChild("Equipped" .. Equippable) then
 		local EquippedItem = PlayerDataFile.Player.CurrentlyEquipped:FindFirstChild("Equipped" .. Type):FindFirstChild("Equipped" .. Equippable)
 		local EquipmentName = EquippedItem.Value
@@ -535,7 +546,7 @@ end
 
 --------------------------------<|Stat-Handling Events|>------------------------------------------------------------------------------------------
 
-local SellItem = game.ReplicatedStorage.Events.Utility:WaitForChild("SellItem")
+local SellItem = EventsFolder.Utility:WaitForChild("SellItem")
 SellItem.OnServerEvent:Connect(function(Player, Menu, item, Percentage)--, Amount)
 	if Percentage >= 0 and Percentage <= 1 then
 		local playerUserId = game.Players:FindFirstChild(tostring(Player)).UserId
@@ -559,7 +570,6 @@ SellItem.OnServerEvent:Connect(function(Player, Menu, item, Percentage)--, Amoun
 	end
 end)
 
-local DepositInventory = game.ReplicatedStorage.Events.Utility:WaitForChild("DepositInventory")
 DepositInventory.OnServerEvent:Connect(function(Player)
 	local PlayerDataFile = PlayerData:FindFirstChild(tostring(Player.UserId))
 	for i,folder in pairs (PlayerDataFile.Inventory:GetChildren()) do
@@ -617,7 +627,7 @@ UpdateEquippedItem.OnServerEvent:Connect(function(Player, EquipType, ItemType, N
 	end
 end)
 
-local HandleDropMaterialsEvent = game.ReplicatedStorage.Events.Tycoon:WaitForChild("HandleDropMaterials")
+local HandleDropMaterialsEvent = EventsFolder.Tycoon:WaitForChild("HandleDropMaterials")
 local function HandleDropMaterials(Tycoon, Drop) --Update Tycoon Storage for drop's worth
 	local Player = Tycoon:FindFirstChild("Owner").Value
 	local playerUserId = game.Players:FindFirstChild(tostring(Player)).UserId
