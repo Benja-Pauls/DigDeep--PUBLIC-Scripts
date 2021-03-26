@@ -1,110 +1,117 @@
 --(Script)
 --Script (Server-sided) so exploiters don't have access to sensitive information in this script: player location relative to block.
 -----------------------------------------------------------------------------------------------------------------------------------------------
-local tool = script.Parent
+local Tool = script.Parent
 local Player = script.Parent.Parent.Parent --Maybe set this more accordingly? SetTarget may mess up?
-local MineshaftItems = game.ReplicatedStorage.ItemLocations.Mineshaft
-local MineOre = game.ReplicatedStorage.Events.Utility:WaitForChild("MineOre")
+
+local ReplicatedStorage = game.ReplicatedStorage
+local MineshaftItems = ReplicatedStorage.ItemLocations.Mineshaft
+local MineOre = ReplicatedStorage.Events.Utility:WaitForChild("MineOre")
+local GetBagCount = ReplicatedStorage.Events.Utility:WaitForChild("GetBagCount")
+local WarnBagCapacity = ReplicatedStorage.Events.GUI:WaitForChild("WarnBagCapacity")
 
 --When the player barely hovers over the UI, the pickaxe mines continuously... mouse.target check must be getting confused
 
-function script.Parent.SetTarget.OnServerInvoke(player,Selection)
-	script.Parent.Target.Value = Selection
+function Tool.SetTarget.OnServerInvoke(player,Selection)
+	Tool.Target.Value = Selection
 end
 
-local PickaxeStats = require(script.Parent:WaitForChild("PickaxeStats"))
+local ToolStats = require(Tool:WaitForChild(tostring(Tool) .. "Stats"))
 
 local MouseDown = false
 local Debounce = true
 
+local function FindItemInfo(ItemName)
+	local ItemInformation
+	for i,location in pairs (ReplicatedStorage.ItemLocations:GetChildren()) do
+		if location:FindFirstChild(ItemName) then
+			ItemInformation = location:FindFirstChild(ItemName)
+		end
+	end	
+	return ItemInformation
+end
+
 --Start mining process, check player for any preventive measure before actually mining ore
 local function StartMining()
 	
-	--Possibly check bag amounts here instead?
-	
-	local Target = script.Parent.Target.Value
+	local Target = Tool.Target.Value
 	if Debounce then
 		repeat wait() until Player ~= nil
 		if Target then --If player hasn't stopped mining/looking at an ore
-			--(Cannot have mouse.target be meshpart since it's a descendant of targetfiltered part)
-			--if Target:IsA("MeshPart") then --Select special shape
-				--RealOre = Ores:FindFirstChild(Target.Parent.Name)
-			--elseif Target:FindFirstChild("MeshPart") then --Special shape, but not looking at it
-				--RealOre = nil
-			--else --No special shape, select 7x7x7 box
-				--RealOre = Ores:FindFirstChild(Target.Name)
-			--end
-			
-			local RealOre
-			if Target.Name == "Target" then
-				RealOre = MineshaftItems:FindFirstChild(Target.Parent.Name)
+
+			local ItemName
+			if Target.Name == "Target" then --Model represents object, not Part
+				ItemName = Target.Parent.Name
 			else
-				RealOre = MineshaftItems:FindFirstChild(Target.Name)
+				ItemName = Target.Name
 			end
-			if RealOre then
-				MouseDown = true
-				script.Parent.IsMining.Value = true
+			
+			local ItemInfo = FindItemInfo(ItemName)
+			if ItemInfo then
+				local ItemCount,BagCapacity = GetBagCount:Invoke(Player, ItemInfo)
 				
-				--print((Target.Position - workspace.Players:FindFirstChild(tostring(Player)).HumanoidRootPart.Position).magnitude)
-				--local CompactPos = Vector3.new(0 + Target.Position.X/7, (Target.Position.Y - -5)/(-7),Target.Position.Z/7)
-				--if (Target.Position - workspace.Players:FindFirstChild(tostring(Player)).HumanoidRootPart.Position).magnitude <= PickaxeStats.Reach * 6.3 then
-				
-				local TimeToMine = ((RealOre.Strength.Value / PickaxeStats.Efficiency))
-				local WaitTime = 0
-				
-				Debounce = false --Prevents mining to happen again until this block has been mined
-				spawn(function()
-					wait(TimeToMine + PickaxeStats.Delay)
-					Debounce = true
-				end)
-				
-				repeat
-					wait(0.01)
-					WaitTime = WaitTime + 0.01
-					
-					Target.Reflectance = WaitTime/TimeToMine --use target's reflectance as reference across scripts
-					--print("Progress: " .. tostring(Target.Reflectance))
-				until WaitTime >= TimeToMine or not MouseDown or Target ~= script.Parent.Target.Value
-				
-				local mined = true
-				if WaitTime >= TimeToMine and mined then
-					MineOre:Fire(Player, Target)
-					mined = false
-				else
-					Target.Reflectance = 0
-				end
-				
-				--Made it past repeat check, prepare for holding mouse and mouse1 release
-				wait(PickaxeStats.Delay)
-				Debounce = true
-				if MouseDown then --keep mining if mouse is still down
-					--print("Mouse is down")
-					StartMining()
-				else
-					script.Parent.IsMining.Value = false
-					MouseDown = false
+				if ItemCount and BagCapacity then
+					if ItemCount < BagCapacity then --If Bag is not full
+						MouseDown = true
+						Tool.IsMining.Value = true
+
+						local TimeToMine = ((ItemInfo.Strength.Value / ToolStats.Efficiency))
+						local WaitTime = 0
+						
+						Debounce = false --Prevents mining to happen again until this block has been mined
+						coroutine.resume(coroutine.create(function()
+							wait(TimeToMine + ToolStats.Delay)
+							Debounce = true
+						end))
+						
+						repeat
+							wait(0.01)
+							WaitTime = WaitTime + 0.01
+							
+							Target.Reflectance = WaitTime/TimeToMine --use target's reflectance as reference across scripts
+							--print("Progress: " .. tostring(Target.Reflectance))
+						until WaitTime >= TimeToMine or not MouseDown or Target ~= Tool.Target.Value
+						
+						local mined = true
+						if WaitTime >= TimeToMine and mined then
+							MineOre:Fire(Player, Target)
+							mined = false
+						else
+							Target.Reflectance = 0
+						end
+
+						wait(ToolStats.Delay)
+						Debounce = true
+						if MouseDown then --keep mining if mouse is still down
+							StartMining()
+						else
+							Tool.IsMining.Value = false
+						end
+					else
+						WarnBagCapacity:FireClient(Player)
+					end
 				end
 			end
 		else
-			script.Parent.IsMining.Value = false
+			Tool.IsMining.Value = false
 		end
 	end
 end
 
-script.Parent.Activation.OnServerEvent:Connect(function(player, State)
+Tool.Activation.OnServerEvent:Connect(function(player, State)
 	if player == Player then
 		if State and not MouseDown then --if state sent is true and player isn't already mining, start mining
 			MouseDown = true
 			StartMining()
 		else
 			MouseDown = false
-			script.Parent.IsMining.Value = false
+			Tool.IsMining.Value = false
 		end
 	end
 end)
 
-tool.Unequipped:Connect(function()
+Tool.Unequipped:Connect(function()
 	MouseDown = false
-	script.Parent.IsMining.Value = false
+	Tool.IsMining.Value = false
 end)
 
