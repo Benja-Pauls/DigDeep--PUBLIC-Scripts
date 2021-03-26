@@ -1,47 +1,25 @@
 --(LocalScript)
 --Mining visuals handler (mining progress bar, denoting selected block, and return to surface button)
 -----------------------------------------------------------------------------------------------------------------------------------------------
-local MiningGui = script.Parent
-local OreLabel = MiningGui:WaitForChild("OreLabel")
-local ProgressBar = script.Parent:WaitForChild("ProgressBarBillboardGui")
-local ExclaimRegion = game.ReplicatedStorage.Events.GUI.ExclaimRegion
+local Player = game.Players.LocalPlayer
+local PlayerCharacterList = workspace:WaitForChild("Players")
+local HRP = PlayerCharacterList:WaitForChild(tostring(Player)):WaitForChild("HumanoidRootPart")
+print("HumanoidRootPart has been found")
+
+local ItemInteractionGui = script.Parent
+local ItemLabel = ItemInteractionGui:WaitForChild("ItemLabel")
+local ProgressBar = ItemInteractionGui:WaitForChild("ProgressBarBillboardGui")
 local MineshaftItems = game.ReplicatedStorage.ItemLocations.Mineshaft
 
 repeat wait() until workspace.CurrentCamera.SelectedItem ~= nil
 
-coroutine.resume(coroutine.create(function()
-	while true do
-		wait()
-		--print(workspace.CurrentCamera.SelectedItem.Value)
-		--if workspace.CurrentCamera.SelectedItem.Value then
-			--print(workspace.CurrentCamera.SelectedItem.Value.ClassName)
-		--end
-	end
-end))
+local OriginalSelectOreColor = ItemInteractionGui.SelectedOre.Color3
 
-local OriginalSelectOreColor = script.Parent.SelectedOre.Color3
-
-local function SelectedItem()
+local function CheckSelectedItem()
 	if workspace.CurrentCamera.SelectedItem.Value ~= nil then
 		
 		local Target = workspace.CurrentCamera.SelectedItem.Value
-		
-		--(Cannot have mouse.target be meshpart since it's a descendant of targetfiltered part)
-		--if SelectedOre:FindFirstChild("MeshPart") then --Works because it's an object value
-			--script.Parent.SelectedOre.Adornee = SelectedOre:FindFirstChild("MeshPart")
-		--elseif workspace.CurrentCamera.SelectedItem.Value:FindFirstChild("MeshPart") then
-			--script.Parent.SelectedOre.Adornee = nil
-		--else
-			script.Parent.SelectedOre.Adornee = Target
-		--end
-
-		--if SelectedOre:IsA("MeshPart") then --Select special shape
-			--RealOre = Ores:FindFirstChild(SelectedOre.Parent.Name)
-		--elseif SelectedOre:FindFirstChild("MeshPart") then --Special shape, but not looking at it
-			--RealOre = nil
-		--else --No special shape, select 7x7x7 box
-			--RealOre = Ores:FindFirstChild(SelectedOre.Name)
-		--end
+		ItemInteractionGui.SelectedOre.Adornee = Target
 		
 		local RealOre
 		if Target.Name == "Target" then
@@ -51,8 +29,8 @@ local function SelectedItem()
 		end
 		
 		if RealOre then
-			OreLabel.TextColor3 = RealOre.OreColor.Value
-
+			ItemLabel.TextColor3 = RealOre.OreColor.Value
+			
 			local ProgressBarClone = ProgressBar:Clone()
 			ProgressBarClone.Parent = Target
 			ProgressBarClone.Adornee = Target
@@ -65,15 +43,15 @@ local function SelectedItem()
 					local Progress = Target.Reflectance
 					
 					--Maybe set it at start to ore color, then switch it to blue when not interacted
-					script.Parent.SelectedOre.Color3 = Color3.new(0.7 - (Progress * 0.7),1,1 - (Progress * 0.7))
-					script.Parent.SelectedOre.SurfaceColor3 = Color3.new(0.7 - (Progress * 0.7),1,1 - (Progress * 0.6))
+					ItemInteractionGui.SelectedOre.Color3 = Color3.new(0.7 - (Progress * 0.7),1,1 - (Progress * 0.7))
+					ItemInteractionGui.SelectedOre.SurfaceColor3 = Color3.new(0.7 - (Progress * 0.7),1,1 - (Progress * 0.6))
 
 					ProgressBarClone.ProgressBar.TimeLeft.Size = UDim2.new(Progress,0,1,0)
 					--ProgressBar.Parent.Enabled = true
 				elseif Target.Reflectance == 0 then
 					wait() --Here to allow for check reflection at 0
-					script.Parent.SelectedOre.Color3 = OriginalSelectOreColor
-					script.Parent.SelectedOre.SurfaceColor3 = OriginalSelectOreColor
+					ItemInteractionGui.SelectedOre.Color3 = OriginalSelectOreColor
+					ItemInteractionGui.SelectedOre.SurfaceColor3 = OriginalSelectOreColor
 					ProgressBarClone.Enabled = false --disappear when let go
 				end
 			end
@@ -82,7 +60,10 @@ local function SelectedItem()
 	end
 end
 
-local ToSurfaceButton = script.Parent:WaitForChild("ToSurfaceButton")
+
+------------------------<|GUI Management|>-----------------------------------------------------------------------------------------------------------------------------
+
+local ToSurfaceButton = ItemInteractionGui:WaitForChild("ToSurfaceButton")
 local TeleportButton = game:GetService("ReplicatedStorage").Events.GUI:WaitForChild("TeleportButton")
 
 coroutine.resume(coroutine.create(function()
@@ -98,10 +79,11 @@ coroutine.resume(coroutine.create(function()
 	end
 end))
 
-local RegionNotifier = MiningGui.RegionNotifier
+local RegionNotifier = ItemInteractionGui.RegionNotifier
+local ExclaimRegion = game.ReplicatedStorage.Events.GUI:WaitForChild("ExclaimRegion")
 ExclaimRegion.OnClientEvent:Connect(function(Region)
-	coroutine.resume(coroutine.create(function()
-		repeat wait() until MiningGui.RegionLabel.Text == tostring(Region)
+	--coroutine.resume(coroutine.create(function()
+	repeat wait() until ItemInteractionGui.RegionLabel.Text == tostring(Region)
 		RegionNotifier.TextColor3 = Region["GUI Info"].GUIColor.Value
 		RegionNotifier.Text = tostring(Region)
 		RegionNotifier.TextTransparency = 1
@@ -119,9 +101,18 @@ ExclaimRegion.OnClientEvent:Connect(function(Region)
 		
 		RegionNotifier.TextTransparency = 1
 		RegionNotifier.Visible = false
-	end))
+	--end))
 end)
 
+--Warn player bag is full event
+local WarnBagCapacity = game.ReplicatedStorage.Events.GUI:WaitForChild("WarnBagCapacity")
+WarnBagCapacity.OnClientEvent:Connect(function()
+	print("Warning bag capacity in MiningVisuals")
+	--ItemLabel.Text = "Bag is Full!"
+	--ItemLabel.Visible = true
+	
+	--Should player be warned that their bag is full or should the bag popup show itself and display the values: 100/100, etc.
+end)
 
 ToSurfaceButton.Activated:Connect(function()
 	if ToSurfaceButton.Visible == true then
@@ -129,17 +120,7 @@ ToSurfaceButton.Activated:Connect(function()
 	end
 end)
 
-SelectedItem()
-workspace.CurrentCamera.SelectedItem.Changed:connect(SelectedItem)
-
-
-
-
-
-
-
-
-
-
+CheckSelectedItem()
+workspace.CurrentCamera.SelectedItem.Changed:connect(CheckSelectedItem)
 
 
