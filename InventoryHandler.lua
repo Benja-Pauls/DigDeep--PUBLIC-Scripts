@@ -5,16 +5,18 @@ local Player = game.Players.LocalPlayer
 local PlayerUserId = Player.UserId
 local OpenDataMenuButton = script.Parent.OpenDataMenuButton
 local DataMenu = script.Parent.DataMenu
-local MoveAllBaseScreenUI = game.ReplicatedStorage.Events.GUI.MoveAllBaseScreenUI
 local TweenService = game:GetService("TweenService")
 local GuiElements = game.ReplicatedStorage.GuiElements
 local PageManager = DataMenu.PageManager
+
+local EventsFolder = game.ReplicatedStorage.Events
+local MoveAllBaseScreenUI = EventsFolder.GUI:WaitForChild("MoveAllBaseScreenUI")
 
 if DataMenu.Visible == true then
 	DataMenu.Visible = false
 end
 
-script.Parent.OpenDataMenuButton.Active = false --re-enable when script is ready
+OpenDataMenuButton.Active = false --re-enable when script is ready
 
 for i,v in pairs (DataMenu:GetChildren()) do
 	if v:IsA("Frame") and tostring(v) ~= "TopTabBar" then
@@ -461,7 +463,7 @@ local function FindStatPage(Stat, Menu, MaxAmount, RaritySort, AcquiredLocation)
 	return StatRarity,Page,SlotCount
 end
 
-local DepositInventory = game.ReplicatedStorage.Events.Utility.DepositInventory
+local DepositInventory = EventsFolder.Utility:WaitForChild("DepositInventory")
 DepositInventory.OnClientEvent:Connect(function()
 	for i,menu in pairs (DataMenu.InventoryMenu:GetChildren()) do
 		if menu:IsA("Frame") then
@@ -589,7 +591,6 @@ end
 
 function ManageTiles(Stat, Menu, Value, Type, AcquiredLocation)
 	--print(Stat,Menu,Value,File,Type) = Stone,OresMenu,2,Ores,Inventory
-	local Value = tonumber(Value)
 	local Rarity
 	local Page
 	local SlotCount
@@ -603,6 +604,10 @@ function ManageTiles(Stat, Menu, Value, Type, AcquiredLocation)
 	elseif Type == "Tools" then
 		--OriginalMaterialSlot = GuiElements.ToolSlot
 		--Rarity,Page,SlotCount = FindStatPage(Stat, Menu, 8, false, AcquiredLocation)
+		
+		--Maybe utilize rarity sort for tools for the different kinds of tools?
+		--Pickaxes = 95, Shears = 96, etc. (Use high values so it doesn't interfere with actual rarities)
+		--(Perhaps do this same sorting method for Bags too)
 	else
 		OriginalMaterialSlot = GuiElements.ExperienceSlot
 		Rarity,Page,SlotCount = FindStatPage(Stat, Menu, 4, false, AcquiredLocation) --no rarity sort
@@ -618,7 +623,7 @@ function ManageTiles(Stat, Menu, Value, Type, AcquiredLocation)
 			if tile:IsA("TextButton") or tile:IsA("ImageButton") then
 				if tile.StatName.Value == tostring(Stat) and found == false then --Update Tile
 					
-					if Value > 0 then
+					if Value > 0 then --or Value.Efficiency (for special items: Tools, clothes, pets, etc.)
 						found = InsertTileInfo(Type, tile, Stat, Value, found, AcquiredLocation)
 					else --Deleting existing tile because value = 0 or zeroed from storage transaction 
 						found = true
@@ -702,7 +707,7 @@ function ManageTiles(Stat, Menu, Value, Type, AcquiredLocation)
 end
 
 
-------------------<|Material PopUp Functions|>-----------------------------------------------------
+--------------------<|Material PopUp Functions|>-------------------------------------------------------------------------------------------------------------------
 
 local MaterialPopUpAmount
 local function InsertNewMaterialPopUp(ItemPopUp, AcquiredLocation, Item, AmountAdded, Currency)
@@ -719,7 +724,6 @@ local function InsertNewMaterialPopUp(ItemPopUp, AcquiredLocation, Item, AmountA
 		
 		--Display the pop up for currency via the PurchaseHandler since that will be the only script
 		--Handling currency, or possibly fire UpdateInventory through PurchaseHandler
-		
 		RealObject = game.ReplicatedStorage.Currencies:FindFirstChild(Item)
 		--just shows player the amount of cash they lost/gained (skipped tile management since no inventory tile)
 		--possibly give money exclusive popup color or shape?
@@ -973,15 +977,15 @@ local function ManageEXPPopUp(Stat, Value, AmountAdded)
 	if AmountAdded ~= nil then
 		if #ExperienceBarGui:GetChildren() ~= 0 then
 			if ExperienceBarGui.ExperienceBar.NamePlate.DisplayName.Text == tostring(Stat) then
-				print("OLD EXPBAR: ",CurrentLevel,NextLevel)
+				--print("OLD EXPBAR: ",CurrentLevel,NextLevel)
 				ShowEXPChange(ExperienceBarGui.ExperienceBar, CurrentLevel, NextLevel, StatInfo, Value, AmountAdded)
 				CountdownPopUp(ExperienceBarGui, ExperienceBarGui.ExperienceBar, 12, .5, 0, 0, .9)
 			else
-				print("NEW EXPBAR: ",CurrentLevel,NextLevel)
+				--print("NEW EXPBAR: ",CurrentLevel,NextLevel)
 				InsertNewEXPBar(ExperienceBarGui, ExperienceBar, Stat, Value, CurrentLevel, NextLevel, true)
 			end
 		else --Pop up new experience bar
-			print("NEW EXPBAR: ",CurrentLevel,NextLevel)
+			--print("NEW EXPBAR: ",CurrentLevel,NextLevel)
 			InsertNewEXPBar(ExperienceBarGui,ExperienceBar,Stat, Value, CurrentLevel, NextLevel)
 			ShowEXPChange(ExperienceBarGui.ExperienceBar, CurrentLevel, NextLevel, StatInfo, Value, AmountAdded)
 		end
@@ -1016,17 +1020,16 @@ local function InsertNewBagPopUp(BagPopUp, BagPopUpGui, ItemTypeCount, BagCapaci
 	CountdownPopUp(BagPopUpGui, NewBagPopUp, 11, 0, 0.082, 0, 0.344)
 end
 
-
 -------------------------------------<|PlayerMenu Functions|>------------------------------------------------------------------------------------------------------------
 
 local PlayerMenu = DataMenu:FindFirstChild("PlayerMenu")
-local UpdateEquippedItem = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateEquippedItem")
 local PlayerInfo = PlayerMenu["Default Menu"].PlayerInfo
 local thumbType = Enum.ThumbnailType.HeadShot
 local thumbSize = Enum.ThumbnailSize.Size420x420
 local PlayerProfilePicture = game.Players:GetUserThumbnailAsync(PlayerUserId, thumbType, thumbSize)
-PlayerInfo.PlayerThumbnail.Image = PlayerProfilePicture
+local UpdateEquippedItem = EventsFolder.GUI:WaitForChild("UpdateEquippedItem")
 
+PlayerInfo.PlayerThumbnail.Image = PlayerProfilePicture
 PlayerInfo.PlayerName.Text = tostring(Player)
 
 local RealBags = game.ReplicatedStorage.Equippable.Bags
@@ -1123,7 +1126,7 @@ UpdateEquippedItem.OnClientEvent:Connect(function(EquipType, ItemType, Item)
 		end
 		
 	else
-		
+		print("Item has been unequipped")
 	end
 	
 	if ItemType == "Bags" then
@@ -1134,7 +1137,7 @@ end)
 
 -------------------------------------<High-Traffic Events>-------------------------------------------------------------------------------------------------------------
 
-local UpdateInventory = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateInventory")
+local UpdateInventory = EventsFolder.GUI:WaitForChild("UpdateInventory")
 UpdateInventory.OnClientEvent:Connect(function(Stat, File, Value, AmountAdded, Type, Currency, AcquiredLocation)
 	local TypeSlots = DataMenu:FindFirstChild(tostring(Type) .. "Menu")
 	local Slots
@@ -1159,18 +1162,18 @@ UpdateInventory.OnClientEvent:Connect(function(Stat, File, Value, AmountAdded, T
 		ManageEXPPopUp(Stat, Value, AmountAdded)
 	end
 	
-	--On levelling-up...
+	--When levelling-up...
 	--Inventory, on next open, would then display what the player now has access too with their new level
 	--Level-up data could be in Server Storage, grabbed by PlayerStatManager
 	
 	if Currency == nil then
 		if tonumber(Value) ~= 0 then
-			ManageTiles(Stat, Slots, Value, Type, AcquiredLocation)
+			ManageTiles(Stat, Slots, tonumber(Value), Type, AcquiredLocation)
 		end
 	end
 end)
 
-local UpdatePlayerMenu = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdatePlayerMenu")
+local UpdatePlayerMenu = EventsFolder.GUI:WaitForChild("UpdatePlayerMenu")
 UpdatePlayerMenu.OnClientEvent:Connect(function(EquipType, ItemType, Item)
 	
 	local RealInfo = game.ReplicatedStorage.Equippable:FindFirstChild(EquipType):FindFirstChild(ItemType):FindFirstChild(Item)
@@ -1179,10 +1182,10 @@ UpdatePlayerMenu.OnClientEvent:Connect(function(EquipType, ItemType, Item)
 	
 	if EquipType == "Bags" then
 		local Value = RealInfo.Value   
-		ManageTiles(Item, AssociatedMenu, Value, EquipType, ItemType)
+		ManageTiles(Item, AssociatedMenu, tonumber(Value), EquipType, ItemType)
 	else
 		local ItemStats = require(RealInfo:FindFirstChild(Item .. "Stats"))
-		local Value = ItemStats.Efficiency
+		local Value = ItemStats
 		ManageTiles(Item, AssociatedMenu, Value, EquipType, ItemType)
 	end
 	
@@ -1192,7 +1195,7 @@ UpdatePlayerMenu.OnClientEvent:Connect(function(EquipType, ItemType, Item)
 	end
 end)
 
-local UpdateItemCount = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateItemCount")
+local UpdateItemCount = EventsFolder.GUI:WaitForChild("UpdateItemCount")
 UpdateItemCount.OnClientEvent:Connect(function(ItemTypeCount, BagCapacity, BagType, DepositedInventory)
 	print("UPDATING ITEM COUNT:",ItemTypeCount,BagCapacity,BagType,DepositInventory)
 	
@@ -1237,9 +1240,4 @@ end)
 
 wait(5)
 script.Parent.OpenDataMenuButton.Active = true
-
-
-
-
-
 
