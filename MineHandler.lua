@@ -441,7 +441,7 @@ MineOre.Event:Connect(function(Player,Ore)
 	local TypeAmount = PlayerStatManager:getItemTypeCount(Player, ItemType)
 	local MaxOreAmount = PlayerStatManager:getEquippedData(Player, AssociatedBag .. "s", "Bags") --Bag capacity
 	
-	if MaxOreAmount then
+	if MaxOreAmount then --Check bag again before finally breaking block
 		if TypeAmount < MaxOreAmount.Value then
 			if Ore:FindFirstChild("Claimed") == nil then
 				
@@ -603,5 +603,4 @@ local function GenerateMine()
 end
 
 GenerateMine()
-
 
