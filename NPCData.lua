@@ -31,7 +31,7 @@ local NPCData = {
 			["Dialogue1"] = {"Hi There", "I'm Test Man"}
 		}, 
 		
-		["Items"] = { --Sort by type
+		["Items"] = { --Sort by type (Rarity = ItemType)
 			{RS.Equippable.Bags.OreBags["Advanced Bag"], 10},
 			{RS.Equippable.Bags.PlantBags["Advanced Bag"], 10},
 			{RS.Equippable.Tools.Pickaxes.Pickaxe, 5}
