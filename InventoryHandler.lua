@@ -357,18 +357,16 @@ DataMenu.ItemViewer.BackButton.Activated:Connect(function()
 end)
 
 --Creates pages for tiles to be held (tiles managed by ManageTiles())
-local function FindStatPage(Stat, Menu, MaxAmount, RaritySort, AcquiredLocation)
+local function FindStatPage(Stat, Menu, MaxTileAmount, RaritySort, AcquiredLocation)
 	local Pages = Menu:GetChildren()
-	--local RepStorageName = string.gsub(tostring(Menu), "Menu", "") --Remove menu from string
 	
 	local StatRarity
 	if RaritySort then
 		StatRarity = game.ReplicatedStorage.ItemLocations:FindFirstChild(AcquiredLocation):FindFirstChild(Stat)["GUI Info"].RarityName.Value
-	else --skills, no need for location acquirement
+	else --Pages Not Sorted
 		StatRarity = "No Rarity"
 	end
 	
-	--local Slots
 	local Page
 	local Over
 	local SlotCount = 0
@@ -383,7 +381,7 @@ local function FindStatPage(Stat, Menu, MaxAmount, RaritySort, AcquiredLocation)
 				end
 			end
 
-			if SlotCount < MaxAmount then
+			if SlotCount < MaxTileAmount then
 				found = true
 				Page = page
 			else
@@ -477,7 +475,84 @@ end)
 
 --------------<|Tile Functions|>------------------------------------------------------------------------------------
 
+local function ManageEquipButton(ItemViewerMenu, AcquiredLocation, Stat)
+	local EquipButton = ItemViewerMenu.EquipButton
+	
+	if DataMenu.PlayerMenu:FindFirstChild(AcquiredLocation).CurrentlyEquipped.Value == tostring(Stat) then
+		print("Making equip button say unequip:",Stat,DataMenu.PlayerMenu:FindFirstChild(AcquiredLocation).CurrentlyEquipped.Value)
+
+		EquipButton.Text = "Unequip"
+		EquipButton.BackgroundColor3 = Color3.fromRGB(255, 96, 96)
+		EquipButton.BorderColor3 = Color3.fromRGB(255, 60, 60)
+		EquipButton.EquipStatus.Value = true
+	else
+		EquipButton.Text = "Equip"
+		EquipButton.BackgroundColor3 = Color3.fromRGB(0, 255, 72)
+		EquipButton.BorderColor3 = Color3.fromRGB(0, 170, 54)
+		EquipButton.EquipStatus.Value = false
+	end
+	
+	EquipButton.Visible = true
+end
+
+local function HideRemainingStatDisplays(tile)
+	for i,statDisplay in pairs (tile:GetChildren()) do
+		if statDisplay:FindFirstChild("Utilized") then
+			if statDisplay.Utilized.Value == false then
+				statDisplay.Visible = false
+			end
+		end
+	end
+end
+
+local function InsertItemViewerInfo(Type, Stat, StatInfo, Value, AcquiredLocation)
+
+	local ItemViewerMenu = DataMenu.ItemViewer
+	if Type == "Inventory" then
+		local RarityName = StatInfo["GUI Info"].RarityName.Value
+		local Rarity = game.ReplicatedStorage.GuiElements.RarityColors:FindFirstChild(RarityName)
+		
+		ItemViewerMenu.ItemImage.BorderColor3 = Rarity.Value
+		ItemViewerMenu.ItemImage.BackgroundColor3 = Rarity.TileColor.Value
+		ItemViewerMenu.ItemRarity.Text = RarityName
+		ItemViewerMenu.ItemRarity.TextColor3 = Rarity.Value
+		ItemViewerMenu.ItemRarity.TextStrokeColor3 = Rarity.TileColor.Value
+
+		ItemViewerMenu.ItemAmount.Text = "You Have: " .. tostring(Value)
+		ItemViewerMenu.ItemWorth.Text = "Worth: " .. tostring(StatInfo.CurrencyValue.Value)
+		ItemViewerMenu.ItemDescription.Text = StatInfo["GUI Info"].Description.Value
+
+		ItemViewerMenu.EquipButton.Visible = false
+
+	elseif Type == "Bags" then
+		ItemViewerMenu.ItemDescription.Text = StatInfo["GUI Info"].Description.Value
+		ItemViewerMenu.ItemAmount.Text = AcquiredLocation
+		ItemViewerMenu.ItemWorth.Text = Type
+		ItemViewerMenu.ItemRarity.Text = ""
+
+		ManageEquipButton(ItemViewerMenu, AcquiredLocation, Stat)	
+	elseif Type == "Experience" then
+		ItemViewerMenu.ItemRarity.Text = ""
+		ItemViewerMenu.ItemAmount.Text = "Total EXP: " .. tostring(Value)
+
+		ItemViewerMenu.EquipButton.Visible = false
+	else --Non-Bag Player Items
+		local ItemStats = Value
+		ItemViewerMenu.ItemDescription.Text = StatInfo["GUI Info"].Description.Value
+		ItemViewerMenu.ItemAmount.Text = "Efficiency: " .. tostring(ItemStats["Stats"][1][2])
+		ItemViewerMenu.ItemRarity.Text = ""
+		
+	end
+
+	ItemViewerMenu.ItemImage.Image = StatInfo["GUI Info"].StatImage.Value
+	ItemViewerMenu.ItemName.Text = tostring(Stat)
+
+	ItemViewerMenu.Visible = true 
+end
+
 local function InsertTileInfo(Type, tile, Stat, Value, found, AcquiredLocation)
+	tile.StatName.Value = tostring(Stat)
+	
 	local StatInfo
 	if Type == "Inventory" or Type == "Bags" then
 		
@@ -487,18 +562,17 @@ local function InsertTileInfo(Type, tile, Stat, Value, found, AcquiredLocation)
 			StatInfo = game.ReplicatedStorage.Equippable.Bags:FindFirstChild(tostring(AcquiredLocation)):FindFirstChild(tostring(Stat))
 		end
 		
-		tile.StatName.Value = tostring(Stat)
 		tile.Amount.Text = tostring(Value)
 		local ImageId = GetStatImage(StatInfo)
 		tile.Picture.Image = ImageId
+		
 		if tostring(Stat) == DataMenu.ItemViewer.ItemName.Text then
 			DataMenu.ItemViewer.ItemAmount.Text = "You Have: " .. tostring(Value)
 		end
 		found = true
+		
 	elseif Type == "Experience" then
-		print("Insert tile info EXPERIENCE called for " .. tostring(Stat))
 		StatInfo = game.ReplicatedStorage:FindFirstChild(tostring(AcquiredLocation)):FindFirstChild(tostring(Stat) .. "Skill")
-		tile.StatName.Value = tostring(Stat)
 		tile.DisplayName.Text = tostring(Stat)
 		
 		local CurrentLevel = 0
@@ -508,8 +582,7 @@ local function InsertTileInfo(Type, tile, Stat, Value, found, AcquiredLocation)
 				CurrentLevel = tonumber(level.Name)
 			end
 		end
-		--current displays all accumulated exp, should show accumulated exp in this level
-		--small total exp text box?
+
 		local NextLevel
 		if StatInfo.Levels:FindFirstChild(tostring(CurrentLevel + 1)) then
 			NextLevel = StatInfo.Levels:FindFirstChild(tostring(CurrentLevel + 1))
@@ -518,6 +591,7 @@ local function InsertTileInfo(Type, tile, Stat, Value, found, AcquiredLocation)
 			NextLevel = StatInfo.Levels:FindFirstChild(tostring(CurrentLevel))
 			tile.NextLevel.Text = "*"
 		end
+		
 		local CurrentLevelEXP = StatInfo.Levels:FindFirstChild(tostring(CurrentLevel))
 		local ProgressBar = tile.ProgressBar
 		ProgressBar.Current.Text = tostring(Value - CurrentLevelEXP.Value)
@@ -527,66 +601,76 @@ local function InsertTileInfo(Type, tile, Stat, Value, found, AcquiredLocation)
 		local Percentage = tonumber(Value - CurrentLevelEXP.Value) / tonumber(NextLevel.Value - CurrentLevelEXP.Value)
 		ProgressBar.Progress.Size = UDim2.new(Percentage, 0, 1, 0)
 		found = true
+		
+	else --Non-Bag, Equippable PlayerItems
+		local RSTypeFile = game.ReplicatedStorage.Equippable:FindFirstChild(tostring(Type))
+		StatInfo = RSTypeFile:FindFirstChild(tostring(AcquiredLocation)):FindFirstChild(tostring(Stat))
+		
+		tile.DisplayName.Text = tostring(Stat)
+		--tile.Picture.Image = StatInfo["GUI Info"].StatImage.Value
+
+		local ItemStats = Value
+		for stat = 1,#ItemStats["Stats"],1 do
+			local StatName = ItemStats["Stats"][stat][1]
+			local StatValue = ItemStats["Stats"][stat][2]
+
+			if ItemStats["Images"][StatName .. "Image"] then --Displayed on a GUI
+				if ItemStats["Images"][StatName .. "Image"][2] then
+					local ImageId = ItemStats["Images"][StatName .. "Image"][1]
+					local ImageType = ItemStats["Images"][StatName .. "Image"][2]
+					
+					local FoundStatDisplay = false
+					for i,statDisplay in pairs (tile:GetChildren()) do
+						if FoundStatDisplay == false then
+							if string.find(tostring(statDisplay), ImageType) and statDisplay:FindFirstChild("Utilized") then
+								if statDisplay.Utilized.Value ~= true then
+									statDisplay.Utilized.Value = true
+									FoundStatDisplay = true
+									
+									statDisplay.Image = ImageId
+									
+									if math.abs(StatValue) < 1 then --Remove 0 before decimal
+										local RemovedZero = string.gsub(tostring(StatValue), "0." , "")
+										statDisplay.StatValue.Text = "." .. RemovedZero
+									else
+										statDisplay.StatValue.Text = StatValue
+									end
+									
+									if ImageType == "StatBar" then
+										local MaxStatValue = game.ReplicatedStorage.GuiElements.MaxStatValues:FindFirstChild(StatName).Value
+										statDisplay.ProgressBar.Progress.Size = UDim2.new(StatValue/MaxStatValue, 0, 1, 0)
+									end
+								end
+							end
+						end	
+					end
+				end	
+			end
+		end
+		
+		HideRemainingStatDisplays(tile)
 	end
 	
-	tile.Activated:Connect(function() --What happens when tile is clicked
+	--ItemViewerMenu GUI Management
+	tile.Activated:Connect(function()
 		if ItemViewerOpen == false then
 			ItemViewerOpen = true
-			local ItemViewerMenu = DataMenu.ItemViewer
-			if Type == "Inventory" then
-				local RarityName = StatInfo["GUI Info"].RarityName.Value
-				local Rarity = game.ReplicatedStorage.GuiElements.RarityColors:FindFirstChild(RarityName)
-				
-				ItemViewerMenu.ItemImage.BorderColor3 = Rarity.Value
-				ItemViewerMenu.ItemImage.BackgroundColor3 = Rarity.TileColor.Value
-				ItemViewerMenu.ItemRarity.Text = RarityName
-				ItemViewerMenu.ItemRarity.TextColor3 = Rarity.Value
-				ItemViewerMenu.ItemRarity.TextStrokeColor3 = Rarity.TileColor.Value
-				
-				ItemViewerMenu.ItemAmount.Text = "You Have: " .. tostring(Value)
-				ItemViewerMenu.ItemWorth.Text = "Worth: " .. tostring(StatInfo.CurrencyValue.Value)
-				ItemViewerMenu.ItemDescription.Text = StatInfo["GUI Info"].Description.Value
-				
-				ItemViewerMenu.EquipButton.Visible = false
-				
-			elseif Type == "Bags" then
-				ItemViewerMenu.ItemDescription.Text = StatInfo["GUI Info"].Description.Value
-				ItemViewerMenu.ItemAmount.Text = AcquiredLocation
-				ItemViewerMenu.ItemWorth.Text = Type
-				ItemViewerMenu.ItemRarity.Text = ""
-				
-				local EquipButton = ItemViewerMenu.EquipButton
-				if DataMenu.PlayerMenu:FindFirstChild(AcquiredLocation).CurrentlyEquipped.Value == tostring(Stat) then
-					print("Making equip button say unequip:",Stat,DataMenu.PlayerMenu:FindFirstChild(AcquiredLocation).CurrentlyEquipped.Value)
-					
-					EquipButton.Text = "Unequip"
-					EquipButton.BackgroundColor3 = Color3.fromRGB(255, 96, 96)
-					EquipButton.BorderColor3 = Color3.fromRGB(255, 60, 60)
-					EquipButton.EquipStatus.Value = true
-				else
-					EquipButton.Text = "Equip"
-					EquipButton.BackgroundColor3 = Color3.fromRGB(0, 255, 72)
-					EquipButton.BorderColor3 = Color3.fromRGB(0, 170, 54)
-					EquipButton.EquipStatus.Value = false
-				end
-				
-				EquipButton.Visible = true
-				
-			else
-				ItemViewerMenu.ItemRarity.Text = ""
-				ItemViewerMenu.ItemAmount.Text = "Total EXP: " .. tostring(Value)
-				
-				ItemViewerMenu.EquipButton.Visible = false
-			end
-			
-			ItemViewerMenu.ItemImage.Image = StatInfo["GUI Info"].StatImage.Value
-			ItemViewerMenu.ItemName.Text = tostring(Stat)
-			
-			ItemViewerMenu.Visible = true 
+			InsertItemViewerInfo(Type, Stat, StatInfo, Value, AcquiredLocation)
 		end
 	end)
 	
 	return found
+end
+
+local function ManageTileInsertion(tile, slotNumber, previousTile, tilesPerRow)
+	if (slotNumber-1)%tilesPerRow == 0 then
+		tile.Row.Value = previousTile.Row.Value + 1
+		tile.Column.Value = 0
+	else
+		tile.Row.Value = previousTile.Row.Value
+		tile.Column.Value = previousTile.Column.Value + 1
+	end
+
 end
 
 function ManageTiles(Stat, Menu, Value, Type, AcquiredLocation)
@@ -595,6 +679,8 @@ function ManageTiles(Stat, Menu, Value, Type, AcquiredLocation)
 	local Page
 	local SlotCount
 	local OriginalMaterialSlot
+	
+	--To get rid of types check here, assign number, bool, and slotname as function parameters
 	if Type == "Inventory" then
 		OriginalMaterialSlot = GuiElements.InventoryMaterialSlot
 		Rarity,Page,SlotCount = FindStatPage(Stat, Menu, 15, true, AcquiredLocation)
@@ -602,20 +688,14 @@ function ManageTiles(Stat, Menu, Value, Type, AcquiredLocation)
 		OriginalMaterialSlot = GuiElements.InventoryMaterialSlot
 		Rarity,Page,SlotCount = FindStatPage(Stat, Menu, 15, false, AcquiredLocation)
 	elseif Type == "Tools" then
-		--OriginalMaterialSlot = GuiElements.ToolSlot
-		--Rarity,Page,SlotCount = FindStatPage(Stat, Menu, 8, false, AcquiredLocation)
-		
-		--Maybe utilize rarity sort for tools for the different kinds of tools?
-		--Pickaxes = 95, Shears = 96, etc. (Use high values so it doesn't interfere with actual rarities)
-		--(Perhaps do this same sorting method for Bags too)
+		OriginalMaterialSlot = GuiElements.PlayerItemSlot
+		Rarity,Page,SlotCount = FindStatPage(Stat, Menu, 6, false, AcquiredLocation)
 	else
 		OriginalMaterialSlot = GuiElements.ExperienceSlot
 		Rarity,Page,SlotCount = FindStatPage(Stat, Menu, 4, false, AcquiredLocation) --no rarity sort
-		--SlotCount = Number of tiles in Page
-		--Page = Menu
 	end
 		
-	if SlotCount > 0 then
+	if SlotCount > 0 then --If tile already present
 		local found = false
 		
 		--Looking to update value of current tile
@@ -623,7 +703,7 @@ function ManageTiles(Stat, Menu, Value, Type, AcquiredLocation)
 			if tile:IsA("TextButton") or tile:IsA("ImageButton") then
 				if tile.StatName.Value == tostring(Stat) and found == false then --Update Tile
 					
-					if Value > 0 then --or Value.Efficiency (for special items: Tools, clothes, pets, etc.)
+					if Value > 0 or Value:IsA("LocalizationTable")then --or Value.Efficiency (for special items: Tools, clothes, pets, etc.)
 						found = InsertTileInfo(Type, tile, Stat, Value, found, AcquiredLocation)
 					else --Deleting existing tile because value = 0 or zeroed from storage transaction 
 						found = true
@@ -654,7 +734,7 @@ function ManageTiles(Stat, Menu, Value, Type, AcquiredLocation)
 		end
 		
 		--Make new tile
-		if found == false and Value > 0 then
+		if found == false and (Value > 0 or Value:IsA("LocalizationTable")) then
 			print("Making a new tile: " .. tostring(Stat))
 			local tile = OriginalMaterialSlot:Clone()
 			local PreviousTile = Page:FindFirstChild("Slot" .. tostring(SlotCount))
@@ -662,18 +742,16 @@ function ManageTiles(Stat, Menu, Value, Type, AcquiredLocation)
 			tile.Name = "Slot" .. tostring(slotNumber)
 			
 			if Type == "Inventory" or Type == "Bags" then
-				if (slotNumber-1)%5 == 0 then
-					tile.Row.Value = PreviousTile.Row.Value + 1
-					tile.Column.Value = 0
-				else
-					tile.Row.Value = PreviousTile.Row.Value
-					tile.Column.Value = PreviousTile.Column.Value + 1
-				end
+				ManageTileInsertion(tile, slotNumber, PreviousTile, 5)
 				
 				tile.Rarity.Value = Rarity
 				tile.Position = UDim2.new(0.017+0.196*tile.Column.Value, 0, 0.02+0.298*tile.Row.Value, 0)
-			else
+			elseif Type == "Experience" then
 				tile.Position = UDim2.new(0.028,0,0.037+((SlotCount)*0.24),0)
+			else --Non-Bag Player Item
+				ManageTileInsertion(tile, slotNumber, PreviousTile, 2)
+				
+				tile.Position = UDim2.new(0.017+.492*tile.Column.Value, 0, 0.02+0.298*tile.Row.Value, 0)
 			end
 			
 			tile.Parent = Page
@@ -690,20 +768,19 @@ function ManageTiles(Stat, Menu, Value, Type, AcquiredLocation)
 			FirstSlot.Name = "Slot1"
 			FirstSlot.Parent = Page
 			
-			if Type == "Inventory" or Type == "Bags" then
+			if Type == "Experience" then
+				FirstSlot.Position = UDim2.new(0.028,0,0.037,0)
+			else
 				FirstSlot.Row.Value = 0
 				FirstSlot.Column.Value = 0
 				FirstSlot.Rarity.Value = Rarity
 				FirstSlot.Position = UDim2.new(0.017, 0, 0.02, 0)
-			else
-				FirstSlot.Position = UDim2.new(0.028,0,0.037,0)
 			end
 			
 			FirstSlot.StatName.Value = tostring(Stat)
 			InsertTileInfo(Type, FirstSlot, Stat, Value, nil, AcquiredLocation)
 		end
 	end
-	--print("MANAGED TILES FOR " .. tostring(Stat))
 end
 
 
@@ -1185,8 +1262,7 @@ UpdatePlayerMenu.OnClientEvent:Connect(function(EquipType, ItemType, Item)
 		ManageTiles(Item, AssociatedMenu, tonumber(Value), EquipType, ItemType)
 	else
 		local ItemStats = require(RealInfo:FindFirstChild(Item .. "Stats"))
-		local Value = ItemStats
-		ManageTiles(Item, AssociatedMenu, Value, EquipType, ItemType)
+		ManageTiles(Item, AssociatedMenu, ItemStats, EquipType, ItemType)
 	end
 	
 	--Update Default Menu (Equipped) Item Pictures
