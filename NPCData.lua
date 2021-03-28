@@ -6,6 +6,15 @@ local RS = game.ReplicatedStorage
 local NPCData = {
 	
 	["Test Man"] = {
+		
+		["Shop Name"] = "Test Man's Test Shop",
+		
+		["ShopTheme"] = {
+			["Primary Color"] = "PrimaryColorValue",
+			["Secondary Color"] = "SecondaryColorValue"
+			
+		},
+		
 		["Voice"] = {
 			--Do not include angry voice, kids playing may get scared
 			
