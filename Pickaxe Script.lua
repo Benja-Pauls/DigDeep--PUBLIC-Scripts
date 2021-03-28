@@ -12,7 +12,7 @@ local CoordLabel = ItemInteractionGui:WaitForChild("CoordLabel")
 local OriginalSelectOreColor = ItemInteractionGui:WaitForChild("SelectedOre").Color3
 
 local Tool = script.Parent
-local ToolStats = require(Tool:FindFirstChild(tostring(Tool) .. "Stats"))
+local ToolStats = require(Tool:WaitForChild(tostring(Tool) .. "Stats"))
 
 local Equipped = false
 local Active = false
