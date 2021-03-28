@@ -68,7 +68,7 @@ end)
 MoveAllBaseScreenUI.Event:Connect(function(ChangeTo)
 	DataMenu.Visible = false
 	if ChangeTo == "Hide" then
-		OpenDataMenuButton:TweenPosition(UDim2.new(-.1, 0, OpenDataMenuButton.Position.Y.Scale, 0), "Out", "Quint", 1)
+		OpenDataMenuButton:TweenPosition(UDim2.new(-.15, 0, OpenDataMenuButton.Position.Y.Scale, 0), "Out", "Quint", 1)
 	else
 		OpenDataMenuButton:TweenPosition(UDim2.new(0.01, 0, 0.8, 0), "Out", "Quint", 1)
 	end
@@ -102,7 +102,7 @@ function ReadyMenuButtons(Menu)
 					print(tostring(button) .. " has been activated")
 					DataMenu.InventoryMenu.EmptyNotifier.Visible = false
 					for i,v in pairs (ButtonMenu.Parent:GetChildren()) do
-						if not v:IsA("TextButton") and not v:IsA("ImageButton") and not v:IsA("Folder") and not v:FindFirstChild("Menu") then
+						if v:IsA("Frame") and not v:FindFirstChild("Menu") then
 							if tostring(v) ~= "TopTabBar" then
 								v.Visible = false
 							end
@@ -475,12 +475,11 @@ end)
 
 --------------<|Tile Functions|>------------------------------------------------------------------------------------
 
-local function ManageEquipButton(ItemViewerMenu, AcquiredLocation, Stat)
+local ItemViewerMenu = DataMenu.ItemViewer
+local function ManageEquipButton(CurrentlyEquipped, Stat, Equip)
 	local EquipButton = ItemViewerMenu.EquipButton
 	
-	if DataMenu.PlayerMenu:FindFirstChild(AcquiredLocation).CurrentlyEquipped.Value == tostring(Stat) then
-		print("Making equip button say unequip:",Stat,DataMenu.PlayerMenu:FindFirstChild(AcquiredLocation).CurrentlyEquipped.Value)
-
+	if Equip == true or (Stat and CurrentlyEquipped == tostring(Stat)) then
 		EquipButton.Text = "Unequip"
 		EquipButton.BackgroundColor3 = Color3.fromRGB(255, 96, 96)
 		EquipButton.BorderColor3 = Color3.fromRGB(255, 60, 60)
@@ -495,19 +494,17 @@ local function ManageEquipButton(ItemViewerMenu, AcquiredLocation, Stat)
 	EquipButton.Visible = true
 end
 
+--May have to use this in item viewer too, so keep as function
 local function HideRemainingStatDisplays(tile)
 	for i,statDisplay in pairs (tile:GetChildren()) do
 		if statDisplay:FindFirstChild("Utilized") then
-			if statDisplay.Utilized.Value == false then
-				statDisplay.Visible = false
-			end
+			statDisplay.Visible = statDisplay.Utilized.Value
 		end
 	end
 end
 
 local function InsertItemViewerInfo(Type, Stat, StatInfo, Value, AcquiredLocation)
 
-	local ItemViewerMenu = DataMenu.ItemViewer
 	if Type == "Inventory" then
 		local RarityName = StatInfo["GUI Info"].RarityName.Value
 		local Rarity = game.ReplicatedStorage.GuiElements.RarityColors:FindFirstChild(RarityName)
@@ -517,6 +514,9 @@ local function InsertItemViewerInfo(Type, Stat, StatInfo, Value, AcquiredLocatio
 		ItemViewerMenu.ItemRarity.Text = RarityName
 		ItemViewerMenu.ItemRarity.TextColor3 = Rarity.Value
 		ItemViewerMenu.ItemRarity.TextStrokeColor3 = Rarity.TileColor.Value
+		
+		ItemViewerMenu.EquipType.Value = ""
+		ItemViewerMenu.ItemType.Value = ""
 
 		ItemViewerMenu.ItemAmount.Text = "You Have: " .. tostring(Value)
 		ItemViewerMenu.ItemWorth.Text = "Worth: " .. tostring(StatInfo.CurrencyValue.Value)
@@ -529,11 +529,18 @@ local function InsertItemViewerInfo(Type, Stat, StatInfo, Value, AcquiredLocatio
 		ItemViewerMenu.ItemAmount.Text = AcquiredLocation
 		ItemViewerMenu.ItemWorth.Text = Type
 		ItemViewerMenu.ItemRarity.Text = ""
-
-		ManageEquipButton(ItemViewerMenu, AcquiredLocation, Stat)	
+		
+		ItemViewerMenu.EquipType.Value = Type
+		ItemViewerMenu.ItemType.Value = AcquiredLocation
+		
+		ItemViewerMenu.EquipButton.Visible = true
+		ManageEquipButton(DataMenu.PlayerMenu:FindFirstChild(AcquiredLocation).CurrentlyEquipped.Value, Stat)	
 	elseif Type == "Experience" then
 		ItemViewerMenu.ItemRarity.Text = ""
 		ItemViewerMenu.ItemAmount.Text = "Total EXP: " .. tostring(Value)
+		
+		ItemViewerMenu.EquipType.Value = ""
+		ItemViewerMenu.ItemType.Value = ""
 
 		ItemViewerMenu.EquipButton.Visible = false
 	else --Non-Bag Player Items
@@ -542,6 +549,11 @@ local function InsertItemViewerInfo(Type, Stat, StatInfo, Value, AcquiredLocatio
 		ItemViewerMenu.ItemAmount.Text = "Efficiency: " .. tostring(ItemStats["Stats"][1][2])
 		ItemViewerMenu.ItemRarity.Text = ""
 		
+		ItemViewerMenu.EquipType.Value = Type
+		ItemViewerMenu.ItemType.Value = AcquiredLocation
+		
+		ItemViewerMenu.EquipButton.Visible = true
+		ManageEquipButton(DataMenu.PlayerMenu:FindFirstChild(AcquiredLocation).CurrentlyEquipped.Value, Stat)
 	end
 
 	ItemViewerMenu.ItemImage.Image = StatInfo["GUI Info"].StatImage.Value
@@ -703,7 +715,7 @@ function ManageTiles(Stat, Menu, Value, Type, AcquiredLocation)
 			if tile:IsA("TextButton") or tile:IsA("ImageButton") then
 				if tile.StatName.Value == tostring(Stat) and found == false then --Update Tile
 					
-					if Value > 0 or Value:IsA("LocalizationTable")then --or Value.Efficiency (for special items: Tools, clothes, pets, etc.)
+					if Value > 0 or Value:IsA("LocalizationTable")then
 						found = InsertTileInfo(Type, tile, Stat, Value, found, AcquiredLocation)
 					else --Deleting existing tile because value = 0 or zeroed from storage transaction 
 						found = true
@@ -755,10 +767,7 @@ function ManageTiles(Stat, Menu, Value, Type, AcquiredLocation)
 			end
 			
 			tile.Parent = Page
-			
-			local PrevTileY = PreviousTile.Position.Y.Scale
-			
-			found = InsertTileInfo(Type, tile, Stat, Value, found, AcquiredLocation)
+			InsertTileInfo(Type, tile, Stat, Value, found, AcquiredLocation)
 		end
 	else
 		
@@ -777,7 +786,6 @@ function ManageTiles(Stat, Menu, Value, Type, AcquiredLocation)
 				FirstSlot.Position = UDim2.new(0.017, 0, 0.02, 0)
 			end
 			
-			FirstSlot.StatName.Value = tostring(Stat)
 			InsertTileInfo(Type, FirstSlot, Stat, Value, nil, AcquiredLocation)
 		end
 	end
@@ -1118,32 +1126,29 @@ EquipButton.Activated:Connect(function()
 		EquipButton.Active = false
 		
 		local ItemName = DataMenu.ItemViewer.ItemName.Text
-		local ItemType = DataMenu.ItemViewer.ItemAmount.Text
-		local EquipType = DataMenu.ItemViewer.ItemWorth.Text
+		local ItemType = DataMenu.ItemViewer.ItemType.Value
+		local EquipType = DataMenu.ItemViewer.EquipType.Value
 		
 		if EquipButton.EquipStatus.Value == false then --Equip item
-			EquipButton.Text = "Unequip"
-			EquipButton.BackgroundColor3 = Color3.fromRGB(255, 96, 96)
-			EquipButton.BorderColor3 = Color3.fromRGB(255, 60, 60)
-			EquipButton.EquipStatus.Value = true
+			ManageEquipButton(nil, nil, true)
 				
 			UpdateEquippedItem:FireServer(EquipType, ItemType, ItemName)
 		else --Unequip item
 			local AssociatedInventoryMenu = DataMenu.InventoryMenu:FindFirstChild(string.gsub(ItemType, "Bag", "") .. "Menu")
-			local ItemCount = AssociatedInventoryMenu:GetAttribute("ItemCount")
 			
-			print("ITEMCOUNT:",ItemCount)
-			
-			if ItemCount == 0 then
-				EquipButton.Text = "Equip"
-				EquipButton.BackgroundColor3 = Color3.fromRGB(0, 255, 72)
-				EquipButton.BorderColor3 = Color3.fromRGB(0, 170, 54)
-				EquipButton.EquipStatus.Value = false
-			
-				UpdateEquippedItem:FireServer(EquipType, ItemType)
+			if EquipType == "Bags" then
+				local ItemCount = AssociatedInventoryMenu:GetAttribute("ItemCount")
+				
+				if ItemCount == 0 then
+					ManageEquipButton(nil, nil, false)
+					UpdateEquippedItem:FireServer(EquipType, ItemType)
+				else
+					print("Cannot unequip a bag with items in it")
+					--Warning message
+				end
 			else
-				print("Cannot unequip a bag with items in it")
-				--Warning message
+				ManageEquipButton(nil, nil, false)
+				UpdateEquippedItem:FireServer(EquipType, ItemType)
 			end
 		end
 		wait(1)
@@ -1188,22 +1193,21 @@ UpdateEquippedItem.OnClientEvent:Connect(function(EquipType, ItemType, Item)
 		local ItemImage = GetStatImage(ItemInfo)
 
 		DefaultMenuButton.Image = ItemImage
-		
-		--Highlight Equipped Item
-		for i,page in pairs (PlayerMenu:FindFirstChild(ItemType .. "Menu"):GetChildren()) do
-			for i,tile in pairs (page:GetChildren()) do
-				if tile:IsA("TextButton") then
-					if tile.StatName.Value == Item then
-						tile.BackgroundColor3 = Color3.fromRGB(85, 170, 255) --Brighter blue (or player's fav color later)
-					else
-						tile.BackgroundColor3 = Color3.fromRGB(47, 95, 143)
-					end
+	else
+		print("Item has been unequipped")
+	end
+	
+	--Highlight Equipped Item
+	for i,page in pairs (PlayerMenu:FindFirstChild(ItemType .. "Menu"):GetChildren()) do
+		for i,tile in pairs (page:GetChildren()) do
+			if tile:IsA("TextButton") then
+				if tile.StatName.Value == Item then
+					tile.BackgroundColor3 = Color3.fromRGB(85, 170, 255) --Brighter blue (or player's fav color later)
+				else
+					tile.BackgroundColor3 = Color3.fromRGB(47, 95, 143) --Darker accent color
 				end
 			end
 		end
-		
-	else
-		print("Item has been unequipped")
 	end
 	
 	if ItemType == "Bags" then
