@@ -399,10 +399,11 @@ function LoadPlayerData(PlayerDataFile, data, JoinedPlayer)
 
 			local SavedValue = CheckSaveData(data["Equipped" .. tostring(itemtype)])
 			
-			if tostring(itemtype) == "Pickaxes" then
-				SavedValue = true
-				data["Equipped" .. tostring(itemtype)] = "Pickaxe"
-			end
+			--Tool Testing
+			--if tostring(itemtype) == "Pickaxes" then
+				--SavedValue = true
+				--data["Equipped" .. tostring(itemtype)] = "Pickaxe"
+			--end
 			
 			ImportSaveData(data,SavedValue,EquippedTypeFolder,EquippedItem)
 			
@@ -420,9 +421,11 @@ function LoadPlayerData(PlayerDataFile, data, JoinedPlayer)
 				if tostring(equiptype) == "Tools" then
 					UpdateToolbar(JoinedPlayer, tostring(itemtype), tostring(EquippedItem))
 				end
-			
+				
+				print("Equipped item detected to load for " .. tostring(itemtype))
 				UpdateEquippedItem:FireClient(JoinedPlayer, tostring(equiptype), tostring(itemtype), tostring(EquippedItem))
 			else
+				print("No equipped item detected to load for " .. tostring(itemtype))
 				UpdateEquippedItem:FireClient(JoinedPlayer, tostring(equiptype), tostring(itemtype), "")
 			end
 		end
@@ -598,6 +601,7 @@ UpdateEquippedItem.OnServerEvent:Connect(function(Player, EquipType, ItemType, N
 	
 	--Ensure Item Type for bag is 0 if under else statement; otherwise, exploiter changed values
 	
+	print(Player, EquipType, ItemType, NewlyEquippedItem)
 	
 	local playerUserId = Player.UserId
 	local PlayerDataFile = PlayerData:FindFirstChild(tostring(playerUserId))
@@ -622,8 +626,6 @@ UpdateEquippedItem.OnServerEvent:Connect(function(Player, EquipType, ItemType, N
 		
 		EquipValue.Value = ""
 		PlayerStatManager:ChangeStat(Player, "Equipped" .. ItemType, "", EquipType)	
-		
-		--sessionData[playerUserId]["Equipped" .. ItemType] = ""
 	end
 end)
 
@@ -652,3 +654,4 @@ HandleDropMaterialsEvent.Event:Connect(HandleDropMaterials)
 
 
 return PlayerStatManager
+
