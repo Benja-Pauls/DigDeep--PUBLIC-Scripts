@@ -9,6 +9,10 @@ local NPCData = {
 		
 		["Shop Name"] = "Test Man's Test Shop",
 		
+		["Cannot Afford Item"] = ".......", --Table? Where indexes are next speech bubbles in dialogue?
+		
+		["Item Already Purchased"] = ".......", --Possibly put cannot afford and already purchased in basic dialogue
+		
 		["ShopTheme"] = {
 			["Primary Color"] = "PrimaryColorValue",
 			["Secondary Color"] = "SecondaryColorValue"
@@ -41,7 +45,10 @@ local NPCData = {
 		}, 
 		
 		["Items"] = { --Sort by type (Rarity = ItemType)
+			{RS.Equippable.Bags.OreBags["Beginner Bag"], 4},
+			{RS.Equippable.Bags.OreBags["Beginner Bag"], 4},
 			{RS.Equippable.Bags.OreBags["Advanced Bag"], 10},
+			{RS.Equippable.Bags.PlantBags["Beginner Bag"], 4},
 			{RS.Equippable.Bags.PlantBags["Advanced Bag"], 10},
 			{RS.Equippable.Tools.Pickaxes.Pickaxe, 5}
 			
@@ -57,3 +64,4 @@ local NPCData = {
 --to go through each element of this table to get item info to be displayed
 
 return NPCData
+
