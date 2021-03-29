@@ -215,8 +215,49 @@ local UpdateStoreFront = EventsFolder.GUI:WaitForChild("UpdateStoreFront")
 
 StoreFrontInteract.OnServerEvent:Connect(function(player, NPC)
 	local npcData = CloneTable(AllNPCData[tostring(NPC)])
+	local AlreadyPurchased = {}
 	
-	UpdateStoreFront:FireClient(player, NPC, npcData)
+	for item = 1,#npcData["Items"],1 do
+		local Value = PlayerStatManager:getStat(player, tostring(npcData["Items"][item][1]))
+		
+		if Value == true then
+			table.insert(AlreadyPurchased, npcData["Items"][item][1])
+		end
+	end
+	
+	print("AlreadyPurchased",AlreadyPurchased)
+	
+	UpdateStoreFront:FireClient(player, NPC, npcData, AlreadyPurchased)
+end)
+
+local StoreFrontPurchase = game.ReplicatedStorage.Events.Utility:WaitForChild("StoreFrontPurchase")
+StoreFrontPurchase.OnServerEvent:Connect(function(player, NPC, ItemName, ItemType, EquipType)
+	local PlayerDataFile = PlayerData:FindFirstChild(tostring(player.UserId))
+	local Item = game.ReplicatedStorage.Equippable:FindFirstChild(EquipType):FindFirstChild(ItemType):FindFirstChild(ItemName)
+	
+	print(NPC)
+	local npcData = AllNPCData[NPC]
+	
+	local ItemPrice 	
+	for item = 1,#npcData["Items"],1 do
+		if npcData["Items"][item][1] == Item then
+			ItemPrice = npcData["Items"][item][2]
+		end
+	end
+	
+	local PlayerCash = PlayerDataFile:FindFirstChild("Currencies"):FindFirstChild("UniversalCurrencies"):FindFirstChild("Currency").Value
+	
+	if PlayerCash > ItemPrice then
+		print(player," can afford " .. ItemName)
+	end
+	
+	--Get player cash and see if their cash is higher than item price
+	--if greater than item price, remove cash from player
+	--Update GUI by firing StoreFrontPurchase to client
+	
+	--Find ItemCost in NPC data in serverstorage, not referenced in clone StoreFrontHandler
+	
+	--Check NPC data to see if cost matches with current NPC interacted with's data
 end)
 
 --Have an event that is fired by the player's StoreFrontHandler when they finally press purchase button 
