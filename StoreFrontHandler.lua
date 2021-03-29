@@ -14,6 +14,7 @@ local ItemStatView = StoreFrontMenu.ItemStatView
 local UpdateStoreFront = EventsFolder.GUI:WaitForChild("UpdateStoreFront")
 local MoveAllBaseScreenUI = EventsFolder.GUI:WaitForChild("MoveAllBaseScreenUI")
 local GetShortMoneyValue = EventsFolder.Utility:WaitForChild("GetShortMoneyValue")
+local StoreFrontPurchase = EventsFolder.Utility:WaitForChild("StoreFrontPurchase")
 
 if StoreFrontGui.StoreFrontMenu.Visible == true then
 	StoreFrontGui.StoreFrontMenu.Visible = false
@@ -23,35 +24,65 @@ local Character = game.Workspace.Players:WaitForChild(tostring(Player))
 local DefaultWalkSpeed = Character.Humanoid.WalkSpeed
 local DefaultJumpPower = Character.Humanoid.JumpPower
 
+local PlayerBackPack = {}
+
 ----------------------<|Utility|>-------------------------------------------------------------------------------------------------------------
 
-local function DisplayStoreFrontGUI()
-	StoreFrontMenu.Visible = true
+local function DisplayStoreFrontGUI(bool) --Bathroom break. do comments
+	StoreFrontMenu.Visible = bool
+	StoreFrontMenu.CurrentPage.Value = 1
 	
-	--Move GUIs off screen
-	StoreFrontMenu.ItemStatView.Position = UDim2.new(0.362, 0, 1.35, 0)
-	StoreFrontMenu["NPC Info"].Position = UDim2.new(0.381, 0, -0.1, 0)
-	StoreFrontMenu.PlayerCashDisplay.Position = UDim2.new(-0.55, 0, 0.032, 0)
-	StoreFrontMenu.ExitStoreButton.Position = UDim2.new(0.01, 0, 1.15, 0)
-	StoreFrontMenu.NextPage.Position = UDim2.new(0.747, 0, 1.15, 0)
-	StoreFrontMenu.PreviousPage.Position = UDim2.new(0.747, 0, -0.15, 0)
-	StoreFrontMenu.PurchaseItemButton.Position = UDim2.new(0.109, 0, 1.15, 0)
+	if bool == true then --Display
+		--Hold backpack to return later
+		for i,item in pairs (Player.Backpack:GetChildren()) do
+			table.insert(PlayerBackPack, item)
+			item:Destroy()
+		end
+		
+		for i,statDisplay in pairs (StoreFrontMenu.ItemStatView:GetChildren()) do
+			if statDisplay:IsA("ImageLabel") then
+				statDisplay.Visible = false
+			end
+		end
+		
+		StoreFrontMenu.PurchaseItemButton.Active = false
+		StoreFrontMenu.PurchaseItemButton.Visible = false
+		
+		--Move GUIs off screen
+		StoreFrontMenu.ItemStatView.Position = UDim2.new(0.362, 0, 1.35, 0)
+		StoreFrontMenu["NPC Info"].Position = UDim2.new(0.381, 0, -0.1, 0)
+		StoreFrontMenu.PlayerCashDisplay.Position = UDim2.new(-0.55, 0, 0.032, 0)
+		StoreFrontMenu.ExitStoreButton.Position = UDim2.new(0.01, 0, 1.15, 0)
+		StoreFrontMenu.NextPage.Position = UDim2.new(0.747, 0, 1.15, 0)
+		StoreFrontMenu.PreviousPage.Position = UDim2.new(0.747, 0, -0.15, 0)
+		StoreFrontMenu.PurchaseItemButton.Position = UDim2.new(0.109, 0, 1.15, 0)
 
-	--Tween GUIs into view
-	StoreFrontMenu.ItemStatView:TweenPosition(UDim2.new(0.362, 0, 0.667, 0), "Out", "Quint", .4)
-	StoreFrontMenu["NPC Info"]:TweenPosition(UDim2.new(0.381, 0, 0.035, 0), "Out", "Quint", .4)
-	wait(.2)
-	StoreFrontMenu.PlayerCashDisplay:TweenPosition(UDim2.new(0.054, 0, 0.032, 0), "Out", "Quint", .4)
-	StoreFrontMenu.PreviousPage:TweenPosition(UDim2.new(0.747, 0, 0.047, 0), "Out", "Quint", .4)
-	wait(.3)
-	StoreFrontMenu.ExitStoreButton:TweenPosition(UDim2.new(0.01, 0, 0.846, 0), "Out", "Quint", .4)
-	StoreFrontMenu.PurchaseItemButton:TweenPosition(UDim2.new(0.109, 0, 0.846, 0), "Out", "Quint", .4)
-	StoreFrontMenu.NextPage:TweenPosition(UDim2.new(0.747, 0, 0.909, 0), "Out", "Quint", .4)
-	wait(.3)
-end
-
-local function CleanUpMenu() --Remove information; blank slate
-	StoreFrontGui.Visible = false
+		--Tween GUIs into view
+		StoreFrontMenu.ItemStatView:TweenPosition(UDim2.new(0.362, 0, 0.667, 0), "Out", "Quint", .4)
+		StoreFrontMenu["NPC Info"]:TweenPosition(UDim2.new(0.381, 0, 0.035, 0), "Out", "Quint", .4)
+		wait(.2)
+		StoreFrontMenu.PlayerCashDisplay:TweenPosition(UDim2.new(0.054, 0, 0.032, 0), "Out", "Quint", .4)
+		StoreFrontMenu.ExitStoreButton:TweenPosition(UDim2.new(0.01, 0, 0.846, 0), "Out", "Quint", .4)
+		StoreFrontMenu.PurchaseItemButton:TweenPosition(UDim2.new(0.109, 0, 0.846, 0), "Out", "Quint", .4)
+		wait(.2)
+	else --Close StoreFrontMenu: Reset Menu
+		StoreFrontGui.InteractedObject.Value = nil
+		StoreFrontMenu.CurrentPage.Value = 0
+		StoreFrontMenu.CurrentTile.Value = nil
+		
+		--Delete all pages in product display
+		for i,page in pairs (ProductDisplay:GetChildren()) do
+			page:Destroy()
+		end
+		
+		--Return backpack to player
+		for item = 1,#PlayerBackPack,1 do
+			local Item = PlayerBackPack[item]:Clone()
+			Item.Parent = Player.Backpack
+			
+			PlayerBackPack = {}
+		end
+	end
 end
 
 StoreFrontGui.Open.Changed:Connect(function(value)
@@ -63,7 +94,20 @@ StoreFrontGui.Open.Changed:Connect(function(value)
 	end
 end)
 
+local function PlayerVisibility(Transparency)
+	for i,characterPart in pairs (Character:GetChildren()) do
+		if characterPart:IsA("MeshPart") or characterPart:IsA("Part") then
+			characterPart.Transparency = Transparency
+		end
+	end
+end
+
+local function ManageNearbyPlayerVisibility()
+	
+end
+
 ------------------------<|Cutscene Manager|>---------------------------------------------------------------------------------------------------
+
 local Camera = game.Workspace.CurrentCamera
 local TweenService = game:GetService("TweenService")
 
@@ -76,25 +120,55 @@ local function MoveCamera(StartPart, EndPart, Duration, EasingStyle, EasingDirec
 end
 
 local function MoveCameraToStore(NPC)
-	--Invis Player
-	
 	Character.Humanoid.WalkSpeed = 0
 	Character.Humanoid.JumpPower = 0
+	
+	PlayerVisibility(1)
 	
 	local CutsceneFolder = NPC:FindFirstChild("CutsceneCameras")
 	MoveCamera(Camera, CutsceneFolder.Camera1, 1.5, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
 end
 
 local function MoveCameraBackToPlayer()
-	--UnInvis Player
-	
+	PlayerVisibility(0)
 	
 	Character.Humanoid.WalkSpeed = DefaultWalkSpeed
 	Character.Humanoid.JumpPower = DefaultJumpPower
 end
 
 
-----------------------<|Page Handler Functions|>-----------------------------------------------------------------------------------------------
+----------------------<|PageManager Functions|>-----------------------------------------------------------------------------------------------
+
+local PageDebounce = false
+
+local function ManagePageInvis(VisiblePage)
+	for i,page in pairs (VisiblePage.Parent:GetChildren()) do
+		if page:IsA("Frame") then
+			if page ~= VisiblePage then
+				page.Visible = false
+			else
+				page.Visible = true
+			end
+		end
+	end
+	
+	VisiblePage.ZIndex -= 1
+	PageDebounce = false
+end
+
+local function CountPages()
+	local HighPage = 0
+	for i,page in pairs (ProductDisplay:GetChildren()) do
+		if page:IsA("Frame") then
+			local PageNumber = string.gsub(page.Name, "Page", "")
+			if tonumber(PageNumber) > HighPage then
+				HighPage = tonumber(PageNumber)
+			end
+		end
+	end
+	return HighPage
+end
+
 
 local function ManageProductPage(MaxTileAmount)
 	local Pages = ProductDisplay:GetChildren()
@@ -125,6 +199,7 @@ local function ManageProductPage(MaxTileAmount)
 			local LastRarityPage = string.gsub(Over.Name, "Page" , "")
 			NewPage.Name = "Page" .. tostring(tonumber(LastRarityPage) + 1)
 			NewPage.Visible = false
+			SlotCount = 0
 		else
 			NewPage.Name = "Page1"
 			NewPage.Visible = true
@@ -135,6 +210,79 @@ local function ManageProductPage(MaxTileAmount)
 	
 	return Page,SlotCount
 end
+
+local function FinalizePageChange(NewPage, OldPage, NewYValue)
+	PageDebounce = true
+	
+	NewPage.Visible = true
+	OldPage:TweenPosition(UDim2.new(0, 0, NewYValue, 0), "Out", "Quint", .4)
+	NewPage:TweenPosition(UDim2.new(0, 0, 0, 0), "Out", "Quint", .4)
+	wait(.4)
+	
+	ManagePageInvis(NewPage)
+end
+
+StoreFrontMenu.NextPage.Activated:Connect(function()
+	local OldPage = ProductDisplay:FindFirstChild("Page" .. tostring(StoreFrontMenu.CurrentPage.Value))
+	
+	if PageDebounce == false then
+		local HighPage = CountPages()
+		
+		if HighPage ~= 1 then
+			local NewPage
+
+			if StoreFrontMenu.CurrentPage.Value + 1 > HighPage then
+				NewPage = ProductDisplay:FindFirstChild("Page1")
+				StoreFrontMenu.CurrentPage.Value = 1
+			else
+				NewPage = ProductDisplay:FindFirstChild("Page" .. tostring(StoreFrontMenu.CurrentPage.Value+1))
+				StoreFrontMenu.CurrentPage.Value = StoreFrontMenu.CurrentPage.Value+1
+			end
+
+			NewPage.Position = UDim2.new(0,0,1,0)
+			print(OldPage)
+			FinalizePageChange(NewPage, OldPage, -1)
+		else --Bounce effect
+			PageDebounce = true
+			ProductDisplay:FindFirstChild("Page1"):TweenPosition(UDim2.new(0,0,0.02,0), "Out", "Quint", .1)
+			wait(.1)
+			ProductDisplay:FindFirstChild("Page1"):TweenPosition(UDim2.new(0,0,0,0), "Out" , "Bounce", .25)
+			wait(.25)
+			PageDebounce = false
+		end
+	end
+end)
+
+StoreFrontMenu.PreviousPage.Activated:Connect(function()
+	local OldPage = ProductDisplay:FindFirstChild("Page" .. tostring(StoreFrontMenu.CurrentPage.Value))
+	
+	if PageDebounce == false then
+		local HighPage = CountPages()
+
+		if HighPage ~= 1 then
+			local NewPage
+			
+			if StoreFrontMenu.CurrentPage.Value + 1 > HighPage then
+				NewPage = ProductDisplay:FindFirstChild("Page1")
+				StoreFrontMenu.CurrentPage.Value = 1
+			else
+				NewPage = ProductDisplay:FindFirstChild("Page" .. tostring(StoreFrontMenu.CurrentPage.Value+1))
+				StoreFrontMenu.CurrentPage.Value = StoreFrontMenu.CurrentPage.Value+1
+			end
+
+			NewPage.Position = UDim2.new(0,0,-1,0)
+			print(OldPage)
+			FinalizePageChange(NewPage, OldPage, 1)
+		else --Bounce effect
+			PageDebounce = true
+			ProductDisplay:FindFirstChild("Page1"):TweenPosition(UDim2.new(0,0,-0.02,0), "Out", "Quint", .1)
+			wait(.1)
+			ProductDisplay:FindFirstChild("Page1"):TweenPosition(UDim2.new(0,0,0,0), "Out" , "Bounce", .25)
+			wait(.25)
+			PageDebounce = false
+		end
+	end
+end)
 
 -------------------------<|Tile Management Functions|>-----------------------------------------------------------------------------------------
 
@@ -151,15 +299,17 @@ local function InsertProductInfo(Tile, ItemData)
 	Tile.ItemCost.Text = "$" .. tostring(ShortenedPrice)
 	
 	Tile.Activated:Connect(function()
-		--Unhighlight other tile
-		for i,tile in pairs (Tile.Parent:GetChildren()) do
-			if tile.BorderColor3 == Color3.fromRGB(0, 170, 255) and tile.BorderSizePixel > 1 then
-				tile.BorderColor3 = Color3.fromRGB(27, 42, 53)
-				tile.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-				tile.BorderSizePixel = 1
-			end
-		end
+		StoreFrontMenu.PurchaseItemButton.Active = true
+		StoreFrontMenu.PurchaseItemButton.Visible = true
 		
+		local PreviousTile = StoreFrontMenu.CurrentTile.Value
+		if PreviousTile then
+			PreviousTile.BorderColor3 = Color3.fromRGB(27, 42, 53)
+			PreviousTile.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+			PreviousTile.BorderSizePixel = 1
+		end
+
+		StoreFrontMenu.CurrentTile.Value = Tile
 		Tile.BorderColor3 = Color3.fromRGB(0, 170, 255)
 		Tile.BackgroundColor3 = Color3.fromRGB(232, 232, 232)
 		Tile.BorderSizePixel = 4
@@ -175,12 +325,14 @@ local function InsertProductInfo(Tile, ItemData)
 					local StatImage = ItemStats["Images"][Stat[1] .. "Image"][1]
 					local ImageType = ItemStats["Images"][Stat[1] .. "Image"][2]
 
-					ManageStatDisplay(Stat[1], StatValue, StatImage, ImageType)
+					ManageStatDisplay(Stat[1], StatValue, Item, ImageType)
 				end
 			end
 		else
-			ManageStatDisplay("Bag Capacity", Item.Value, Item["GUI Info"].StatImage.Value, "StatBar")
+			ManageStatDisplay("Bag Capacity", Item.Value, Item, "StatBar")
 		end
+		
+		Tile.EquipType.Value = tostring(EquipType)
 		
 		--Hide Remaining Stat Tiles and Reset All
 		for i,statDisplay in pairs (ItemStatView:GetChildren()) do
@@ -210,21 +362,21 @@ local function InsertProductInfo(Tile, ItemData)
 			if Camera:FindFirstChild("ShownStoreItem") then
 				Camera.ShownStoreItem:Destroy()
 			end
-			
+
 			DisplayedItem.Name = "ShownStoreItem"
 			DisplayedItem.Parent = Camera
 			DisplayedItem.CanCollide = true
 			DisplayedItem.Anchored = true
+			
+			--Move model into position
 			DisplayedItem.CFrame = Camera.CFrame
-			
-			
-			DisplayedItem.CFrame = DisplayedItem.CFrame + DisplayedItem.CFrame.lookVector * 6
+			DisplayedItem.CFrame = DisplayedItem.CFrame + DisplayedItem.CFrame.lookVector * 6.5 --Move in front of camera
 			local cFrame = DisplayedItem.CFrame
 			DisplayedItem.CFrame = cFrame*CFrame.Angles(-math.pi/2,0,0)
 			local ItmPos = DisplayedItem.Position
-			DisplayedItem.Position = Vector3.new(ItmPos.X, ItmPos.Y + 0.6, ItmPos.Z)
+			DisplayedItem.Position = Vector3.new(ItmPos.X, ItmPos.Y + 0.7, ItmPos.Z)
 			
-			--Rotate part 
+			--Continuously rotate while model is selected item
 			coroutine.resume(coroutine.create(function()
 				while DisplayedItem do
 					wait()
@@ -232,19 +384,19 @@ local function InsertProductInfo(Tile, ItemData)
 					DisplayedItem.Orientation = Vector3.new(ItmOrient.X, ItmOrient.Y, ItmOrient.Z+2)
 				end
 			end))
-			
 		end
 		
-		
-		
-		
-		--Grab Item model clone
-		--Move model into position
-		--Continuously rotate while model is selected item
+		if Tile.AlreadyPurchased.Value == true then
+			StoreFrontMenu.PurchaseItemButton.BackgroundColor3 = Color3.fromRGB(143, 136, 128)
+			StoreFrontMenu.PurchaseItemButton.BorderColor3 = Color3.fromRGB(88, 84, 79)
+		else
+			StoreFrontMenu.PurchaseItemButton.BackgroundColor3 = Color3.fromRGB(19, 188, 112)
+			StoreFrontMenu.PurchaseItemButton.BorderColor3 = Color3.fromRGB(0, 126, 0)
+		end
 	end)
 end
 
-local function InsertProductTile(ItemData)
+local function InsertProductTile(npcData, ItemData, ItemAlreadyPurchased)
 	local NewProductTile = game.ReplicatedStorage.GuiElements:WaitForChild("StoreFrontSlot"):Clone()
 	local Page,SlotCount = ManageProductPage(5)
 	
@@ -257,6 +409,11 @@ local function InsertProductTile(ItemData)
 		InsertProductInfo(NewProductTile, ItemData)
 		NewProductTile:TweenPosition(UDim2.new(0.06, 0, 0.106+((SlotCount)*.162), 0), "Out", "Quint", .4)
 		wait(.2)
+		
+		if (slotNumber == 5 or slotNumber == #npcData["Items"]) and Page.Name == "Page1" then
+			StoreFrontMenu.NextPage:TweenPosition(UDim2.new(0.747, 0, 0.919, 0), "Out", "Quint", .4)
+			StoreFrontMenu.PreviousPage:TweenPosition(UDim2.new(0.747, 0, 0.047, 0), "Out", "Quint", .4)
+		end
 	else --First tile in page
 		NewProductTile.Name = "Slot1"
 		NewProductTile.Position = UDim2.new(0.06, 0, 1.2, 0)
@@ -266,12 +423,16 @@ local function InsertProductTile(ItemData)
 		wait(.2)
 	end
 	
-	--Check if player already has item purchased, and change AlreadyPurchased boolvalue in NewProductTile
+	NewProductTile.AlreadyPurchased.Value = ItemAlreadyPurchased
+	if NewProductTile.AlreadyPurchased.Value == true then
+		NewProductTile.ItemCost.Text = "Purchased"
+	end
 end
 
 ---------------------<|ItemStatView Functions|>------------------------------------------------------------------------------------------------
 
-function ManageStatDisplay(StatName, StatValue, StatImage, ImageType)
+function ManageStatDisplay(StatName, StatValue, Item, ImageType)
+	local StatImage = Item["GUI Info"].StatImage.Value
 	
 	local FoundStatDisplay = false
 	for i,statDisplay in pairs (ItemStatView:GetChildren()) do
@@ -292,6 +453,7 @@ function ManageStatDisplay(StatName, StatValue, StatImage, ImageType)
 
 					if ImageType == "StatBar" then
 						local MaxStatValue = game.ReplicatedStorage.GuiElements.MaxStatValues:FindFirstChild(StatName).Value
+						statDisplay.StatName.Text = string.gsub(StatName, tostring(Item), "")
 						statDisplay.ProgressBar.Progress.Size = UDim2.new(StatValue/MaxStatValue, 0, 1, 0)
 					end
 				end
@@ -300,57 +462,63 @@ function ManageStatDisplay(StatName, StatValue, StatImage, ImageType)
 	end
 end
 
-
-
 ---------------------<|Button-Press Functions|>------------------------------------------------------------------------------------------------
 
---Page Change Button: Move invisible page to position, visible new, move, invisible old, move old to neutral
+StoreFrontMenu.PurchaseItemButton.Activated:Connect(function()
+	local CurrentTile = StoreFrontMenu.CurrentTile.Value
+	
+	local NPC = StoreFrontGui.InteractedObject.Value.Name
+	local ItemName = CurrentTile.DisplayName.Text
+	local ItemType = CurrentTile.ItemType.Text
+	local EquipType = CurrentTile.EquipType.Value
+	
+	StoreFrontPurchase:FireServer(NPC, ItemName, ItemType, EquipType)
+end)
 
 StoreFrontMenu.ExitStoreButton.Activated:Connect(function()
-	
-	
 	StoreFrontGui.Open.Value = false
+	DisplayStoreFrontGUI(false)
 end)
 
 ---------------------<|StoreFront Events|>----------------------------------------------------------------------------------------------------
 
-UpdateStoreFront.OnClientEvent:Connect(function(NPC, npcData)
+UpdateStoreFront.OnClientEvent:Connect(function(NPC, npcData, AlreadyPurchased)
 	if StoreFrontGui.Open.Value == false then
 		StoreFrontGui.InteractedObject.Value = NPC
 		StoreFrontGui.Open.Value = true
-		
-		--Put Player's backpack in table to give back when they leave menu (remove so toolbar doesn't interfere with GUI)
-		
-		--Continue to hide players that are nearby until the player exits the store front
 		
 		MoveCameraToStore(NPC)
 		MoveAllBaseScreenUI:Fire("Hide")
 		wait(.5)
 		DisplayStoreFrontGUI(true)
 		
-		--Transition screen (Show all UIs with tweens)
-		
-		--Show all storefront basic information like NPC name, store name, etc.
+		--Hide players that are nearby until the player exits the store front
+		--Other player touches radius part turns invisible
+		--Player reappears no longer touching radius part: left radpart or radpart was deleted
 		
 		local Items = npcData["Items"]
 		for item = 1,#Items,1 do
-			InsertProductTile(Items[item])	
-		end
 			
-		--Show items in frames
-		--Page system? (horizontal long boxes like paint file, or tiles?)
-		
-		--This function will be used to show the storefront information for the NPC that was interacted with, using
-		--the npc data (and therefore item data) to fill the tiles of the StoreFront GUI
-		
-		--Display Basic Info
-		
-		
-		--Move Frames into view
-		
-		--Transition screen fade out (or final camera movements) once info is inserted
+			local ItemAlreadyPurchased = false
+			for i = 1,#AlreadyPurchased,1 do
+				local PurchasedItem = AlreadyPurchased[i]
+				if PurchasedItem.Parent == Items[item][1].Parent then
+					if AlreadyPurchased[i] == Items[item][1] then
+						ItemAlreadyPurchased = true
+					end
+				end
+			end
+			
+			InsertProductTile(npcData, Items[item], ItemAlreadyPurchased)	
+		end
 		
 		--NPC will be used to physical change his face, produce sounds, and play animations while shopping
 	end
+end)
+
+StoreFrontPurchase.OnClientEvent:Connect(function(success)
+	--Purchase either did or didn't go through
+	
+	
 end)
 
