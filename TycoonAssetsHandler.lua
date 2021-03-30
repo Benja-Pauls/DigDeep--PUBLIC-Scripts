@@ -3,9 +3,12 @@
 
 ------------------------------------------------------------------------------------------------------------------------------------------------
 local Objects = {}
+
+repeat wait() until script.Parent:FindFirstChild("Buttons")
+
 local Tycoon = script.Parent
-local TeamColor = script.Parent:WaitForChild("TeamColor").Value
-local CollectibleCash = script.Parent.CurrencyToCollect
+local TeamColor = Tycoon:WaitForChild("TeamColor").Value
+local CollectibleCash = Tycoon.CurrencyToCollect
 local Debris = game:GetService('Debris')
 local SoundEffects = require(game.ServerScriptService.Utility.SoundEffects)
 local PurchaseObject = game:GetService("ReplicatedStorage").Events.Utility.PurchaseObject
@@ -14,12 +17,12 @@ local PlayerData = game.ServerStorage:FindFirstChild("PlayerData")
 local Utility = require(game.ServerScriptService:WaitForChild("Utility"))
 local UpdateInventory = game.ReplicatedStorage.Events.GUI:FindFirstChild("UpdateInventory")
 
-script.Parent.Essentials.Spawn.TeamColor = TeamColor
-script.Parent.Essentials.Spawn.BrickColor = TeamColor
+Tycoon.Essentials.Spawn.TeamColor = TeamColor
+Tycoon.Essentials.Spawn.BrickColor = TeamColor
 
 local function CheckDependencies(Dependencies)
 	local CompletedDependencies = 0
-	local PurchasedObjects = script.Parent.PurchasedObjects
+	local PurchasedObjects = Tycoon.PurchasedObjects
 	--local DependencyAmount = Dependencies:GetChildren()
 	for i,v in pairs (Dependencies:GetChildren()) do
 		if PurchasedObjects:FindFirstChild(tostring(v.Value)) then
@@ -32,12 +35,12 @@ end
 
 --DropCollector Processing, Checks Current Terminal Amount Cap
 local HandleDropMaterialsEvent = game.ReplicatedStorage.Events.Tycoon:WaitForChild("HandleDropMaterials")
-for i,v in pairs(script.Parent.Essentials:GetChildren()) do 
+for i,v in pairs(Tycoon.Essentials:GetChildren()) do 
 	if v.Name == "DropCollector" then 
 		v.Touched:connect(function(Part)
 			if Part:FindFirstChild("Cash") then
 				HandleDropMaterialsEvent:Fire(Tycoon, Part)
-				local TerminalLevels = script.Parent.Essentials.TerminalLevel:GetChildren()
+				local TerminalLevels = Tycoon.Essentials.TerminalLevel:GetChildren()
 				if #TerminalLevels == 1 then --Can make this more efficient, value check for <=
 					if Part.Cash.Value + CollectibleCash.Value <= 100 then
 						CollectibleCash.Value = CollectibleCash.Value + Part.Cash.Value
@@ -61,7 +64,7 @@ end
 
 --Get Money From Collector
 coroutine.resume(coroutine.create(function()
-	local Givers = script.Parent.Essentials:WaitForChild("Givers")
+	local Givers = Tycoon.Essentials:WaitForChild("Givers")
 	if Givers:WaitForChild("Giver") ~= nil then
 		local loop = true
 		while loop == true do --checks for amount of givers, way to make more efficient?
@@ -72,7 +75,7 @@ coroutine.resume(coroutine.create(function()
 				v.Touched:connect(function(hit)
 					local player = game.Players:GetPlayerFromCharacter(hit.Parent)
 					if player ~= nil then
-						if script.Parent.Owner.Value == player then
+						if Tycoon.Owner.Value == player then
 							if hit.Parent:FindFirstChild("Humanoid") then
 								if hit.Parent.Humanoid.Health > 0 then
 									if debounce == false then
@@ -139,10 +142,8 @@ local function GetPlayer(WantedPlayer)
 	end
 end
 
-script.Parent:WaitForChild("Buttons")
-
 --Prepping Tycoon Purchases
-for i,button in pairs(script.Parent.Buttons:GetChildren()) do
+for i,button in pairs(Tycoon.Buttons:GetChildren()) do
 
 	coroutine.resume(coroutine.create(function()
 
@@ -193,3 +194,4 @@ for i,button in pairs(script.Parent.Buttons:GetChildren()) do
 end
 
 return Objects
+
