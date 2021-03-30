@@ -245,19 +245,27 @@ StoreFrontPurchase.OnServerEvent:Connect(function(player, NPC, ItemName, ItemTyp
 		end
 	end
 	
-	local PlayerCash = PlayerDataFile:FindFirstChild("Currencies"):FindFirstChild("UniversalCurrencies"):FindFirstChild("Currency").Value
+	local PlayerCash = PlayerDataFile:FindFirstChild("Currencies"):FindFirstChild("UniversalCurrencies"):FindFirstChild("Currency")
 	
-	if PlayerCash > ItemPrice then
-		print(player," can afford " .. ItemName)
+	if ItemPrice then
+		if PlayerCash.Value >= ItemPrice then
+			--Pay for Item
+			PlayerCash.Value = PlayerCash.Value - ItemPrice
+			Utility:UpdateMoneyDisplay(player, PlayerCash.Value)
+			UpdateInventory:FireClient(player, "Currency", "Currencies", nil, -ItemPrice, "Inventory", "Money1")
+			
+			--Get Item
+			PlayerStatManager:ChangeStat(player, ItemName, true, EquipType, ItemType)
+			
+			StoreFrontPurchase:FireClient(player, Item)
+		else
+			local MissingFunds = ItemPrice - PlayerCash.Value
+			StoreFrontPurchase:FireClient(player, Item, MissingFunds)
+		end
+	else
+		--Exploiter warning
+		--warn(player, "This player could have interfered with item info")
 	end
-	
-	--Get player cash and see if their cash is higher than item price
-	--if greater than item price, remove cash from player
-	--Update GUI by firing StoreFrontPurchase to client
-	
-	--Find ItemCost in NPC data in serverstorage, not referenced in clone StoreFrontHandler
-	
-	--Check NPC data to see if cost matches with current NPC interacted with's data
 end)
 
 --Have an event that is fired by the player's StoreFrontHandler when they finally press purchase button 
