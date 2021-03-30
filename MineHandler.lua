@@ -425,7 +425,6 @@ local MineOre = game.ReplicatedStorage.Events.Utility:WaitForChild("MineOre")
 local UpdateItemCount = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateItemCount")
 
 MineOre.Event:Connect(function(Player,Ore)
-	print("MineOre has been invoked")
 	local RealMineshaftItem
 	if Ore.Name == "Target" then
 		RealMineshaftItem = game.ReplicatedStorage.ItemLocations.Mineshaft:FindFirstChild(Ore.Parent.Name)
