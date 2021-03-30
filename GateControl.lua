@@ -85,7 +85,7 @@ ClaimTycoon.OnServerEvent:Connect(function(player,tycoon)
 				PlayerCash.Value = PlayerCash.Value - tycoon.Entrance.Price.Value
 				--If you put Utility require for UpdateMoneyDisplay, will exploiters have access?
 				local MoneyDisplay = game.Players:FindFirstChild(tostring(player)).PlayerGui.MoneyDisplay
-				MoneyDisplay.Display.Money.Text = "$" .. tostring(PlayerCash.Value)
+				MoneyDisplay.Display.Frame.Money.Text = "$" .. tostring(PlayerCash.Value)
 		
 				LocalLoadTycoon:FireClient(player,tycoon)
 
@@ -108,3 +108,4 @@ ClaimTycoon.OnServerEvent:Connect(function(player,tycoon)
 		end
 	end
 end)
+
