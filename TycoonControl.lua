@@ -19,7 +19,7 @@ local TycoonPurchases = game.ReplicatedStorage:WaitForChild("TycoonPurchases")
 local Droppers = TycoonPurchases:FindFirstChild("Dropper")
 local DropperScript = game.ServerScriptService.TycoonSaveHandler.DropperScript
 
-for i, dropper in pairs (Droppers:GetChildren()) do
+for i,dropper in pairs (Droppers:GetChildren()) do
 	if dropper:FindFirstChild("DropperScript") == nil then
 		local DropScriptClone = DropperScript:Clone()
 		DropScriptClone.Parent = dropper
@@ -64,3 +64,4 @@ game.Players.PlayerRemoving:connect(function(player)
 		backup.Parent = Tycoons --put the default tycoon in the tycoons folder
 	end
 end)
+
