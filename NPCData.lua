@@ -9,10 +9,6 @@ local NPCData = {
 		
 		["Shop Name"] = "Test Man's Test Shop",
 		
-		["Cannot Afford Item"] = ".......", --Table? Where indexes are next speech bubbles in dialogue?
-		
-		["Item Already Purchased"] = ".......", --Possibly put cannot afford and already purchased in basic dialogue
-		
 		["ShopTheme"] = {
 			["Primary Color"] = "PrimaryColorValue",
 			["Secondary Color"] = "SecondaryColorValue"
@@ -33,10 +29,15 @@ local NPCData = {
 			--["Neutral"] = ImageId			
 		},
 		
-		["Basic Dialogue"] = { --Does [index] need to be present?
+		["Dialogue"] = { --Does [index] need to be present?
 			["Dialogue1"] = {"Hello, I am Test Man!", "Happy"},
 			["Dialogue2"] = {"Hi There Stranger!", "Neutral"},
-			["Dialogue3"] = {"Goodbye!", "Neutral"}
+			["Dialogue3"] = {"How can I help you?", "Neutral"},
+			["Goodbye1"] = {"Goodbye!", "Neutral"},
+			["Cannot Afford Item"] = {"......."},
+			["Item Already Purchased"] = {"......."}, 
+			
+			
 			--Does Lua use Table[-1]? Could have final index be goodbye statement string
 		},
 		
@@ -45,11 +46,10 @@ local NPCData = {
 		}, 
 		
 		["Items"] = { --Sort by type (Rarity = ItemType)
-			{RS.Equippable.Bags.OreBags["Beginner Bag"], 4},
-			{RS.Equippable.Bags.OreBags["Beginner Bag"], 4},
-			{RS.Equippable.Bags.OreBags["Advanced Bag"], 10},
-			{RS.Equippable.Bags.PlantBags["Beginner Bag"], 4},
-			{RS.Equippable.Bags.PlantBags["Advanced Bag"], 10},
+			{RS.Equippable.Bags.OreBags["Beginner Ore Bag"], 4},
+			{RS.Equippable.Bags.OreBags["Advanced Ore Bag"], 10},
+			{RS.Equippable.Bags.PlantBags["Beginner Plant Bag"], 4},
+			{RS.Equippable.Bags.PlantBags["Advanced Plant Bag"], 10},
 			{RS.Equippable.Tools.Pickaxes.Pickaxe, 5}
 			
 		}	
