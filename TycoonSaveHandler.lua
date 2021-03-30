@@ -174,6 +174,7 @@ tycoonsFolder.ChildAdded:Connect(function(Tycoon)
 	PrepareTycoon(Tycoon)	
 end)
 
+--Begin autosaving every ~60 seconds
 while wait(59) do
 	pcall(function()
 		print("AutoSaving All Player Progress...")
@@ -190,3 +191,4 @@ while wait(59) do
 		end
 	end)
 end
+
