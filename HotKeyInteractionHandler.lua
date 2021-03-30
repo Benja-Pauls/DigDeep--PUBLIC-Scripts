@@ -72,10 +72,17 @@ end
 
 local function GetStatImage(File, Stat)
 	local ImageId
-	if Stat.Name then
-		ImageId = game.ReplicatedStorage:FindFirstChild(tostring(File)):FindFirstChild(Stat.Name)["GUI Info"].StatImage.Value
-	else
-		ImageId = game.ReplicatedStorage:FindFirstChild(tostring(File)):FindFirstChild(Stat)["GUI Info"].StatImage.Value
+	
+	print(File, Stat)
+	
+	if Stat then
+		for i,location in pairs (game.ReplicatedStorage.ItemLocations:GetChildren()) do
+			if location:FindFirstChild(tostring(Stat)) and ImageId == nil then
+				ImageId = location:FindFirstChild(tostring(Stat))["GUI Info"].StatImage.Value
+			end
+		end
+	--else
+		--ImageId = game.ReplicatedStorage:FindFirstChild(tostring(File)):FindFirstChild(Stat)["GUI Info"].StatImage.Value
 	end
 	return ImageId
 end
@@ -110,8 +117,8 @@ local function CheckUpgrade(OriginalObject, InfoList)
 	end
 end
 
+local CostList = TycoonPurchaseMenu.CostsList
 local function DisplayButtonMaterials(Button)
-	local CostList = TycoonPurchaseMenu.CostsList
 	local Slots
 	local OriginalSlot = game.ReplicatedStorage.GuiElements:FindFirstChild("TycoonPurchaseMaterialSlot")
 	
@@ -165,10 +172,8 @@ local function DisplayButtonInformation(Button)
 	
 	local UpgradeCheck = CheckUpgrade(OriginalObject, InfoList)
 	
-	--Maybe make rarity a calculated value from price and other variables, or just name each?
-	
 	local ImprovCharacterCount = string.len(tostring(InfoList.Improvement1.Text))
-	InfoList.Improvement1.Size = UDim2.new(0, ImprovCharacterCount * 9, 0, 45)
+	InfoList.Improvement1.Size = UDim2.new(0, ImprovCharacterCount * 9, 0, 45) --Change to use scale values over pixels
 	
 	
 	InfoList.Description.Text = tostring(Button.Description.Value)
@@ -179,7 +184,6 @@ local function DisplayButtonInformation(Button)
 end
 
 local function DestroyButtonVisuals(Button)
-	local CostList = TycoonPurchaseMenu.CostsList
 	local InfoList = TycoonPurchaseMenu.InformationList
 	
 	for i,visual in pairs(CostList:GetChildren()) do
@@ -191,41 +195,43 @@ local press = false
 local function TycoonPurchaseInteract(Button, player)
 	local TycoonOwner = Button.Parent.Parent.Owner.Value
 	if TycoonOwner == player then
-		if TycoonPurchaseMenu.Visible == false then
-			DisplayButtonMaterials(Button)
-			DisplayButtonInformation(Button)
+		if Button.Parent.Parent.PurchasedObjects:FindFirstChild(Button.Object.Value) then
+			if TycoonPurchaseMenu.Visible == false then
+				DisplayButtonMaterials(Button)
+				DisplayButtonInformation(Button)
 
-			local purchaseButton = TycoonPurchaseMenu.PurchaseButton
-			local exitButton = TycoonPurchaseMenu.ExitButton
-			TycoonPurchaseMenu.Visible = true
+				local purchaseButton = TycoonPurchaseMenu.PurchaseButton
+				local exitButton = TycoonPurchaseMenu.ExitButton
+				TycoonPurchaseMenu.Visible = true
 
-			purchaseButton.Activated:Connect(function()
-				if press == false then
-					--EFFICIENCY NOTE: it still runs through
-					--every button thats been interacted with in the current session
-					press = true
-					PurchaseObject:FireServer(Button)
-					wait(.1) --Wait For PurchaseHandler Money Check to Finish
+				purchaseButton.Activated:Connect(function()
+					if press == false then
+						--EFFICIENCY NOTE: it still runs through
+						--every button thats been interacted with in the current session
+						press = true
+						PurchaseObject:FireServer(Button)
+						wait(.1) --Wait For PurchaseHandler Money Check to Finish
 
-					if TycoonPurchaseMenu.CashWarning.Visible == false then
-						TycoonPurchaseMenu.Visible = false
-						wait(1)
-						DestroyButtonVisuals(Button)
+						if TycoonPurchaseMenu.CashWarning.Visible == false then
+							TycoonPurchaseMenu.Visible = false
+							wait(1)
+							DestroyButtonVisuals(Button)
+						end
+
+						press = false
 					end
+				end)
 
-					press = false
-				end
-			end)
-
-			exitButton.Activated:Connect(function()
-				if press == false and TycoonPurchaseMenu.Visible == true then 
-					press = true
-					TycoonPurchaseMenu.Visible = false
-					DestroyButtonVisuals(Button)
-					wait(.1)
-					press = false
-				end
-			end)
+				exitButton.Activated:Connect(function()
+					if press == false and TycoonPurchaseMenu.Visible == true then 
+						press = true
+						TycoonPurchaseMenu.Visible = false
+						DestroyButtonVisuals(Button)
+						wait(.1)
+						press = false
+					end
+				end)
+			end
 		end
 	end
 end
@@ -286,3 +292,4 @@ end)
 ]]
 
 PrepInteractables()
+
