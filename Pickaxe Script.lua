@@ -17,9 +17,17 @@ local ToolStats = require(Tool:WaitForChild(tostring(Tool) .. "Stats"))
 local Equipped = false
 local Active = false
 
+local function FindStatValue(Table, StatName)
+	for item = 1,#Table,1 do
+		if Table[item][1] == StatName then
+			return Table[item][2]
+		end
+	end
+end
+
 local function SelectOre(Ore)
 	if Ore:IsDescendantOf(workspace.Mine) then--and (Ore.Position - script.Parent.Parent.UpperTorso.Position).Magnitude <= 7 then
-		if (Ore.Position - HRP.Position).magnitude <= ToolStats["PickaxeReach"] * 6.3 then
+		if (Ore.Position - HRP.Position).magnitude <= FindStatValue(ToolStats["Stats"], "PickaxeReach") * 6.3 then
 			
 			--CONTROLS WHAT MOUSE HAS SELECTED
 			if Ore.Name == "Target" then
