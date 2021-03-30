@@ -21,6 +21,14 @@ local ToolStats = require(Tool:WaitForChild(tostring(Tool) .. "Stats"))
 local MouseDown = false
 local Debounce = true
 
+local function FindStatValue(Table, StatName)
+	for item = 1,#Table,1 do
+		if Table[item][1] == StatName then
+			return Table[item][2]
+		end
+	end
+end
+
 local function FindItemInfo(ItemName)
 	local ItemInformation
 	for i,location in pairs (ReplicatedStorage.ItemLocations:GetChildren()) do
@@ -55,12 +63,12 @@ local function StartMining()
 						MouseDown = true
 						Tool.IsMining.Value = true
 
-						local TimeToMine = ((ItemInfo.Strength.Value / ToolStats["PickaxeEfficiency"]))
+						local TimeToMine = (ItemInfo.Strength.Value / FindStatValue(ToolStats["Stats"], "PickaxeEfficiency"))
 						local WaitTime = 0
 						
 						Debounce = false --Prevents mining to happen again until this block has been mined
 						coroutine.resume(coroutine.create(function()
-							wait(TimeToMine + ToolStats["PickaxeDelay"])
+							wait(TimeToMine + FindStatValue(ToolStats["Stats"], "PickaxeDelay"))
 							Debounce = true
 						end))
 						
@@ -80,7 +88,7 @@ local function StartMining()
 							Target.Reflectance = 0
 						end
 
-						wait(ToolStats["PickaxeDelay"])
+						wait(FindStatValue(ToolStats["Stats"], "PickaxeDelay"))
 						Debounce = true
 						if MouseDown then --keep mining if mouse is still down
 							StartMining()
@@ -90,6 +98,8 @@ local function StartMining()
 					else
 						WarnBagCapacity:FireClient(Player)
 					end
+				else
+					print("Player does not have a bag equipped!")
 				end
 			end
 		else
