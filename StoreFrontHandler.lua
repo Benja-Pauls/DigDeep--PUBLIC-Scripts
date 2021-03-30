@@ -24,20 +24,15 @@ local Character = game.Workspace.Players:WaitForChild(tostring(Player))
 local DefaultWalkSpeed = Character.Humanoid.WalkSpeed
 local DefaultJumpPower = Character.Humanoid.JumpPower
 
-local PlayerBackPack = {}
-
-----------------------<|Utility|>-------------------------------------------------------------------------------------------------------------
+----------------------<|Utility|>--------------------------------------------------------------------------------------------------------------
+local StarterGui = game:GetService("StarterGui")
 
 local function DisplayStoreFrontGUI(bool) --Bathroom break. do comments
 	StoreFrontMenu.Visible = bool
 	StoreFrontMenu.CurrentPage.Value = 1
 	
 	if bool == true then --Display
-		--Hold backpack to return later
-		for i,item in pairs (Player.Backpack:GetChildren()) do
-			table.insert(PlayerBackPack, item)
-			item:Destroy()
-		end
+		StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false)
 		
 		for i,statDisplay in pairs (StoreFrontMenu.ItemStatView:GetChildren()) do
 			if statDisplay:IsA("ImageLabel") then
@@ -47,6 +42,7 @@ local function DisplayStoreFrontGUI(bool) --Bathroom break. do comments
 		
 		StoreFrontMenu.PurchaseItemButton.Active = false
 		StoreFrontMenu.PurchaseItemButton.Visible = false
+		StoreFrontMenu["NPC Dialogue"].Visible = false
 		
 		--Move GUIs off screen
 		StoreFrontMenu.ItemStatView.Position = UDim2.new(0.362, 0, 1.35, 0)
@@ -75,13 +71,7 @@ local function DisplayStoreFrontGUI(bool) --Bathroom break. do comments
 			page:Destroy()
 		end
 		
-		--Return backpack to player
-		for item = 1,#PlayerBackPack,1 do
-			local Item = PlayerBackPack[item]:Clone()
-			Item.Parent = Player.Backpack
-			
-			PlayerBackPack = {}
-		end
+		StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, true)
 	end
 end
 
@@ -97,7 +87,11 @@ end)
 local function PlayerVisibility(Transparency)
 	for i,characterPart in pairs (Character:GetChildren()) do
 		if characterPart:IsA("MeshPart") or characterPart:IsA("Part") then
-			characterPart.Transparency = Transparency
+			if tostring(characterPart) ~= "HumanoidRootPart" then
+				characterPart.Transparency = Transparency
+			end
+		elseif characterPart:IsA("Accessory") then
+			characterPart.Handle.Transparency = Transparency
 		end
 	end
 end
@@ -107,9 +101,9 @@ local function ManageNearbyPlayerVisibility()
 end
 
 ------------------------<|Cutscene Manager|>---------------------------------------------------------------------------------------------------
-
 local Camera = game.Workspace.CurrentCamera
 local TweenService = game:GetService("TweenService")
+
 
 local function MoveCamera(StartPart, EndPart, Duration, EasingStyle, EasingDirection)
 	Camera.CameraType = Enum.CameraType.Scriptable
@@ -131,9 +125,12 @@ end
 
 local function MoveCameraBackToPlayer()
 	PlayerVisibility(0)
+	MoveAllBaseScreenUI:Fire()
 	
 	Character.Humanoid.WalkSpeed = DefaultWalkSpeed
 	Character.Humanoid.JumpPower = DefaultJumpPower
+	Camera.CameraType = Enum.CameraType.Custom
+	Camera.CameraSubject = game.Players.LocalPlayer.Character:WaitForChild("Humanoid")
 end
 
 
@@ -240,7 +237,6 @@ StoreFrontMenu.NextPage.Activated:Connect(function()
 			end
 
 			NewPage.Position = UDim2.new(0,0,1,0)
-			print(OldPage)
 			FinalizePageChange(NewPage, OldPage, -1)
 		else --Bounce effect
 			PageDebounce = true
@@ -271,7 +267,6 @@ StoreFrontMenu.PreviousPage.Activated:Connect(function()
 			end
 
 			NewPage.Position = UDim2.new(0,0,-1,0)
-			print(OldPage)
 			FinalizePageChange(NewPage, OldPage, 1)
 		else --Bounce effect
 			PageDebounce = true
@@ -462,21 +457,69 @@ function ManageStatDisplay(StatName, StatValue, Item, ImageType)
 	end
 end
 
+---------------------<|NPC Dialogue Functions|>------------------------------------------------------------------------------------------------
+local CharactersPerLine = 15
+local NPCDialogue = StoreFrontMenu["NPC Dialogue"]
+
+local function ShowNPCDialogue(npcData)
+	NPCDialogue.Visible = false
+	NPCDialogue.Text = ""
+
+	local Message = npcData["Dialogue"]["Dialogue" .. tostring(math.random(1,3))][1]
+	local CharacterCount = string.len(Message)
+	local LineCount = math.floor(CharacterCount/CharactersPerLine)
+	
+	--NPCDialogue.Position = UDim2.new((0.17 + 0.018)/2, 0, .412 - (0.07 * LineCount)/2, 0)
+	--NPCDialogue.Size = UDim2.new(0.05, 0, .05, 0)
+	wait(.5)
+	NPCDialogue.Visible = true
+	NPCDialogue.Text = Message
+	NPCDialogue:TweenPosition(UDim2.new(0.018, 0, .412 - (0.07 * LineCount), 0), "Out", "Quint", .8)
+	NPCDialogue:TweenSize(UDim2.new(0.32, 0, 0.07 * LineCount, 0), "Out", "Quint", .8)
+	wait(.8)
+	
+	--Increase typing speed based on length?
+	
+	--second function parameter is the dialogue option in the npcData table
+	--when running through remaining dialog, do if i>1 to skip initial already done
+end
+
 ---------------------<|Button-Press Functions|>------------------------------------------------------------------------------------------------
 
 StoreFrontMenu.PurchaseItemButton.Activated:Connect(function()
 	local CurrentTile = StoreFrontMenu.CurrentTile.Value
-	
-	local NPC = StoreFrontGui.InteractedObject.Value.Name
 	local ItemName = CurrentTile.DisplayName.Text
-	local ItemType = CurrentTile.ItemType.Text
-	local EquipType = CurrentTile.EquipType.Value
 	
-	StoreFrontPurchase:FireServer(NPC, ItemName, ItemType, EquipType)
+	if CurrentTile.AlreadyPurchased.Value == false then
+		local NPC = StoreFrontGui.InteractedObject.Value.Name
+		local ItemType = CurrentTile.ItemType.Text
+		local EquipType = CurrentTile.EquipType.Value
+		
+		StoreFrontPurchase:FireServer(NPC, ItemName, ItemType, EquipType)
+		
+		--Slight Notification new item discovered
+		local PlayerMenu = StoreFrontGui.Parent.DataMenu.DataMenu.PlayerMenu
+		if PlayerMenu:FindFirstChild(ItemType) then
+			local MenuButton = PlayerMenu:FindFirstChild(ItemType)
+			if MenuButton.NewItem.Value == false then
+				MenuButton.NewItem.Value = true
+			end
+		end
+	else
+		print("This Item has already been purchased")
+		
+		
+	end
 end)
 
 StoreFrontMenu.ExitStoreButton.Activated:Connect(function()
 	StoreFrontGui.Open.Value = false
+	
+	if Camera:FindFirstChild("ShownStoreItem") then
+		Camera.ShownStoreItem:Destroy()
+	end
+	
+	MoveCameraBackToPlayer()
 	DisplayStoreFrontGUI(false)
 end)
 
@@ -490,7 +533,10 @@ UpdateStoreFront.OnClientEvent:Connect(function(NPC, npcData, AlreadyPurchased)
 		MoveCameraToStore(NPC)
 		MoveAllBaseScreenUI:Fire("Hide")
 		wait(.5)
-		DisplayStoreFrontGUI(true)
+		
+		coroutine.resume(coroutine.create(function()
+			DisplayStoreFrontGUI(true)
+		end))
 		
 		--Hide players that are nearby until the player exits the store front
 		--Other player touches radius part turns invisible
@@ -512,13 +558,23 @@ UpdateStoreFront.OnClientEvent:Connect(function(NPC, npcData, AlreadyPurchased)
 			InsertProductTile(npcData, Items[item], ItemAlreadyPurchased)	
 		end
 		
+		ShowNPCDialogue(npcData)
+		
 		--NPC will be used to physical change his face, produce sounds, and play animations while shopping
 	end
 end)
 
-StoreFrontPurchase.OnClientEvent:Connect(function(success)
-	--Purchase either did or didn't go through
-	
-	
+StoreFrontPurchase.OnClientEvent:Connect(function(Item, MissingFunds)
+	if MissingFunds then
+		print(tostring(Player) .. " is missing $" .. tostring(MissingFunds) )
+		
+		
+		
+	else
+		print(tostring(Player) .. " has successfully purchased " .. tostring(Item))
+		
+		
+		
+	end
 end)
 
