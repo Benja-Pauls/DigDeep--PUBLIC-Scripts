@@ -31,6 +31,9 @@ OpenDataMenuButton.Activated:Connect(function()
 		DataMenu.Visible = true
 		DataMenu.PlayerMenu.Visible = true
 		OpenDataMenuButton.Active = false
+		
+		CheckForNewItems()
+		
 		DataMenu.PlayerMenu.Visible = true
 		DataMenu:TweenPosition(UDim2.new(0.126, 0, 0.141, 0), "Out", "Quint", .5)
 		wait(.5)
@@ -95,12 +98,18 @@ function ReadyMenuButtons(Menu)
 					ButtonMenu.Visible = false
 				else
 					ButtonMenu.Visible = true
+					DataMenu.PlayerMenu.EmptyNotifier.Visible = false
 					UpdateBagDisplays(Menu, ButtonMenu)		
 				end
 				
 				button.Activated:Connect(function()
-					print(tostring(button) .. " has been activated")
 					DataMenu.InventoryMenu.EmptyNotifier.Visible = false
+					DataMenu.PlayerMenu.EmptyNotifier.Visible = false
+					
+					if button:FindFirstChild("NewItem") then
+						button.NewItem.Value = false
+					end
+					
 					for i,v in pairs (ButtonMenu.Parent:GetChildren()) do
 						if v:IsA("Frame") and not v:FindFirstChild("Menu") then
 							if tostring(v) ~= "TopTabBar" then
@@ -202,6 +211,49 @@ function CleanupMenuTabs(Menu)
 			end
 		end
 	end
+end
+
+local TI = TweenInfo.new(1, Enum.EasingStyle.Circular, Enum.EasingDirection.Out)
+local startingPos = Vector2.new(-1.2, 0) --Start on right
+local waitPeriod = 2.5
+
+local function AnimateShine(button)
+	local Gradient = button.UIGradient
+	local ShineEffect = TweenService:Create(Gradient, TI, {Offset = Vector2.new(1.2, 0)})
+	
+	Gradient.Offset = startingPos
+	ShineEffect:Play()
+	ShineEffect.Completed:Wait()
+	
+	Gradient.Offset = startingPos
+	ShineEffect:Play()
+	ShineEffect.Completed:Wait()
+	
+	if button.NewItem.Value == true then
+		wait(waitPeriod)
+		AnimateShine(button)
+	end
+end
+
+function CheckForNewItems()
+	local NewItemButtons = {}
+	
+	for i,button in pairs (DataMenu.PlayerMenu:GetChildren()) do
+		if button:IsA("ImageButton") then
+			button.UIGradient.Offset = Vector2.new(1.5, 0)
+			if button.NewItem.Value == true then
+				table.insert(NewItemButtons, button)
+			end
+		end
+	end
+	
+	print("Checking for new items 3", #NewItemButtons)
+	
+	coroutine.resume(coroutine.create(function()
+		for button = 1,#NewItemButtons,1 do
+			AnimateShine(NewItemButtons[button])
+		end
+	end))
 end
 
 local function GetStatImage(StatInfo)
@@ -473,7 +525,7 @@ DepositInventory.OnClientEvent:Connect(function()
 end)
 
 
---------------<|Tile Functions|>------------------------------------------------------------------------------------
+--------------<|Tile Functions|>--------------------------------------------------------------------------------------------------------------------
 
 local ItemViewerMenu = DataMenu.ItemViewer
 local function ManageEquipButton(CurrentlyEquipped, Stat, Equip)
@@ -835,6 +887,8 @@ local function InsertNewMaterialPopUp(ItemPopUp, AcquiredLocation, Item, AmountA
 	NewItemPopUp.CircleBorder.BackgroundColor3 = RarityFile.Value
 	NewItemPopUp["Round Edge"].BackgroundColor3 = RarityFile.Value
 	NewItemPopUp["Round Edge"].Inner.BackgroundColor3 = RarityFile.TileColor.Value
+	
+	NewItemPopUp.ZIndex = 50
 	
 	NewItemPopUp:TweenPosition(UDim2.new(0.835, 0,0.8, 0), "Out" , "Quint", .45)
 	CountdownPopUp(ItemPopUp, NewItemPopUp, 5, .2, 0)
@@ -1277,9 +1331,6 @@ end)
 
 local UpdateItemCount = EventsFolder.GUI:WaitForChild("UpdateItemCount")
 UpdateItemCount.OnClientEvent:Connect(function(ItemTypeCount, BagCapacity, BagType, DepositedInventory)
-	print("UPDATING ITEM COUNT:",ItemTypeCount,BagCapacity,BagType,DepositInventory)
-	
-	--print(tostring(BagType) .. ": " .. tostring(ItemTypeCount) .. "/" .. tostring(BagCapacity))
 	
 	if not DepositedInventory then
 		local BagPopUp = GuiElements:FindFirstChild("BagPopUp")
