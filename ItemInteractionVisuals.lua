@@ -104,16 +104,6 @@ ExclaimRegion.OnClientEvent:Connect(function(Region)
 	--end))
 end)
 
---Warn player bag is full event
-local WarnBagCapacity = game.ReplicatedStorage.Events.GUI:WaitForChild("WarnBagCapacity")
-WarnBagCapacity.OnClientEvent:Connect(function()
-	print("Warning bag capacity in MiningVisuals")
-	--ItemLabel.Text = "Bag is Full!"
-	--ItemLabel.Visible = true
-	
-	--Should player be warned that their bag is full or should the bag popup show itself and display the values: 100/100, etc.
-end)
-
 ToSurfaceButton.Activated:Connect(function()
 	if ToSurfaceButton.Visible == true then
 		TeleportButton:FireServer(ToSurfaceButton)
@@ -122,5 +112,4 @@ end)
 
 CheckSelectedItem()
 workspace.CurrentCamera.SelectedItem.Changed:connect(CheckSelectedItem)
-
 
