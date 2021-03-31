@@ -75,6 +75,10 @@ local function DisplayStoreFrontGUI(bool) --Bathroom break. do comments
 	end
 end
 
+local function Round(n)
+	return math.floor(n + 0.5)
+end
+
 StoreFrontGui.Open.Changed:Connect(function(value)
 	local ProxObject = StoreFrontGui.InteractedObject.Value
 	if value == true then
@@ -460,28 +464,79 @@ end
 ---------------------<|NPC Dialogue Functions|>------------------------------------------------------------------------------------------------
 local CharactersPerLine = 15
 local NPCDialogue = StoreFrontMenu["NPC Dialogue"]
+local CurrentNPC
 
-local function ShowNPCDialogue(npcData)
-	NPCDialogue.Visible = false
-	NPCDialogue.Text = ""
-
-	local Message = npcData["Dialogue"]["Dialogue" .. tostring(math.random(1,3))][1]
-	local CharacterCount = string.len(Message)
-	local LineCount = math.floor(CharacterCount/CharactersPerLine)
+local function ContinueNCPDialogue()
 	
-	--NPCDialogue.Position = UDim2.new((0.17 + 0.018)/2, 0, .412 - (0.07 * LineCount)/2, 0)
-	--NPCDialogue.Size = UDim2.new(0.05, 0, .05, 0)
-	wait(.5)
+end
+
+local function CountDownDialogue()
+	NPCDialogue.TimeLeft.Value = 0
+	
+	for i = 1,10,1 do
+		if NPCDialogue.TimeLeft.Value == i - 1 then
+			NPCDialogue.TimeLeft.Value = i
+			if i == 10 then --Close NPC Dialogue
+				NPCDialogue:TweenPosition(UDim2.new(0.178, 0, 0.412, 0), "Out", "Quint", .5)
+				NPCDialogue:TweenSize(UDim2.new(0, 0, 0, 0), "Out", "Quint", .5)
+				wait(.5)
+				
+				NPCDialogue.Visible = false
+				NPCDialogue.Text = ""
+				NPCDialogue.Position = UDim2.new(0.14, 0, 0.412, 0)
+				NPCDialogue.Size = UDim2.new(0.32/4, 0, 0.07)
+			end
+		else
+			break
+		end
+		wait(1)
+	end
+end
+
+local function ShowNPCDialogue(npcData, SetResponse, FirstOpen, MissingFunds)
+
+	local Message
+	if SetResponse then
+		Message = npcData["Dialogue"][SetResponse][1]
+	else
+		Message = npcData["Dialogue"]["Dialogue" .. tostring(math.random(1,3))][1]
+	end
+	
+	if SetResponse ~= "Cannot Afford Item" then
+		if string.find(Message, "ITEM") then
+			Message = string.gsub(Message, "ITEM", StoreFrontMenu.CurrentTile.Value.DisplayName.Text)
+		elseif string.find(Message, "PLAYER") then
+			Message = string.gsub(Message, "PLAYER", tostring(Player))
+		end
+	else
+		local ColoredText = "<font color= rgb(240,40,10)>" .. MissingFunds .. "</font>"
+		print("COLOREDTEXT:",ColoredText)
+		Message = string.gsub(Message, "MISSINGFUNDS", "$" .. MissingFunds)
+		Message = string.gsub(Message, "ITEM", StoreFrontMenu.CurrentTile.Value.DisplayName.Text)
+	end
+	
+	local CharacterCount = string.len(Message)
+	local LineCount = Round(CharacterCount/CharactersPerLine)
+	
+	if FirstOpen then
+		NPCDialogue.Visible = false
+		NPCDialogue.Text = ""
+		NPCDialogue.Position = UDim2.new(0.14, 0, 0.412, 0)
+		NPCDialogue.Size = UDim2.new(0.32/4, 0, 0.07)
+	end
+	
 	NPCDialogue.Visible = true
+	NPCDialogue:TweenPosition(UDim2.new(0.018, 0, 0.412 - (0.07 * LineCount), 0), "Out", "Quint", .5)
+	NPCDialogue:TweenSize(UDim2.new(0.32, 0, 0.07 * LineCount, 0), "Out", "Quint", .5)
 	NPCDialogue.Text = Message
-	NPCDialogue:TweenPosition(UDim2.new(0.018, 0, .412 - (0.07 * LineCount), 0), "Out", "Quint", .8)
-	NPCDialogue:TweenSize(UDim2.new(0.32, 0, 0.07 * LineCount, 0), "Out", "Quint", .8)
 	wait(.8)
 	
-	--Increase typing speed based on length?
+	coroutine.resume(coroutine.create(function()
+		CountDownDialogue()
+	end))
 	
-	--second function parameter is the dialogue option in the npcData table
-	--when running through remaining dialog, do if i>1 to skip initial already done
+	--How to do multiple box dialogue? (ContinueNPCDialog function above?)
+	
 end
 
 ---------------------<|Button-Press Functions|>------------------------------------------------------------------------------------------------
@@ -497,7 +552,7 @@ StoreFrontMenu.PurchaseItemButton.Activated:Connect(function()
 		
 		StoreFrontPurchase:FireServer(NPC, ItemName, ItemType, EquipType)
 		
-		--Slight Notification new item discovered
+		--Shiny effect for new item of type on PlayerItem tiles
 		local PlayerMenu = StoreFrontGui.Parent.DataMenu.DataMenu.PlayerMenu
 		if PlayerMenu:FindFirstChild(ItemType) then
 			local MenuButton = PlayerMenu:FindFirstChild(ItemType)
@@ -506,19 +561,19 @@ StoreFrontMenu.PurchaseItemButton.Activated:Connect(function()
 			end
 		end
 	else
-		print("This Item has already been purchased")
-		
-		
+		ShowNPCDialogue(CurrentNPC, "Item Already Purchased")
 	end
 end)
 
 StoreFrontMenu.ExitStoreButton.Activated:Connect(function()
-	StoreFrontGui.Open.Value = false
-	
+	ShowNPCDialogue(CurrentNPC, "Goodbye")
+	CurrentNPC = nil
+
 	if Camera:FindFirstChild("ShownStoreItem") then
 		Camera.ShownStoreItem:Destroy()
 	end
 	
+	StoreFrontGui.Open.Value = false
 	MoveCameraBackToPlayer()
 	DisplayStoreFrontGUI(false)
 end)
@@ -529,6 +584,7 @@ UpdateStoreFront.OnClientEvent:Connect(function(NPC, npcData, AlreadyPurchased)
 	if StoreFrontGui.Open.Value == false then
 		StoreFrontGui.InteractedObject.Value = NPC
 		StoreFrontGui.Open.Value = true
+		CurrentNPC = npcData
 		
 		MoveCameraToStore(NPC)
 		MoveAllBaseScreenUI:Fire("Hide")
@@ -558,7 +614,7 @@ UpdateStoreFront.OnClientEvent:Connect(function(NPC, npcData, AlreadyPurchased)
 			InsertProductTile(npcData, Items[item], ItemAlreadyPurchased)	
 		end
 		
-		ShowNPCDialogue(npcData)
+		ShowNPCDialogue(npcData, nil, true)
 		
 		--NPC will be used to physical change his face, produce sounds, and play animations while shopping
 	end
@@ -568,13 +624,18 @@ StoreFrontPurchase.OnClientEvent:Connect(function(Item, MissingFunds)
 	if MissingFunds then
 		print(tostring(Player) .. " is missing $" .. tostring(MissingFunds) )
 		
-		
+		ShowNPCDialogue(CurrentNPC, "Cannot Afford Item", nil, tostring(MissingFunds))
 		
 	else
 		print(tostring(Player) .. " has successfully purchased " .. tostring(Item))
+		local Tile = StoreFrontMenu.CurrentTile.Value
+		Tile.ItemCost.Text = "Purchased"
+		Tile.AlreadyPurchased.Value = true
 		
+		StoreFrontMenu.PurchaseItemButton.BackgroundColor3 = Color3.fromRGB(143, 136, 128)
+		StoreFrontMenu.PurchaseItemButton.BorderColor3 = Color3.fromRGB(88, 84, 79)
 		
-		
+		ShowNPCDialogue(CurrentNPC, "Thank You For Purchase")
 	end
 end)
 
