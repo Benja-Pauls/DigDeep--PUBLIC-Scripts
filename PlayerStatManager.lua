@@ -77,7 +77,9 @@ GetBagCount.OnInvoke = function(Player, ItemInfo)
 	local MaxAmount = PlayerStatManager:getEquippedData(Player, ItemInfo.Bag.Value .. "s", "Bags")
 	
 	if Amount and MaxAmount then
-		return Amount,MaxAmount.Value
+		return Amount,MaxAmount.Value,ItemType .. "s"
+	else
+		return Amount,nil,ItemType .. "s"
 	end
 end
 
