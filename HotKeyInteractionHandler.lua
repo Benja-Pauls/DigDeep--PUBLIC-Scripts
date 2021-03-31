@@ -99,6 +99,8 @@ LocalLoadTycoon.OnClientEvent:Connect(function(tycoon)
 		ProxPrompt.ObjectText = button.Object.Value
 		ProxPrompt.Parent = button
 		
+		button.DisplayButtonGUI.Enabled = button.Visible.Value
+		
 		button.Visible.Changed:Connect(function() --Only display ProxPrompt when button is visible
 			button.DisplayButtonGUI.Enabled = button.Visible.Value
 			--Since the ProximityPrompt is placed by the local script, no other player will see other players' prompts
@@ -146,7 +148,7 @@ local function DisplayButtonMaterials(Button)
 					local PrevSlot = CostList:FindFirstChild("Slot" .. tostring(#Slots))
 					local PrevSlotX = PrevSlot.Position.X.Scale
 					local PrevSlotY = PrevSlot.Position.Y.Scale
-					NewSlot.Position = UDim2.new(PrevSlotX, 0, PrevSlotY + 0.08, 0)
+					NewSlot.Position = UDim2.new(PrevSlotX, 0, PrevSlotY + 0.16, 0)
 				end
 				
 				local ImageId = GetStatImage(file, material)
@@ -175,11 +177,10 @@ local function DisplayButtonInformation(Button)
 	local ImprovCharacterCount = string.len(tostring(InfoList.Improvement1.Text))
 	InfoList.Improvement1.Size = UDim2.new(0, ImprovCharacterCount * 9, 0, 45) --Change to use scale values over pixels
 	
-	
 	InfoList.Description.Text = tostring(Button.Description.Value)
 	local DescCharacterCount = string.len(tostring(Button.Description.Value))
 	print(DescCharacterCount)
-	InfoList.Description.Position = UDim2.new(0.146, 0, InfoList.Improvement1.Position.Y.Scale + 0.043, 0)
+	InfoList.Description.Position = UDim2.new(0.146, 0, InfoList.Improvement1.Position.Y.Scale + 0.086, 0)
 	InfoList.Description.Size = UDim2.new(0, 400, 0, DescCharacterCount/1.5)	
 end
 
@@ -195,7 +196,7 @@ local press = false
 local function TycoonPurchaseInteract(Button, player)
 	local TycoonOwner = Button.Parent.Parent.Owner.Value
 	if TycoonOwner == player then
-		if Button.Parent.Parent.PurchasedObjects:FindFirstChild(Button.Object.Value) then
+		if not Button.Parent.Parent.PurchasedObjects:FindFirstChild(Button.Object.Value) then
 			if TycoonPurchaseMenu.Visible == false then
 				DisplayButtonMaterials(Button)
 				DisplayButtonInformation(Button)
