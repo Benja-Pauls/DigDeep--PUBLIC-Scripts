@@ -8,6 +8,18 @@ local OriginalRegions = game.ReplicatedStorage.MineRegions:GetChildren()
 local PlayerData = game:GetService("ServerStorage"):WaitForChild("PlayerData")
 local TeleportButton = game:GetService("ReplicatedStorage").Events.GUI:WaitForChild("TeleportButton")
 
+--Put pickaxe functionality scripts in pickaxes
+local PickServer = script:FindFirstChild("PickServer")
+local PickaxeScript = script:FindFirstChild("Pickaxe Script")
+for i,pickaxe in pairs (game.ReplicatedStorage.Equippable.Tools.Pickaxes:GetChildren()) do
+	local PickServerClone = PickServer:Clone()
+	local PickaxeScriptClone = PickaxeScript:Clone()
+	
+	PickServerClone.Parent = pickaxe
+	PickServerClone.Disabled = false
+	PickaxeScriptClone.Parent = pickaxe
+	PickaxeScriptClone.Disabled = false
+end
 
 local function FillObjectTables(Original, IsA, Table) --Folder Read Setup
 	for index,Object in pairs(Original) do
