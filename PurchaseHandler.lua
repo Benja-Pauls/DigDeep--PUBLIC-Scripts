@@ -142,7 +142,6 @@ end
 PurchaseObject.OnServerEvent:Connect(function(player, target)
 	
 	local AssociatedTycoon = target.Parent.Parent
-	--target = button 
 	
 	if target.CanCollide == true then
 		if player ~= nil then
@@ -231,11 +230,10 @@ StoreFrontInteract.OnServerEvent:Connect(function(player, NPC)
 end)
 
 local StoreFrontPurchase = game.ReplicatedStorage.Events.Utility:WaitForChild("StoreFrontPurchase")
-StoreFrontPurchase.OnServerEvent:Connect(function(player, NPC, ItemName, ItemType, EquipType)
+StoreFrontPurchase.OnServerEvent:Connect(function(player, NPC, ItemName, ItemType, EquipType, Tile)
 	local PlayerDataFile = PlayerData:FindFirstChild(tostring(player.UserId))
 	local Item = game.ReplicatedStorage.Equippable:FindFirstChild(EquipType):FindFirstChild(ItemType):FindFirstChild(ItemName)
-	
-	print(NPC)
+
 	local npcData = AllNPCData[NPC]
 	
 	local ItemPrice 	
@@ -267,10 +265,4 @@ StoreFrontPurchase.OnServerEvent:Connect(function(player, NPC, ItemName, ItemTyp
 		--warn(player, "This player could have interfered with item info")
 	end
 end)
-
---Have an event that is fired by the player's StoreFrontHandler when they finally press purchase button 
---This event will determine if they have funds and will call PlayerStatManager to update player's stats
-
---If they do not have the funds, do not use a remotefunction, instead show visual that warns player
---they do not have the funds to purchase that item (You need $### more to purchase tostring(item))
 
