@@ -247,8 +247,6 @@ function CheckForNewItems()
 		end
 	end
 	
-	print("Checking for new items 3", #NewItemButtons)
-	
 	coroutine.resume(coroutine.create(function()
 		for button = 1,#NewItemButtons,1 do
 			AnimateShine(NewItemButtons[button])
@@ -1133,6 +1131,8 @@ local function ManageEXPPopUp(Stat, Value, AmountAdded)
 end
 
 -------------------------<|Bag Information GUI Functions|>----------------------------------------------------------------------------------------------------------
+local BagPopUp = GuiElements:FindFirstChild("BagPopUp")
+local BagPopUpGui = script.Parent.Parent:WaitForChild("PopUps"):WaitForChild("CurrentBagPopUp")
 
 local function InsertNewBagPopUp(BagPopUp, BagPopUpGui, ItemTypeCount, BagCapacity, BagType, PopUpAlreadyExists)
 	if PopUpAlreadyExists then
@@ -1158,6 +1158,7 @@ local function InsertNewBagPopUp(BagPopUp, BagPopUpGui, ItemTypeCount, BagCapaci
 	
 	CountdownPopUp(BagPopUpGui, NewBagPopUp, 11, 0, 0.082, 0, 0.344)
 end
+
 
 -------------------------------------<|PlayerMenu Functions|>------------------------------------------------------------------------------------------------------------
 
@@ -1331,10 +1332,7 @@ end)
 
 local UpdateItemCount = EventsFolder.GUI:WaitForChild("UpdateItemCount")
 UpdateItemCount.OnClientEvent:Connect(function(ItemTypeCount, BagCapacity, BagType, DepositedInventory)
-	
 	if not DepositedInventory then
-		local BagPopUp = GuiElements:FindFirstChild("BagPopUp")
-		local BagPopUpGui = script.Parent.Parent.PopUps:FindFirstChild("CurrentBagPopUp")
 		if #BagPopUpGui:GetChildren() ~= 0 then --Menu already present
 			if BagPopUpGui.BagPopUp.NamePlate.Text == BagType then
 				local CurrentBagPopUp = BagPopUpGui:FindFirstChild("BagPopUp")
@@ -1348,24 +1346,26 @@ UpdateItemCount.OnClientEvent:Connect(function(ItemTypeCount, BagCapacity, BagTy
 		end
 	end
 	
-	local ItemType
-	if string.find(BagType, "Bag") then
-		ItemType = string.gsub(BagType, "Bags", "") .. "s"
-	else
-		ItemType = BagType
-		BagType = string.gsub(ItemType, "s", "") .. "Bags"
-	end
-	
-	--Update bag counts in inventory
-	local InventoryMenu = DataMenu.InventoryMenu:FindFirstChild(ItemType .. "Menu")
-	
-	InventoryMenu:SetAttribute("ItemCount", ItemTypeCount)
-	InventoryMenu:SetAttribute("BagCapacity", BagCapacity)
+	if ItemTypeCount ~= BagCapacity or BagCapacity ~= 0 then
+		local ItemType
+		if string.find(BagType, "Bag") then
+			ItemType = string.gsub(BagType, "Bags", "") .. "s"
+		else
+			ItemType = BagType
+			BagType = string.gsub(ItemType, "s", "") .. "Bags"
+		end
+		
+		--Update bag counts in inventory
+		local InventoryMenu = DataMenu.InventoryMenu:FindFirstChild(ItemType .. "Menu")
+		
+		InventoryMenu:SetAttribute("ItemCount", ItemTypeCount)
+		InventoryMenu:SetAttribute("BagCapacity", BagCapacity)
 
-	--Update bag counts in playermenu
-	local BagButton = DataMenu.PlayerMenu:FindFirstChild(BagType)
-	if BagButton and InventoryMenu then
-		UpdateBagButtonBar(BagButton, InventoryMenu)
+		--Update bag counts in playermenu
+		local BagButton = DataMenu.PlayerMenu:FindFirstChild(BagType)
+		if BagButton and InventoryMenu then
+			UpdateBagButtonBar(BagButton, InventoryMenu)
+		end
 	end
 end)
 
