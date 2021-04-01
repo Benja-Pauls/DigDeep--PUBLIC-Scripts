@@ -467,6 +467,9 @@ local NPCDialogue = StoreFrontMenu["NPC Dialogue"]
 local CurrentNPC
 
 local function ContinueNCPDialogue()
+	--3/31/20: Used today to learn Python and prep April goals
+	--Tomorrow, use this to write multiple dialogue "pages" so NPC can have longer conversations with player
+	
 	
 end
 
