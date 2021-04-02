@@ -569,20 +569,21 @@ local function InsertItemViewerInfo(Type, Stat, StatInfo, Value, AcquiredLocatio
 		ItemViewerMenu.ItemType.Value = ""
 
 		ItemViewerMenu.ItemAmount.Text = "You Have: " .. tostring(Value)
-		ItemViewerMenu.ItemWorth.Text = "Worth: " .. tostring(StatInfo.CurrencyValue.Value)
+		ItemViewerMenu.ItemWorth.Text = "Worth: " .. "$" .. tostring(StatInfo.CurrencyValue.Value)
 		ItemViewerMenu.ItemDescription.Text = StatInfo["GUI Info"].Description.Value
-
+		
+		ItemViewerMenu.ItemWorth.Visible = true
 		ItemViewerMenu.EquipButton.Visible = false
 
 	elseif Type == "Bags" then
 		ItemViewerMenu.ItemDescription.Text = StatInfo["GUI Info"].Description.Value
 		ItemViewerMenu.ItemAmount.Text = AcquiredLocation
-		ItemViewerMenu.ItemWorth.Text = Type
 		ItemViewerMenu.ItemRarity.Text = ""
 		
 		ItemViewerMenu.EquipType.Value = Type
 		ItemViewerMenu.ItemType.Value = AcquiredLocation
 		
+		ItemViewerMenu.ItemWorth.Visible = false
 		ItemViewerMenu.EquipButton.Visible = true
 		ManageEquipButton(DataMenu.PlayerMenu:FindFirstChild(AcquiredLocation).CurrentlyEquipped.Value, Stat)	
 	elseif Type == "Experience" then
@@ -591,17 +592,21 @@ local function InsertItemViewerInfo(Type, Stat, StatInfo, Value, AcquiredLocatio
 		
 		ItemViewerMenu.EquipType.Value = ""
 		ItemViewerMenu.ItemType.Value = ""
-
+		
+		ItemViewerMenu.ItemWorth.Visible = true
 		ItemViewerMenu.EquipButton.Visible = false
 	else --Non-Bag Player Items
 		local ItemStats = Value
+		local ShownStatName = string.gsub(tostring(ItemStats["Stats"][1][1]), AcquiredLocation, "") .. ": "
 		ItemViewerMenu.ItemDescription.Text = StatInfo["GUI Info"].Description.Value
-		ItemViewerMenu.ItemAmount.Text = "Efficiency: " .. tostring(ItemStats["Stats"][1][2])
+		ItemViewerMenu.ItemAmount.Text = ShownStatName .. tostring(ItemStats["Stats"][1][2])
+		
 		ItemViewerMenu.ItemRarity.Text = ""
 		
 		ItemViewerMenu.EquipType.Value = Type
 		ItemViewerMenu.ItemType.Value = AcquiredLocation
 		
+		ItemViewerMenu.ItemWorth.Visible = false
 		ItemViewerMenu.EquipButton.Visible = true
 		ManageEquipButton(DataMenu.PlayerMenu:FindFirstChild(AcquiredLocation).CurrentlyEquipped.Value, Stat)
 	end
@@ -1155,6 +1160,12 @@ local function InsertNewBagPopUp(BagPopUp, BagPopUpGui, ItemTypeCount, BagCapaci
 	NamePlate.Text = BagType
 	NamePlate:TweenPosition(UDim2.new(0.076,0,-0.344,0), "Out", "Quint", .3)
 	wait(.3)
+	
+	if BagCapacity == 0 or ItemTypeCount == BagCapacity then
+		NewBagPopUp.Amounts.TextColor3 = Color3.fromRGB(203, 12, 15)
+	else
+		NewBagPopUp.Amounts.TextColor3 = Color3.fromRGB(0, 0, 0)
+	end
 	
 	CountdownPopUp(BagPopUpGui, NewBagPopUp, 11, 0, 0.082, 0, 0.344)
 end
