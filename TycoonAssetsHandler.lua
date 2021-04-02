@@ -1,6 +1,5 @@
 --(ModuleScript)
 --Handles the assets in each player tycoon (drop collectors, drops, purchaseable objects)
-
 ------------------------------------------------------------------------------------------------------------------------------------------------
 local Objects = {}
 
@@ -10,7 +9,7 @@ local Tycoon = script.Parent
 local TeamColor = Tycoon:WaitForChild("TeamColor").Value
 local CollectibleCash = Tycoon.CurrencyToCollect
 local Debris = game:GetService('Debris')
-local SoundEffects = require(game.ServerScriptService.Utility.SoundEffects)
+local SoundEffects = require(game.ReplicatedStorage:WaitForChild("SoundEffects"))
 local PurchaseObject = game:GetService("ReplicatedStorage").Events.Utility.PurchaseObject
 local PlayerStatManager = require(game.ServerScriptService:FindFirstChild("PlayerStatManager"))
 local PlayerData = game.ServerStorage:FindFirstChild("PlayerData")
@@ -69,11 +68,13 @@ coroutine.resume(coroutine.create(function()
 		local loop = true
 		while loop == true do --checks for amount of givers, way to make more efficient?
 			wait(1)
-			--attempt to index nil with WaitForChild
+
 			for i,v in pairs(Givers:GetChildren()) do
 				debounce = false
+				
 				v.Touched:connect(function(hit)
 					local player = game.Players:GetPlayerFromCharacter(hit.Parent)
+					
 					if player ~= nil then
 						if Tycoon.Owner.Value == player then
 							if hit.Parent:FindFirstChild("Humanoid") then
@@ -81,6 +82,7 @@ coroutine.resume(coroutine.create(function()
 									if debounce == false then
 										debounce = true 
 										v.BrickColor = BrickColor.new("Bright red")
+										
 										local PlayerDataFile = PlayerData:FindFirstChild(tostring(player.UserId))
 										local PlayerCash = PlayerDataFile:FindFirstChild("Currencies"):FindFirstChild("UniversalCurrencies"):FindFirstChild("Currency")
 										if PlayerCash ~= nil then 
