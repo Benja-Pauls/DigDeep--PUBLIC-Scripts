@@ -3,7 +3,7 @@
 -----------------------------------------------------------------------------------------------------------------------------------------------------------
 local PlayerStatManager = require(game.ServerScriptService:WaitForChild("PlayerStatManager"))
 local Utility = require(game.ServerScriptService:WaitForChild("Utility"))
-local SoundEffects = require(game.ServerScriptService.Utility:WaitForChild("SoundEffects"))
+local SoundEffects = require(game.ReplicatedStorage:WaitForChild("SoundEffects"))
 local PlayerData = game.ServerStorage:WaitForChild("PlayerData")
 
 local EventsFolder = game.ReplicatedStorage.Events
