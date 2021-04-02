@@ -20,7 +20,7 @@ local NPCData = {
 			
 			--["Happy"] = #######,
 			--["Sad"] = ######,
-			--["Neutral"] = ######
+			["Neutral"] = 6467449877
 		},
 		
 		["Face"] = {
@@ -30,21 +30,16 @@ local NPCData = {
 		},
 		
 		["Dialogue"] = { --Does [index] need to be present?
-			["Dialogue1"] = {"Hello, I am Test Man!", "Happy"},
-			["Dialogue2"] = {"Hi There PLAYER!", "Neutral"},
-			["Dialogue3"] = {"How can I help you?", "Neutral"},
-			["Goodbye"] = {"Goodbye!", "Neutral"},
+			["Starters"] = {"Hello, I am Test Man!", "Hi There PLAYER!", "How can I help you?"},
+			["Goodbyes"] = {"Goodbye!", "See you later PLAYER"},
 			["Cannot Afford Item"] = {"Sorry, you need MISSINGFUNDS more to purchase the ITEM"},
-			["Item Already Purchased"] = {"You already have the ITEM!", "Neutral"},
-			["Thank You For Purchase"] = {"Thank you for your purchase!", "Happy"}
+			["Item Already Purchased"] = {"You already have the ITEM!"},
+			["Thank You For Purchase"] = {"Thank you for your purchase!"},
+			["Dialogue1"] = {"Hi There PLAYER! How are you doing today?", "I'm Test Man, welcome to my shop!", "I set up shop not too long ago"}
 			
 			
-			--Does Lua use Table[-1]? Could have final index be goodbye statement string
+			--Player responses with shop keeper? (label as conversations?)
 		},
-		
-		["Conversations"] = {
-			["Dialogue1"] = {"Hi There", "I'm Test Man"}
-		}, 
 		
 		["Items"] = { --Sort by type (Rarity = ItemType)
 			{RS.Equippable.Bags.OreBags["Beginner Ore Bag"], 4},
