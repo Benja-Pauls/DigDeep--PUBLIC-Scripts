@@ -63,12 +63,12 @@ local function StartMining()
 						MouseDown = true
 						Tool.IsMining.Value = true
 
-						local TimeToMine = (ItemInfo.Strength.Value / FindStatValue(ToolStats["Stats"], "PickaxeEfficiency"))
+						local TimeToMine = (ItemInfo.Strength.Value / FindStatValue(ToolStats["Stats"], "PickaxesEfficiency"))
 						local WaitTime = 0
 						
 						Debounce = false --Prevents mining to happen again until this block has been mined
 						coroutine.resume(coroutine.create(function()
-							wait(TimeToMine + FindStatValue(ToolStats["Stats"], "PickaxeDelay"))
+							wait(TimeToMine + FindStatValue(ToolStats["Stats"], "PickaxesDelay"))
 							Debounce = true
 						end))
 						
@@ -88,7 +88,7 @@ local function StartMining()
 							Target.Reflectance = 0
 						end
 
-						wait(FindStatValue(ToolStats["Stats"], "PickaxeDelay"))
+						wait(FindStatValue(ToolStats["Stats"], "PickaxesDelay"))
 						Debounce = true
 						if MouseDown then --keep mining if mouse is still down
 							StartMining()
