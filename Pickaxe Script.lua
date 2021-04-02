@@ -27,7 +27,7 @@ end
 
 local function SelectOre(Ore)
 	if Ore:IsDescendantOf(workspace.Mine) then--and (Ore.Position - script.Parent.Parent.UpperTorso.Position).Magnitude <= 7 then
-		if (Ore.Position - HRP.Position).magnitude <= FindStatValue(ToolStats["Stats"], "PickaxeReach") * 6.3 then
+		if (Ore.Position - HRP.Position).magnitude <= FindStatValue(ToolStats["Stats"], "PickaxesReach") * 6.3 then
 			
 			--CONTROLS WHAT MOUSE HAS SELECTED
 			if Ore.Name == "Target" then
