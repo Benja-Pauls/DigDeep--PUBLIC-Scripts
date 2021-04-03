@@ -542,7 +542,7 @@ function UpdateToolbar(Player, ItemType, NewlyEquippedItem)
 	end
 end
 
---------------------------------<|Stat-Handling Events|>------------------------------------------------------------------------------------------
+-----------------------------<|Stat-Handling Remote Events/Functions|>------------------------------------------------------------------------------------------
 
 local SellItem = EventsFolder.Utility:WaitForChild("SellItem")
 SellItem.OnServerEvent:Connect(function(Player, Menu, item, Percentage)--, Amount)
@@ -590,6 +590,15 @@ DepositInventory.OnServerEvent:Connect(function(Player)
 
 	return true
 end)
+
+local GetItemCountSum = EventsFolder.Utility:WaitForChild("GetItemCountSum")
+function GetItemCountSum.OnServerInvoke(Player, StatName)
+	local PlayerUserId = Player.UserId
+	local InventoryAmount = sessionData[PlayerUserId][StatName]
+	local StorageAmount = sessionData[PlayerUserId]["TycoonStorage" .. StatName]
+	
+	return InventoryAmount + StorageAmount
+end
 
 --Fires when player equips new item (must be saved for when they join back)
 UpdateEquippedItem.OnServerEvent:Connect(function(Player, EquipType, ItemType, NewlyEquippedItem)
