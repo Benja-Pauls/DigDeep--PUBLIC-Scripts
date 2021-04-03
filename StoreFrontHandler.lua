@@ -500,10 +500,6 @@ local function CountDownDialogue()
 	end
 end
 
-local function ContinueNCPDialogue()
-	
-end
-
 local function CheckToReplaceText(String, Find, Replace)
 	if string.find(String, Find) then
 		String = string.gsub(String, Find, Replace)
