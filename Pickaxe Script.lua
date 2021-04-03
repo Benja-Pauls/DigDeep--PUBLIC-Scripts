@@ -9,7 +9,13 @@ local ItemInteractionGui = Player.PlayerGui:WaitForChild("ItemInteractionGui")
 local ItemLabel = ItemInteractionGui:WaitForChild("ItemLabel")
 local RegionLabel = ItemInteractionGui:WaitForChild("RegionLabel") 
 local CoordLabel = ItemInteractionGui:WaitForChild("CoordLabel")
+local ToSurfaceButton = ItemInteractionGui:WaitForChild("ToSurfaceButton")
 local OriginalSelectOreColor = ItemInteractionGui:WaitForChild("SelectedOre").Color3
+
+ItemLabel.Visible = false
+RegionLabel.Visible = false
+CoordLabel.Visible = false
+ToSurfaceButton.Visible = false
 
 local Tool = script.Parent
 local ToolStats = require(Tool:WaitForChild(tostring(Tool) .. "Stats"))
@@ -117,6 +123,8 @@ end
 --end)
 --workspace.CurrentCamera.SelectedItem.Mining.Value = script.Parent.IsMining.Value
 
+local TeleportButton = game.ReplicatedStorage.Events.GUI:WaitForChild("TeleportButton")
+
 script.Parent.Equipped:Connect(function(Mouse)
 	Equipped = true
 	Mouse = game.Players.LocalPlayer:GetMouse()
@@ -147,16 +155,22 @@ script.Parent.Equipped:Connect(function(Mouse)
 				end
 			end
 		end
-		local CompactPos = Vector3.new(0 + HRP.Position.X/7,(HRP.Position.Y - -5)/(-7),HRP.Position.Z/7)
-		if HRP.Position.Y - -5/(-7) <= -1 then
+		
+		local CompactPos = Vector3.new(0 + HRP.Position.X/7,(HRP.Position.Y - -5)/(-7),HRP.Position.Z/7)	
+		--local RawPosition = game.Players.LocalPlayer.Character.LowerTorso.Position
+		
+		if -math.floor(CompactPos.Y) < 1 then
+			ToSurfaceButton.Visible = true
 			CoordLabel.Visible = true
-			CoordLabel.Text = tostring(PositionKey(math.floor(CompactPos.X),-math.floor(CompactPos.Y),math.floor(CompactPos.Z)))
+			CoordLabel.Text = tostring(math.floor(CompactPos.Y)) .. " Meters"
 		else
+			ToSurfaceButton.Visible = false
 			CoordLabel.Visible = false
 		end
 	end
 	
-	--Unselect()
+	ToSurfaceButton.Visible = false
+	CoordLabel.Visible = false
 end)
 
 local Mouse = game.Players.LocalPlayer:GetMouse()
@@ -178,5 +192,11 @@ script.Parent.Unequipped:Connect(function()
 	CoordLabel.Visible = false
 	Deactivate()
 	Unselect()
+end)
+
+ToSurfaceButton.Activated:Connect(function()
+	if ToSurfaceButton.Visible == true then
+		TeleportButton:FireServer(ToSurfaceButton)
+	end
 end)
 
