@@ -63,51 +63,28 @@ end
 
 ------------------------<|GUI Management|>-----------------------------------------------------------------------------------------------------------------------------
 
-local ToSurfaceButton = ItemInteractionGui:WaitForChild("ToSurfaceButton")
-local TeleportButton = game:GetService("ReplicatedStorage").Events.GUI:WaitForChild("TeleportButton")
-
-coroutine.resume(coroutine.create(function()
-	while wait(0.1) do
-		--Maybe change this to a function call to be more efficient? no more while loops, unless in function?
-		local RawPosition = game.Players.LocalPlayer.Character.LowerTorso.Position
-		local CompactPos = Vector3.new(0 + RawPosition.X/7,(RawPosition.Y - -5)/(-7),RawPosition.Z/7)
-		if math.floor(CompactPos.X) > 0 and math.floor(CompactPos.Y) < 1 and math.floor(CompactPos.Z) > 0 then
-			ToSurfaceButton.Visible = true
-		else
-			ToSurfaceButton.Visible = false
-		end
-	end
-end))
-
 local RegionNotifier = ItemInteractionGui.RegionNotifier
 local ExclaimRegion = game.ReplicatedStorage.Events.GUI:WaitForChild("ExclaimRegion")
 ExclaimRegion.OnClientEvent:Connect(function(Region)
-	--coroutine.resume(coroutine.create(function()
 	repeat wait() until ItemInteractionGui.RegionLabel.Text == tostring(Region)
-		RegionNotifier.TextColor3 = Region["GUI Info"].GUIColor.Value
-		RegionNotifier.Text = tostring(Region)
-		RegionNotifier.TextTransparency = 1
-		RegionNotifier.Visible = true
+	
+	RegionNotifier.TextColor3 = Region["GUI Info"].GUIColor.Value
+	RegionNotifier.Text = tostring(Region)
+	RegionNotifier.TextTransparency = 1
+	RegionNotifier.Visible = true
 		
-		for t = 1,20,1 do --fade in
-			wait(.02)
-			RegionNotifier.TextTransparency = RegionNotifier.TextTransparency - 0.05
-		end
-		wait(3)
-		for t = 1,20,1 do --fade out
-			wait(.02)
-			RegionNotifier.TextTransparency = RegionNotifier.TextTransparency + 0.05
-		end
-		
-		RegionNotifier.TextTransparency = 1
-		RegionNotifier.Visible = false
-	--end))
-end)
-
-ToSurfaceButton.Activated:Connect(function()
-	if ToSurfaceButton.Visible == true then
-		TeleportButton:FireServer(ToSurfaceButton)
+	for t = 1,20,1 do --fade in
+		wait(.02)
+		RegionNotifier.TextTransparency = RegionNotifier.TextTransparency - 0.05
 	end
+	wait(3)
+	for t = 1,20,1 do --fade out
+		wait(.02)
+		RegionNotifier.TextTransparency = RegionNotifier.TextTransparency + 0.05
+	end
+		
+	RegionNotifier.TextTransparency = 1
+	RegionNotifier.Visible = false
 end)
 
 CheckSelectedItem()
