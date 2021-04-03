@@ -2,6 +2,7 @@
 --GUI handler for purchases around the tycoon (still refered to as buttons)
 ------------------------------------------------------------------------------------------------------------------------------------------------
 game.StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList,false)
+script.Parent:WaitForChild("TycoonPurchaseMenu").Visible = false
 wait(1)
 
 local Player = game.Players.LocalPlayer
@@ -11,7 +12,8 @@ local ProximityPromptService = game:GetService("ProximityPromptService")
 
 local HumanoidRootPart = game.Workspace.Players:WaitForChild(tostring(Player)):WaitForChild("HumanoidRootPart")
 local Mouse = Player:GetMouse()
-local PurchaseObject = game.ReplicatedStorage.Events.Utility.PurchaseObject
+local PurchaseObject = game.ReplicatedStorage.Events.Utility:WaitForChild("PurchaseObject")
+local GetItemCountSum = game.ReplicatedStorage.Events.Utility:WaitForChild("GetItemCountSum")
 local LocalLoadTycoon = game.ReplicatedStorage.Events.Tycoon:WaitForChild("LocalLoadTycoon")
 local UIS = game:GetService("UserInputService")
 
@@ -70,21 +72,35 @@ local function GetProxPromptGui()
 	return screenGui
 end
 
-local function GetStatImage(File, Stat)
+local function GetItemInfo(StatName)
+	for i,location in pairs (game.ReplicatedStorage.ItemLocations:GetChildren()) do
+		for i,item in pairs (location:GetChildren()) do
+			if StatName == tostring(item) then
+				return item
+			end
+		end
+	end
+end
+
+local function GetStatImage(Stat)
 	local ImageId
-	
-	print(File, Stat)
-	
 	if Stat then
 		for i,location in pairs (game.ReplicatedStorage.ItemLocations:GetChildren()) do
 			if location:FindFirstChild(tostring(Stat)) and ImageId == nil then
 				ImageId = location:FindFirstChild(tostring(Stat))["GUI Info"].StatImage.Value
 			end
 		end
-	--else
-		--ImageId = game.ReplicatedStorage:FindFirstChild(tostring(File)):FindFirstChild(Stat)["GUI Info"].StatImage.Value
 	end
+	
 	return ImageId
+end
+
+local function ManageCostTextColor(Price, PlayerAmount, Slot)
+	if PlayerAmount >= Price then
+		Slot.CostAmount.TextColor3 = Color3.fromRGB(91, 170, 111)
+	else
+		Slot.CostAmount.TextColor3 = Color3.fromRGB(170, 0, 0)
+	end
 end
 
 ----------------------------------------------<|Tycoon-Related Functions|>-----------------------------------------------------------------------------------
@@ -120,42 +136,89 @@ local function CheckUpgrade(OriginalObject, InfoList)
 end
 
 local CostList = TycoonPurchaseMenu.CostsList
+local PageManager = TycoonPurchaseMenu:WaitForChild("PageManager")
 local function DisplayButtonMaterials(Button)
-	local Slots
+	local OriginalPage = game.ReplicatedStorage.GuiElements:FindFirstChild("CostsListPage")
 	local OriginalSlot = game.ReplicatedStorage.GuiElements:FindFirstChild("TycoonPurchaseMaterialSlot")
 	
-	local MoneySlot = OriginalSlot:Clone()
-	MoneySlot.Parent = CostList
-	MoneySlot.Position = UDim2.new(0.064, 0, 0.02, 0)
-	MoneySlot.Amount.Text = tostring(Button.Price.Value)
-	MoneySlot.DisplayName.Text = "Cash"
-	MoneySlot.Picture.Image = "rbxgameasset://Images/Money1"
-	Slots = CostList:GetChildren()	
-	MoneySlot.Name = "Slot" .. tostring(#Slots)
+	local NewPage = OriginalPage:Clone()
+	NewPage.Parent = CostList
+	NewPage.Position = UDim2.new(0, 0, 0, 0)
+	NewPage.Name = "Page1"
 	
-	if Button:FindFirstChild("MaterialPrice") ~= nil then
+	local MoneySlot = OriginalSlot:Clone() --Display cash cost even if 0
+	MoneySlot.Parent = NewPage
+	MoneySlot.Position = UDim2.new(0.064, 0, 0.032, 0)
+	MoneySlot.CostAmount.Text = tostring(Button.Price.Value)
+	MoneySlot.DisplayName.Text = "Cash"
+	MoneySlot.Picture.Image = "rbxgameasset://Images/Money1"	
+	MoneySlot.Name = "Slot1"
+	
+	MoneySlot.Picture.BackgroundColor3 = game.ReplicatedStorage.GuiElements.RarityColors.Uncommon.TileColor.Value
+	MoneySlot.Picture.BorderColor3 = game.ReplicatedStorage.GuiElements.RarityColors.Uncommon.Value
+	MoneySlot.BorderColor3 = game.ReplicatedStorage.GuiElements.ItemTypeColors.Cash.Value
+	
+	local PlayerCurrency = Player.PlayerGui.DataMenu.DataMenu.PlayerMenu["Default Menu"].PlayerInfo.PlayerCash.Text
+	MoneySlot.PlayerSumAmount.Text = PlayerCurrency
+	
+	ManageCostTextColor(Button.Price.Value, tonumber(PlayerCurrency), MoneySlot)
+	
+	if Button:FindFirstChild("MaterialPrice") then
 		local MaterialFiles = Button.MaterialPrice:GetChildren()
 		for i,file in pairs(MaterialFiles) do
 			for i,material in pairs (file:GetChildren()) do
-				Slots = CostList:GetChildren()
+				local Pages = CostList:GetChildren()
+				local CurrentPage = CostList:FindFirstChild("Page" .. tostring(#Pages))
+				
+				local ParentPage
+				if #CurrentPage:GetChildren() == 4 then
+					ParentPage = OriginalPage:Clone()
+					ParentPage.Parent = CostList
+					ParentPage.Name = "Page" .. tostring(#Pages + 1)
+					ParentPage.Visible = false
+				else
+					ParentPage = CurrentPage
+				end
+
+				local Slots = ParentPage:GetChildren()
 				local NewSlot = OriginalSlot:Clone()
-				NewSlot.Parent = CostList
+				
+				NewSlot.Parent = ParentPage
 				NewSlot.Name = "Slot" .. tostring(#Slots + 1)
 				NewSlot.DisplayName.Text = tostring(material)
-				NewSlot.Amount.Text = tostring(material.Value)
+				NewSlot.CostAmount.Text = tostring(material.Value)
 				
-				if CostList:FindFirstChild("Slot" .. tostring(#Slots)) then
-					local PrevSlot = CostList:FindFirstChild("Slot" .. tostring(#Slots))
+				if ParentPage:FindFirstChild("Slot" .. tostring(#Slots)) then
+					local PrevSlot = CurrentPage:FindFirstChild("Slot" .. tostring(#Slots))
 					local PrevSlotX = PrevSlot.Position.X.Scale
 					local PrevSlotY = PrevSlot.Position.Y.Scale
-					NewSlot.Position = UDim2.new(PrevSlotX, 0, PrevSlotY + 0.16, 0)
+					NewSlot.Position = UDim2.new(PrevSlotX, 0, PrevSlotY + 0.242, 0)
+				else
+					NewSlot.Position = UDim2.new(0.064, 0, 0.032, 0)
 				end
 				
-				local ImageId = GetStatImage(file, material)
+				local ImageId = GetStatImage(material)
 				NewSlot.Picture.Image = ImageId
+
+				local ItemInfo = GetItemInfo(tostring(material))
+				local Rarity = ItemInfo["GUI Info"].RarityName.Value
+				
+				NewSlot.Picture.BackgroundColor3 = game.ReplicatedStorage.GuiElements.RarityColors:FindFirstChild(Rarity).TileColor.Value
+				NewSlot.Picture.BorderColor3 = game.ReplicatedStorage.GuiElements.RarityColors:FindFirstChild(Rarity).Value
+				NewSlot.BorderColor3 = game.ReplicatedStorage.GuiElements.ItemTypeColors:FindFirstChild(tostring(file)).Value
+
+				local PlayerItemCount = GetItemCountSum:InvokeServer(tostring(material))
+				NewSlot.PlayerSumAmount.Text = tostring(PlayerItemCount)
+
+				ManageCostTextColor(material.Value, PlayerItemCount, NewSlot)
 			end
 		end
-	end	
+	end
+	
+	TycoonPurchaseMenu.PageManager.CurrentPage.Value = 1
+	
+	local Pages = CostList:GetChildren()
+	PageManager.PageDisplay.PageNumbers.Text = tostring(PageManager.CurrentPage.Value) .. "/" .. tostring(#Pages)
 end
 
 local function DisplayButtonInformation(Button)
@@ -236,6 +299,63 @@ local function TycoonPurchaseInteract(Button, player)
 		end
 	end
 end
+
+local function ManagePageChange(Check, PageNumber1, PageNumber2, CTPos, CPPos, Bounce)
+	local CurrentPage = CostList:FindFirstChild("Page" .. tostring(PageManager.CurrentPage.Value))
+	local Pages = CostList:GetChildren()
+
+	if #Pages > 1 then	
+		local ChangeToPageNumber
+		if PageManager.CurrentPage.Value == Check then
+			ChangeToPageNumber = PageNumber1
+		else
+			ChangeToPageNumber = PageNumber2
+		end
+		
+		PageManager.PageDisplay.PageNumbers.Text = tostring(ChangeToPageNumber) .. "/" .. tostring(#Pages)
+		
+		local ChangeToPage = CostList:FindFirstChild("Page" .. tostring(ChangeToPageNumber))
+		ChangeToPage.Position = UDim2.new(CTPos, 0, 0, 0)
+		ChangeToPage.Visible = true
+		CurrentPage:TweenPosition(UDim2.new(CPPos, 0, 0, 0), "Out", "Quint", .5)
+		ChangeToPage:TweenPosition(UDim2.new(0, 0, 0, 0), "Out", "Quint", .5)
+
+		wait(.5)
+		CurrentPage.Visible = false
+		PageManager.CurrentPage.Value = ChangeToPageNumber
+	else
+		--Bounce effect
+		CurrentPage:TweenPosition(UDim2.new(Bounce,0,0,0), "Out", "Quint", .1)
+		wait(.1)
+		CurrentPage:TweenPosition(UDim2.new(0,0,0,0), "Out" , "Bounce", .25)
+		wait(.25)
+	end
+end
+
+local NextPage = PageManager.NextPage
+local PreviousPage = PageManager.PreviousPage
+
+NextPage.Activated:Connect(function()
+	NextPage.Active = false
+	PreviousPage.Active = false
+	
+	local Pages = CostList:GetChildren()
+	ManagePageChange(#Pages, 1, PageManager.CurrentPage.Value + 1, 1, -1, 0.03)
+	
+	NextPage.Active = true
+	PreviousPage.Active = true
+end)
+
+PreviousPage.Activated:Connect(function()
+	NextPage.Active = false
+	PreviousPage.Active = false
+	
+	local Pages = CostList:GetChildren()
+	ManagePageChange(1, #Pages, PageManager.CurrentPage.Value - 1, -1, 1, -0.03)
+	
+	NextPage.Active = true
+	PreviousPage.Active = true
+end)
 
 ---------------------------------------<|High-Traffic Functions|>--------------------------------------------------------------------------------------------
 
