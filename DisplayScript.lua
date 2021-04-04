@@ -10,12 +10,11 @@ local Showing = false
 local debounce = false
 
 Interact.Activated:Connect(function()
-	print("1")
 	if debounce == false then
 		debounce = true
 		if Showing == false then --Pull out $ Display
 			Interact.Text = ">>"
-			Display:TweenPosition(UDim2.new(0.735, 0, 0.04, 0), "Out", "Bounce", 1)
+			Display:TweenPosition(UDim2.new(0.835, 0, 0.04, 0), "Out", "Bounce", 1)
 			wait(1) --are the waits required?
 			Showing = true
 		else --Hide Display
@@ -49,10 +48,4 @@ MoveAllBaseScreenUI.Event:Connect(function(ChangeTo)
 	end
 	wait(.8)
 end)
-
-
-
-
-
-
 
