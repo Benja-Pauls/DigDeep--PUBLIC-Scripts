@@ -13,15 +13,15 @@ local player = game.Players.LocalPlayer
 
 ClaimTycoonGui.OnClientEvent:Connect(function(tycoon)
 	if debounce == false then
-		local TycoonBuyAsk = script.Parent
-		TycoonBuyAsk.PopUp.Visible = true
-		local Yes = TycoonBuyAsk.PopUp.Yes
-		local No = TycoonBuyAsk.PopUp.No
+		local TycoonPurchaseGui = script.Parent
+		TycoonPurchaseGui.PopUp.Visible = true
+		local Yes = TycoonPurchaseGui.PopUp.Yes
+		local No = TycoonPurchaseGui.PopUp.No
 		open = true
 		Yes.Activated:Connect(function()
 			if open == true then
 				debounce = true
-				TycoonBuyAsk.PopUp.Visible = false
+				TycoonPurchaseGui.PopUp.Visible = false
 				open = false
 				ClaimTycoon:FireServer(tycoon)
 				wait(3) 
@@ -31,7 +31,7 @@ ClaimTycoonGui.OnClientEvent:Connect(function(tycoon)
 		No.Activated:Connect(function()
 			if open == true then
 				debounce = true
-				TycoonBuyAsk.PopUp.Visible = false
+				TycoonPurchaseGui.PopUp.Visible = false
 				open = false
 				CancelClaimTycoon:FireServer(tycoon)
 				wait(2)
@@ -62,3 +62,4 @@ LocalLoadTycoon.OnClientEvent:Connect(function(tycoon)
 		print("tycoon.Owner.Value == nil")
 	end
 end)
+
