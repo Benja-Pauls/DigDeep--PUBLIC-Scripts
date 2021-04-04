@@ -677,7 +677,7 @@ StoreFrontPurchase.OnClientEvent:Connect(function(Item, MissingFunds)
 		coroutine.resume(coroutine.create(function()
 			ShowNPCDialogue(CurrentNPC, "Cannot Afford Item", 1, tostring(MissingFunds))
 		end))
-
+		
 		--SoundEffects:PlaySound(StoreFrontGui.InteractedObject.Value, SadVoice, math.sqrt(2))
 	else
 		print(tostring(Player) .. " has successfully purchased " .. tostring(Item))
@@ -691,7 +691,9 @@ StoreFrontPurchase.OnClientEvent:Connect(function(Item, MissingFunds)
 		coroutine.resume(coroutine.create(function()
 			ShowNPCDialogue(CurrentNPC, "Thank You For Purchase", 1)
 		end))
-	
+		
+		
+		
 		--SoundEffects:PlaySound(StoreFrontGui.InteractedObject.Value, HappyVoice, math.sqrt(2))
 	end
 end)
