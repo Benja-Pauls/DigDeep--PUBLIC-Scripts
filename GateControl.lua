@@ -45,11 +45,10 @@ script.Parent.Head.Touched:connect(function(hit)
 						print(tostring(player) .. " has re-loaded " .. tostring(tycoon))
 
 						script.Parent.Parent.Parent.Owner.Value = player 
-						print("1")
 						ownstycoon.Value = script.Parent.Parent.Parent
-						print("2")
 						LocalLoadTycoon:FireClient(player,tycoon)
 						wait(2) --allow savehandler to load buttons (stats == false)
+						
 						script.Parent.Name = player.Name.."'s Facility" 
 						script.Parent.Head.Transparency = 0.7 
 						script.Parent.Head.CanCollide = false 
@@ -66,8 +65,7 @@ script.Parent.Head.Touched:connect(function(hit)
 	end
 end)
 
-local claimed
-claimed = false
+local claimed = false
 --Never Bought Tycoon Before
 ClaimTycoon.OnServerEvent:Connect(function(player,tycoon)
 	if script.Parent.Parent.Parent == tycoon and claimed == false then
@@ -83,7 +81,6 @@ ClaimTycoon.OnServerEvent:Connect(function(player,tycoon)
 				ownstycoon.Value = tycoon
 		
 				PlayerCash.Value = PlayerCash.Value - tycoon.Entrance.Price.Value
-				--If you put Utility require for UpdateMoneyDisplay, will exploiters have access?
 				local MoneyDisplay = game.Players:FindFirstChild(tostring(player)).PlayerGui.MoneyDisplay
 				MoneyDisplay.Display.Frame.Money.Text = "$" .. tostring(PlayerCash.Value)
 		
@@ -98,7 +95,7 @@ ClaimTycoon.OnServerEvent:Connect(function(player,tycoon)
 				PlayerStatManager:ChangeStat(player, tycoon.Entrance.Name, true)
 			else
 				print("Two players tried to claim a tycoon at once")
-				local TycoonOwnerShipWarning = player.PlayerGui.TycoonBuyAsk.OwnershipWarning
+				local TycoonOwnerShipWarning = player.PlayerGui.TycoonPurchaseGui.OwnershipWarning
 				TycoonOwnerShipWarning.Visible = true
 				wait(2)
 				TycoonOwnerShipWarning.Visible = false
