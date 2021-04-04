@@ -9,6 +9,7 @@ local DefaultWalkSpeed = Character.Humanoid.WalkSpeed
 local DefaultJumpPower = Character.Humanoid.JumpPower
 
 local PlayerGui = Player:WaitForChild("PlayerGui")
+local StarterGui = game:GetService("StarterGui")
 
 local LocalLoadTycoon = game.ReplicatedStorage.Events.Tycoon.LocalLoadTycoon
 local MoveAllBaseScreenUI = game.ReplicatedStorage.Events.GUI.MoveAllBaseScreenUI
@@ -18,14 +19,50 @@ local HumanoidRootPart = game.Workspace.Players:WaitForChild(tostring(Player)):W
 
 local CurrentStorage
 
-local TycoonStorageGui = script.Parent
-local ComputerScreen = TycoonStorageGui.ComputerScreen
-local SelectionMenu = TycoonStorageGui.ComputerScreen.SelectionMenu
-local BackButton = ComputerScreen.Taskbar.BackButton
+local TycoonComputerGui = script.Parent
+local ComputerScreen = TycoonComputerGui.ComputerScreen
+
+local StorageMenu = ComputerScreen.StorageMenu
+local SelectionMenu = StorageMenu.SelectionMenu
+local ItemsPreview = StorageMenu.ItemsPreview
+local DataTabSelect = StorageMenu.DataTabSelect
+--local BackButton = ComputerScreen.Taskbar.BackButton
 local FadeOut = ComputerScreen.FadeOut
 
+local BeepSound = script.Parent.Beep
+
+ComputerScreen.Visible = false
+
+---------------<Utility>-----------------------------------------------------------------------------------------------------------------------------
+
+local function FindItemInfo(statName, bagType)
+	local ItemInformation
+	for i,location in pairs (game.ReplicatedStorage.ItemLocations:GetChildren()) do
+		if location:FindFirstChild(statName) then
+			if string.gsub(location:FindFirstChild(statName).Bag.Value, "Bag", "") .. "s" == bagType then
+				ItemInformation = location:FindFirstChild(statName)
+			end
+		end
+	end	
+	return ItemInformation
+end
+
+local function DataTabButtonActiveState(State)
+	for i,button in pairs (DataTabSelect:GetChildren()) do
+		if button:IsA("ImageButton") then
+			button.Active = State
+			button.Selectable = State
+		end
+	end
+end
+
+--Hide player toolbar 
+
+--------------------------<|Set Up Menu Functions|>-------------------------------------------------------------------------------------------------------------
 
 local function StartUpComputer()
+	StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false)
+	
 	ComputerScreen.Visible = true
 	FadeOut.BackgroundTransparency = 0
 	wait(.7)
@@ -38,10 +75,27 @@ local function ShutDownComputer()
 		wait(.02)
 		FadeOut.BackgroundTransparency = FadeOut.BackgroundTransparency - 0.05
 	end
-	TycoonStorageGui.ComputerScreen.Visible = false
+	TycoonComputerGui.ComputerScreen.Visible = false
 	SelectionMenu.Visible = false
+	StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, true)
 	
 	ShutDownCutscene()
+end
+
+local function PrepareMenuVisibility()
+	for i,menu in pairs(ComputerScreen:GetChildren()) do
+		if menu:IsA("Frame") then
+			menu.Visible = false
+
+			if tostring(menu) == "StorageMenu" or tostring(menu) == "ResearchMenu" then
+				for i,itemMenu in pairs (menu:GetChildren()) do
+					if itemMenu:IsA("Frame") then
+						itemMenu.Visible = false
+					end
+				end
+			end
+		end
+	end
 end
 
 function SetUpCredentials()
@@ -58,16 +112,13 @@ function SetUpCredentials()
 	local PlayerProfilePicture = Players:GetUserThumbnailAsync(PlayerUserId, thumbType, thumbSize)
 	PlayerThumbnail.Image = PlayerProfilePicture
 	
-	ComputerScreen.DataTabSelect.Visible = false
-	ComputerScreen.SelectionMenu.Visible = false
-	ComputerScreen.ItemsPreview.Visible = false
-	ComputerScreen.Taskbar.Visible = false
+	PrepareMenuVisibility()
+	
 	ComputerScreen.CredentialsScreen.Visible = true
 	
 	ComputerScreen.CredentialsScreen.Username.Text = tostring(Player)
 	
 	--Fade-in login screen
-	
 	local PasswordInput = ComputerScreen.CredentialsScreen.Password
 	local KeyboardSound = script.Parent.KeyboardClick
 	for i = 1,4,1 do
@@ -87,8 +138,8 @@ function SetUpCredentials()
 	end
 	wait(1)
 	
-	ComputerScreen.DataTabSelect.Visible = true
-	BackButton.Position = UDim2.new(BackButton.Position.X.Scale, 0, 1, 0)
+	StorageMenu.DataTabSelect.Visible = true
+	--BackButton.Position = UDim2.new(BackButton.Position.X.Scale, 0, 1, 0)
 	ComputerScreen.CredentialsScreen:TweenPosition(UDim2.new(-0.017,0,-1.3,0), "Out", "Quint", .5)
 	ComputerScreen.Taskbar.Visible = true
 	wait(.5)
@@ -96,19 +147,64 @@ function SetUpCredentials()
 	ComputerScreen.CredentialsScreen.Visible = false
 	ComputerScreen.CredentialsScreen.Position = UDim2.new(-0.017,0,-0.031,0)
 	
-	OpenDataTabScreen()
+	ComputerScreen.MenuSelect.Visible = true
+	ReadyDataTabScreen()
 end
 
-local ItemsPreview = TycoonStorageGui.ComputerScreen.ItemsPreview
-local DataTabSelect = TycoonStorageGui.ComputerScreen.DataTabSelect
-function OpenDataTabScreen() --Problem, with every time it opens: repeats button press
+----------------------------<|General Button Functions|>-----------------------------------------------------------------------------------------------
+
+ComputerScreen.Taskbar.UtilityButtons.ShutDown.Activated:Connect(function()
+	SelectionMenu.CurrentSelection.Value = ""
+	SelectionMenu.CurrentRarity.Value = ""
+	SelectionMenu.PreviousSelection.Value = ""
+
+	--Move "back button" back
+	ShutDownComputer()
+end)
+
+
+
+----------------------------<|Tycoon Storage GUI Functions|>---------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+ComputerScreen.MenuSelect.StorageMenuButton.Activated:Connect(function()
+	StorageMenu.Visible = true
+	BeepSound:Play()
+	ComputerScreen.MenuSelect.Visible = false
+end)
+
+------------------------<|Storage Utility|>------------------------------------------------
+
+local function MoveOtherRaritiesDown(RarityMenu)
+	local Menu = RarityMenu.Parent
+	local DisplayOrderValue = RarityMenu.DisplayOrder.Value
+	for i,rarity in pairs (Menu:GetChildren()) do
+		if rarity:IsA("TextLabel") then
+			if rarity.DisplayOrder.Value > DisplayOrderValue then
+				rarity.Position = UDim2.new(RarityMenu.Position.X.Scale, 0, rarity.Position.Y.Scale + .09, 0)
+			end
+		end
+	end
+end
+
+local ButtonsActive = false
+function ReadyDataTabScreen()
 	local stringTime = "%I:%M %p"
 	local timestamp = os.time()
 	ComputerScreen.Taskbar.Time.Text = tostring(os.date(stringTime, timestamp))
 	
-	local BeepSound = script.Parent.Beep
 	SelectionMenu.Visible = false
 	ItemsPreview.Visible = false
+	
+	if ButtonsActive then
+		ButtonsActive = true
+		
+		PrepareDataTabButtons()
+		--PrepareResearchButtons()
+	end
+end
+
+function PrepareDataTabButtons()
 	for i,button in pairs (DataTabSelect:GetChildren()) do
 		if button:IsA("ImageButton") then --and tostring(button) ~= "ShutDown" then
 			button.Activated:Connect(function()
@@ -120,23 +216,18 @@ function OpenDataTabScreen() --Problem, with every time it opens: repeats button
 			end)
 		end
 	end
-end
-
-ComputerScreen.Taskbar.ShutDown.Activated:Connect(function()
-	SelectionMenu.CurrentSelection.Value = ""
-	SelectionMenu.CurrentRarity.Value = ""
-	SelectionMenu.PreviousSelection.Value = ""
 	
-	--Move "back button" back
-	ShutDownComputer()
-end)
+	--When preparing research tiles, have the tile activation correlate every time a new one is added, instead of
+	--a function repeated when the menu is opened
+end
 
 function OpenAffiliatedItemPreview(button)
 	local MenuName = button.Name
-	if TycoonStorageGui.ComputerScreen.ItemsPreview:FindFirstChild(MenuName) then
-		TycoonStorageGui.ComputerScreen.SelectionMenu.Visible = true
-		local ItemsPreview = TycoonStorageGui.ComputerScreen.ItemsPreview
+	
+	if StorageMenu.ItemsPreview:FindFirstChild(MenuName) then
+		StorageMenu.SelectionMenu.Visible = true
 		ItemsPreview.Visible = true
+		
 		for i,menu in pairs (ItemsPreview:GetChildren()) do
 			if menu:IsA("Frame") then
 				if tostring(menu) == MenuName then
@@ -146,39 +237,12 @@ function OpenAffiliatedItemPreview(button)
 				end
 			end
 		end
-		BackButton:TweenPosition(UDim2.new(BackButton.Position.X.Scale, 0, 0, 0), "Out", "Quint", 0.5)
-		ReadySelectionMenu(TycoonStorageGui.ComputerScreen.ItemsPreview:FindFirstChild(MenuName))
+		--BackButton:TweenPosition(UDim2.new(BackButton.Position.X.Scale, 0, 0, 0), "Out", "Quint", 0.5)
+		ReadySelectionMenu(StorageMenu.ItemsPreview:FindFirstChild(MenuName))
 	end
 end
 
----------------<Utility>-----------------------------------------------------------------------------------------------------------------------------
-
-local function FindItemInfo(statName, bagType)
-	local ItemInformation
-	for i,location in pairs (game.ReplicatedStorage.ItemLocations:GetChildren()) do
-		if location:FindFirstChild(statName) then
-			if string.gsub(location:FindFirstChild(statName).Bag.Value, "Bag", "") .. "s" == bagType then
-				ItemInformation = location:FindFirstChild(statName)
-			end
-		end
-	end	
-	return ItemInformation
-end
-
-local function DataTabButtonActiveState(State)
-	for i,button in pairs (DataTabSelect:GetChildren()) do
-		if button:IsA("ImageButton") then
-			if State == true then
-				button.Active = true
-			else
-				button.Active = false
-			end
-		end
-	end
-end
-
-
---------------<Current Selection Info>----------------------------------------------------------------------------------------------------------------
+------------------------<|Current Selection Info|>-------------------------------------
 
 local function UpdateSelectionInfo(RarityMenu, tile)
 	local Menu = RarityMenu.Parent
@@ -218,6 +282,7 @@ UpdateTycoonStorage.OnClientEvent:Connect(function(File, Stat, StatValue, Amount
 		local RarityName = game.ReplicatedStorage.ItemLocations:FindFirstChild(tostring(AcquiredLocation)):FindFirstChild(tostring(Stat)):FindFirstChild("GUI Info").RarityName.Value
 		ItemsPreview:FindFirstChild(tostring(File)):FindFirstChild(RarityName):WaitForChild(tostring(Stat)).Discovered.Value = StatValue
 	end
+	
 	wait() --Allow ItemPreview tiles to be made
 	for i,rarity in pairs (ItemsPreview:FindFirstChild(File):GetChildren()) do
 		if rarity:IsA("TextLabel") then
@@ -241,8 +306,8 @@ function UpdateTileLock (tile, StatValue)
 	end
 end
 
+--------------------------<|Tile Selection Buttons|>------------------------------------
 
---------------<Tile Selection Buttons>---------------------------------------------------------------------
 local CurrentMenu
 function ReadySelectionMenu(Menu)
 	CurrentMenu = Menu
@@ -300,7 +365,7 @@ SelectionMenu.PrevRarity.Activated:Connect(function()
 	MoveToTile(CurrentMenu, nil, "Previous")
 end)
 
-local SellMenu = ComputerScreen.SelectionMenu.SellMenu
+local SellMenu = StorageMenu.SelectionMenu.SellMenu
 local SellItem = game.ReplicatedStorage.Events.Utility.SellItem
 
 SelectionMenu.SelectItem.Activated:Connect(function()
@@ -322,15 +387,19 @@ SelectionMenu.SelectItem.Activated:Connect(function()
 	end
 end)
 
+--[[ (Removed for now to rework GUI)
 BackButton.Activated:Connect(function()
 	DataTabButtonActiveState(false)
 	ItemsPreview.Visible = false
 	SelectionMenu.Visible = false
 	SelectionMenu.SellMenu.Visible = false
+	
 	BackButton:TweenPosition(UDim2.new(BackButton.Position.X.Scale, 0, 1, 0), "Out", "Quint", 0.5)
 	wait(.5)
+	
 	DataTabButtonActiveState(true)
 end)
+]]
 
 local function ChangeToTileInMenu(Menu, CurrentSelection, SeekedSlotValue)
 	if SeekedSlotValue == 0 then
@@ -451,8 +520,7 @@ function MoveToTile(Menu, amount, RaritySkip)
 	end
 end
 
-
---------------<Slider Interaction>-----------------------------------------------------------------------------
+---------------------------<|SellMenu Slider Interaction|>---------------------------------------
 
 local sliderBar = SellMenu.SliderBar
 local slider = sliderBar:WaitForChild("Slider")
@@ -524,8 +592,7 @@ SellMenu.ExitButton.Activated:Connect(function()
 	SellMenu.Visible = false
 end)
 
-
---------------<Tile Management>--------------------------------------------------------------------------------
+---------------------------<|Storage Menu Tile Management|>-------------------------------------------
 
 local AmountPerRow = 10
 function SetupTycoonStorageTiles(button)
@@ -544,6 +611,7 @@ function SetupTycoonStorageTiles(button)
 				end
 			end
 		end	
+		
 		local TycoonStorageTile = game.ReplicatedStorage.GuiElements:FindFirstChild("TycoonStorageTile")
 		
 		if ItemDataFolder then
@@ -562,6 +630,7 @@ function SetupTycoonStorageTiles(button)
 							end
 						end
 					end
+					
 					local NewTile = TycoonStorageTile:Clone()
 					NewTile.SlotNumber.Value = RarityChildCount + 1
 					NewTile.Name = tostring(item)
@@ -598,21 +667,16 @@ function SetupTycoonStorageTiles(button)
 	end
 end
 
-function MoveOtherRaritiesDown(RarityMenu)
-	local Menu = RarityMenu.Parent
-	local DisplayOrderValue = RarityMenu.DisplayOrder.Value
-	for i,rarity in pairs (Menu:GetChildren()) do
-		if rarity:IsA("TextLabel") then
-			if rarity.DisplayOrder.Value > DisplayOrderValue then
-				rarity.Position = UDim2.new(RarityMenu.Position.X.Scale, 0, rarity.Position.Y.Scale + .09, 0)
-			end
-		end
-	end
-end
+-------------------------------------------<|Tycoon Research GUI Functions|>-----------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
--------------------------------------------------<|Storage Depositing|>---------------------------------------------------------------------------------------------------------------
+
+
+
+-------------------------------------------------<|Interaction Functions|>-------------------------------------------------------------------------------------------------------
 
 local DepositInteract = game.ReplicatedStorage.Events.HotKeyInteract:WaitForChild("DepositInteract")
+local StorageInteract = game.ReplicatedStorage.Events.HotKeyInteract:WaitForChild("StorageInteract")
 local DepositInventory = game.ReplicatedStorage.Events.Utility:WaitForChild("DepositInventory")
 
 local repeatDebounce = false
@@ -637,12 +701,12 @@ local function HandleDepositInventory()
 		wait(finished)
 
 		--notify player that they deposited their inventory
-		TycoonStorageGui.DepositNotify.Visible = true
-		TycoonStorageGui.DepositNotify:TweenPosition(UDim2.new(0.358,0,0.85,0), "Out", "Quint", 1)
+		TycoonComputerGui.DepositNotify.Visible = true
+		TycoonComputerGui.DepositNotify:TweenPosition(UDim2.new(0.358,0,0.85,0), "Out", "Quint", 1)
 		wait(1)
-		TycoonStorageGui.DepositNotify:TweenPosition(UDim2.new(0.358,0,1.1,0), "In", "Quint", 1.5)
+		TycoonComputerGui.DepositNotify:TweenPosition(UDim2.new(0.358,0,1.1,0), "In", "Quint", 1.5)
 		wait(3)
-		TycoonStorageGui.DepositNotify.Visible = false
+		TycoonComputerGui.DepositNotify.Visible = false
 
 		repeatDebounce = false	
 	end	
@@ -650,56 +714,9 @@ end
 
 DepositInteract.Event:Connect(HandleDepositInventory)
 
--------------<E Interaction>---------------------------------------------------------------------------
-local UIS = game:GetService("UserInputService")
-local Mouse = Player:GetMouse()
-
---[[
-function EInteract()
-	local debounce2 = false
-	UIS.InputBegan:Connect(function(input)
-		if debounce2 == true and not ComputerIsOn then
-			if input.KeyCode == Enum.KeyCode.E then
-				if Mouse.Target and (Mouse.Target.Position - HumanoidRootPart.Position).magnitude < 20 then
-					if Mouse.Target:IsDescendantOf(CurrentStorage) then
-						ComputerIsOn = true
-						CurrentStorage.InteractedModel:WaitForChild("E GUI").Enabled = false
-						local InteractedModel = Mouse.Target
-						StartUpCutscene()
-						CurrentStorage.InteractedModel:WaitForChild("E GUI").Enabled = true
-					end
-				end
-			end
-		end
-	end)
-
-	--Graphical
-	while true do
-		wait(.1)
-		
-		if debounce2 == true and CurrentStorage.InteractedModel:WaitForChild("E GUI").Enabled == true then
-			CurrentStorage.InteractedModel:WaitForChild("E GUI").Enabled = false
-			debounce2 = false
-		end
-		
-		if Mouse.Target then
-			if (Mouse.Target.Position - HumanoidRootPart.Position).magnitude < 20 then
-				if Mouse.Target:IsDescendantOf(workspace.Storages.Computers) then
-					for i,storage in pairs (workspace.Storages.Computers:GetChildren()) do
-						if Mouse.Target:IsDescendantOf(storage) then
-							CurrentStorage = storage
-							if debounce2 == false then
-								debounce2 = true
-								CurrentStorage.InteractedModel:WaitForChild("E GUI").Enabled = true
-							end
-						end
-					end
-				end
-			end
-		end
-	end
-end
-]]
+StorageInteract.Event:Connect(function(promptObject)
+	StartUpCutscene(promptObject)
+end)
 
 ---------------------------------------------------<|Cutscene Manager|>-----------------------------------------------------------------------------------------------------------
 local Camera = game.Workspace.CurrentCamera
@@ -707,14 +724,11 @@ local Camera = game.Workspace.CurrentCamera
 function MoveCamera(StartPart, EndPart, Duration, EasingStyle, EasingDirection)
 	Camera.CameraType = Enum.CameraType.Scriptable
 	Camera.CFrame = StartPart.CFrame
+	
 	local Cutscene = TweenService:Create(Camera, TweenInfo.new(Duration, EasingStyle, EasingDirection), {CFrame = EndPart.CFrame})
 	Cutscene:Play()
 	wait(Duration)
 end
-
---CUTSCENE VIDEO TUTORIAL:
---https://www.bing.com/videos/search?q=roblox+2020+cutscene+editor&&view=detail&mid=BEC7BCBD747366BD75C8BEC7BCBD747366BD75C8&rvsmid=E7AB6D6F25AAAC254ED0E7AB6D6F25AAAC254ED0&FORM=VDRVRV
-local StorageInteract = game.ReplicatedStorage.Events.HotKeyInteract:WaitForChild("StorageInteract")
 
 function StartUpCutscene(promptObject)
 	Character.Humanoid.WalkSpeed = 0
@@ -731,8 +745,6 @@ function StartUpCutscene(promptObject)
 	StartUpComputer()
 end
 
-StorageInteract.Event:Connect(StartUpCutscene)
-
 function ShutDownCutscene()
 	local CutsceneFolder = CurrentStorage:FindFirstChild("CutsceneCameras")
 	MoveCamera(CutsceneFolder.Camera2, CutsceneFolder.Camera1, .7, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
@@ -747,9 +759,11 @@ function ShutDownCutscene()
 	Character.Humanoid.JumpPower = DefaultJumpPower
 end
 
-for i,button in pairs (TycoonStorageGui.ComputerScreen.DataTabSelect:GetChildren()) do
+for i,button in pairs (StorageMenu.DataTabSelect:GetChildren()) do
 	if button:IsA("ImageButton") then
 		SetupTycoonStorageTiles(button)
 	end
 end
+
+PrepareMenuVisibility()
 
