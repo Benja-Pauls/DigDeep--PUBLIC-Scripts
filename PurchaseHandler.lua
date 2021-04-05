@@ -130,7 +130,7 @@ function Purchase(Table, Tycoon, Material)
 	end
 	
 	if item.Visible.Value == true then	
-		local ButtonParts = item.Model:GetChildren()
+		local ButtonParts = item.ButtonModel:GetChildren()
 		item.Visible.Value = false
 		for bp = 1,#ButtonParts,1 do
 			ButtonParts[bp].Transparency = 1
