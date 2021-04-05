@@ -4,23 +4,12 @@
 local Players = game:GetService("Players")
 local Player = Players.LocalPlayer
 
-local Character = game.Workspace.Players:WaitForChild(tostring(Player))
-local DefaultWalkSpeed = Character.Humanoid.WalkSpeed
-local DefaultJumpPower = Character.Humanoid.JumpPower
-
 local PlayerGui = Player:WaitForChild("PlayerGui")
 local StarterGui = game:GetService("StarterGui")
 
-local LocalLoadTycoon = game.ReplicatedStorage.Events.Tycoon.LocalLoadTycoon
-local MoveAllBaseScreenUI = game.ReplicatedStorage.Events.GUI.MoveAllBaseScreenUI
-local ComputerIsOn = false
-local TweenService = game:GetService("TweenService")
-local HumanoidRootPart = game.Workspace.Players:WaitForChild(tostring(Player)):WaitForChild("HumanoidRootPart")
-
-local CurrentStorage
-
 local TycoonComputerGui = script.Parent
 local ComputerScreen = TycoonComputerGui.ComputerScreen
+local MenuSelect = ComputerScreen.MenuSelect
 
 local StorageMenu = ComputerScreen.StorageMenu
 local SelectionMenu = StorageMenu.SelectionMenu
@@ -29,9 +18,22 @@ local DataTabSelect = StorageMenu.DataTabSelect
 --local BackButton = ComputerScreen.Taskbar.BackButton
 local FadeOut = ComputerScreen.FadeOut
 
-local BeepSound = script.Parent.Beep
-
 ComputerScreen.Visible = false
+
+local Character = game.Workspace.Players:WaitForChild(tostring(Player))
+local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+local DefaultWalkSpeed = Character.Humanoid.WalkSpeed
+local DefaultJumpPower = Character.Humanoid.JumpPower
+
+local LocalLoadTycoon = game.ReplicatedStorage.Events.Tycoon:WaitForChild("LocalLoadTycoon")
+local MoveAllBaseScreenUI = game.ReplicatedStorage.Events.GUI:WaitForChild("MoveAllBaseScreenUI")
+
+local ComputerIsOn = false
+local CurrentStorage
+
+local BeepSound = script.Parent.Beep
+local KeyboardClickSound = script.Parent.KeyboardClick
+local StartUpSound = script.Parent.StartUp
 
 ---------------<Utility>-----------------------------------------------------------------------------------------------------------------------------
 
@@ -56,13 +58,9 @@ local function DataTabButtonActiveState(State)
 	end
 end
 
---Hide player toolbar 
-
 --------------------------<|Set Up Menu Functions|>-------------------------------------------------------------------------------------------------------------
 
 local function StartUpComputer()
-	StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false)
-	
 	ComputerScreen.Visible = true
 	FadeOut.BackgroundTransparency = 0
 	wait(.7)
@@ -75,16 +73,14 @@ local function ShutDownComputer()
 		wait(.02)
 		FadeOut.BackgroundTransparency = FadeOut.BackgroundTransparency - 0.05
 	end
-	TycoonComputerGui.ComputerScreen.Visible = false
-	SelectionMenu.Visible = false
-	StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, true)
+	ComputerScreen.Visible = false
 	
 	ShutDownCutscene()
 end
 
-local function PrepareMenuVisibility()
+local function PrepareAllMenuVisibility()
 	for i,menu in pairs(ComputerScreen:GetChildren()) do
-		if menu:IsA("Frame") then
+		if menu:IsA("Frame") and tostring(menu) ~= "FadeOut" then
 			menu.Visible = false
 
 			if tostring(menu) == "StorageMenu" or tostring(menu) == "ResearchMenu" then
@@ -94,17 +90,19 @@ local function PrepareMenuVisibility()
 					end
 				end
 			end
+		elseif tostring(menu) == "FadeOut" then
+			menu.Visible = true
 		end
 	end
 end
 
 function SetUpCredentials()
-	--Get playeruser id from interacter
 	local PlayerUserId = Player.UserId
 	
 	local stringTime = "%I:%M %p"
 	local timestamp = os.time()
 	ComputerScreen.CredentialsScreen.Time.Text = tostring(os.date(stringTime, timestamp))
+	ComputerScreen.CredentialsScreen.Username.Text = tostring(Player)
 	
 	local PlayerThumbnail = ComputerScreen.CredentialsScreen.PlayerThumbnail
 	local thumbType = Enum.ThumbnailType.HeadShot
@@ -112,15 +110,12 @@ function SetUpCredentials()
 	local PlayerProfilePicture = Players:GetUserThumbnailAsync(PlayerUserId, thumbType, thumbSize)
 	PlayerThumbnail.Image = PlayerProfilePicture
 	
-	PrepareMenuVisibility()
+	PrepareAllMenuVisibility()
 	
 	ComputerScreen.CredentialsScreen.Visible = true
 	
-	ComputerScreen.CredentialsScreen.Username.Text = tostring(Player)
-	
 	--Fade-in login screen
 	local PasswordInput = ComputerScreen.CredentialsScreen.Password
-	local KeyboardSound = script.Parent.KeyboardClick
 	for i = 1,4,1 do
 		PasswordInput:FindFirstChild(tostring(i)).Visible = false
 	end
@@ -128,27 +123,33 @@ function SetUpCredentials()
 		wait(.02)
 		FadeOut.BackgroundTransparency = FadeOut.BackgroundTransparency + 0.05
 	end
+	
+	--Login sound effects
 	for i = 1,4,1 do
 		wait(1/i-.1)
-		if KeyboardSound.Playing then
-			KeyboardSound:Stop()
+		if KeyboardClickSound.Playing then
+			KeyboardClickSound:Stop()
 		end
-		KeyboardSound:Play()
+		KeyboardClickSound:Play()
 		PasswordInput:FindFirstChild(tostring(i)).Visible = true
 	end
 	wait(1)
-	
-	StorageMenu.DataTabSelect.Visible = true
+
 	--BackButton.Position = UDim2.new(BackButton.Position.X.Scale, 0, 1, 0)
-	ComputerScreen.CredentialsScreen:TweenPosition(UDim2.new(-0.017,0,-1.3,0), "Out", "Quint", .5)
+	ComputerScreen.CredentialsScreen:TweenPosition(UDim2.new(0,0,-1.3,0), "Out", "Quint", .5)
 	ComputerScreen.Taskbar.Visible = true
+	ComputerScreen.Taskbar.Time.Text = tostring(os.date(stringTime, timestamp))
+	
+	MenuSelect.Visible = true
 	wait(.5)
 	
 	ComputerScreen.CredentialsScreen.Visible = false
-	ComputerScreen.CredentialsScreen.Position = UDim2.new(-0.017,0,-0.031,0)
+	ComputerScreen.CredentialsScreen.Position = UDim2.new(0,0,0,0)
 	
-	ComputerScreen.MenuSelect.Visible = true
-	ReadyDataTabScreen()
+	--Data tab buttons are not dynamic, but research tiles will be...
+	--To be efficient, use different functions to update: UpdateResearchers, UpdateCurrentResearch, UpdateAvailableResearch
+	--and UpdatePreviousResearch
+	--Call ^these^ on first load and every time player gets something new in each category
 end
 
 ----------------------------<|General Button Functions|>-----------------------------------------------------------------------------------------------
@@ -162,15 +163,37 @@ ComputerScreen.Taskbar.UtilityButtons.ShutDown.Activated:Connect(function()
 	ShutDownComputer()
 end)
 
-
+ComputerScreen.Taskbar.UtilityButtons.Home.Activated:Connect(function()
+	PrepareAllMenuVisibility()
+	MenuSelect.Visible = true
+	ComputerScreen.Taskbar.Visible = true
+end)
 
 ----------------------------<|Tycoon Storage GUI Functions|>---------------------------------------------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-ComputerScreen.MenuSelect.StorageMenuButton.Activated:Connect(function()
+--Prepare DataTab Buttons
+for i,button in pairs (DataTabSelect:GetChildren()) do
+	if button:IsA("ImageButton") then
+		button.Activated:Connect(function()
+			if DataTabSelect.Visible == true and SelectionMenu.Visible == false then
+				BeepSound:Play()
+				OpenAffiliatedItemPreview(button)
+				DataTabSelect.Visible = false
+			end
+		end)
+	end
+end
+
+MenuSelect.StorageMenuButton.Activated:Connect(function()
 	StorageMenu.Visible = true
+	DataTabSelect.Visible = true
+	
+	SelectionMenu.Visible = false
+	ItemsPreview.Visible = false
+	MenuSelect.Visible = false
+	
 	BeepSound:Play()
-	ComputerScreen.MenuSelect.Visible = false
 end)
 
 ------------------------<|Storage Utility|>------------------------------------------------
@@ -187,45 +210,12 @@ local function MoveOtherRaritiesDown(RarityMenu)
 	end
 end
 
-local ButtonsActive = false
-function ReadyDataTabScreen()
-	local stringTime = "%I:%M %p"
-	local timestamp = os.time()
-	ComputerScreen.Taskbar.Time.Text = tostring(os.date(stringTime, timestamp))
-	
-	SelectionMenu.Visible = false
-	ItemsPreview.Visible = false
-	
-	if ButtonsActive then
-		ButtonsActive = true
-		
-		PrepareDataTabButtons()
-		--PrepareResearchButtons()
-	end
-end
-
-function PrepareDataTabButtons()
-	for i,button in pairs (DataTabSelect:GetChildren()) do
-		if button:IsA("ImageButton") then --and tostring(button) ~= "ShutDown" then
-			button.Activated:Connect(function()
-				if DataTabSelect.Visible == true and SelectionMenu.Visible == false then
-					BeepSound:Play()
-					OpenAffiliatedItemPreview(button)
-					DataTabSelect.Visible = false
-				end
-			end)
-		end
-	end
-	
-	--When preparing research tiles, have the tile activation correlate every time a new one is added, instead of
-	--a function repeated when the menu is opened
-end
-
 function OpenAffiliatedItemPreview(button)
 	local MenuName = button.Name
 	
 	if StorageMenu.ItemsPreview:FindFirstChild(MenuName) then
-		StorageMenu.SelectionMenu.Visible = true
+		SelectionMenu.Visible = true
+		SelectionMenu.SellMenu.Visible = false
 		ItemsPreview.Visible = true
 		
 		for i,menu in pairs (ItemsPreview:GetChildren()) do
@@ -256,7 +246,7 @@ local function UpdateSelectionInfo(RarityMenu, tile)
 	
 	if Discovered == true then
 		SelectionMenu.Picture.Image = ItemInformation["GUI Info"].StatImage.Value
-		SelectionMenu:FindFirstChild("Name").Text = tostring(tile)
+		SelectionMenu.DisplayName.Text = tostring(tile)
 		SelectionMenu.Amount.Text = tostring(tile.AmountInStorage.Value)
 		SelectionMenu.UnitPrice.Text = tostring(ItemInformation.CurrencyValue.Value)
 		tile.AmountInStorage.Changed:Connect(function()
@@ -265,7 +255,7 @@ local function UpdateSelectionInfo(RarityMenu, tile)
 			end
 		end)
 	else
-		SelectionMenu:FindFirstChild("Name").Text = "[Locked]"
+		SelectionMenu.DisplayName.Text = "[Locked]"
 		SelectionMenu.Picture.Image = "rbxgameasset://Images/lock2"
 		SelectionMenu.Hint.Text = "Hint: " .. tostring(ItemInformation["GUI Info"])
 	end
@@ -306,7 +296,7 @@ function UpdateTileLock (tile, StatValue)
 	end
 end
 
---------------------------<|Tile Selection Buttons|>------------------------------------
+------------------------<|Tile Selection Buttons|>------------------------------------
 
 local CurrentMenu
 function ReadySelectionMenu(Menu)
@@ -316,21 +306,18 @@ function ReadySelectionMenu(Menu)
 		if item:IsA("Frame") then
 			if item.SlotNumber.Value == 1 then --Select first common item (for first menu open, tiles never switched yet)
 				local Discovered = item.Discovered.Value
-				
 				local ItemInformation = FindItemInfo(tostring(item), tostring(Menu))
 				
 				item.BorderSizePixel = 4
 				item.BorderColor3 = Color3.fromRGB(0, 170, 255)
 				SelectionMenu.CurrentSelection.Value = tostring(item)
 				SelectionMenu.CurrentRarity.Value = "Common"
-				
-				SelectionMenu:FindFirstChild("Name").Visible = Discovered
 				SelectionMenu.UnitPrice.Visible = Discovered
 				SelectionMenu.Hint.Visible = not Discovered
 				
 				if ItemInformation then
 					if Discovered then
-						SelectionMenu:FindFirstChild("Name").Text = tostring(item)
+						SelectionMenu.DisplayName.Text = tostring(item)
 						SelectionMenu.Picture.Image = ItemInformation["GUI Info"].StatImage.Value
 						SelectionMenu.UnitPrice.Text = tostring(ItemInformation.CurrencyValue.Value)
 						
@@ -339,8 +326,8 @@ function ReadySelectionMenu(Menu)
 							wait()
 						end
 					else
-						SelectionMenu:FindFirstChild("Name").Text = "[LOCKED]"
-						SelectionMenu.Picture.Image = "rbxgameasset://Images/lock1"
+						SelectionMenu.DisplayName.Text = "[Locked]"
+						SelectionMenu.Picture.Image = "rbxgameasset://Images/lock2"
 						SelectionMenu.Hint.Text = "Hint: " .. tostring(ItemInformation["GUI Info"])
 					end
 				end
@@ -365,25 +352,50 @@ SelectionMenu.PrevRarity.Activated:Connect(function()
 	MoveToTile(CurrentMenu, nil, "Previous")
 end)
 
-local SellMenu = StorageMenu.SelectionMenu.SellMenu
+local SellMenu = SelectionMenu.SellMenu
 local SellItem = game.ReplicatedStorage.Events.Utility.SellItem
+
+local function DisplaySellMenuElements(bool, bool2, ItemName)
+	for i,gui in pairs (SellMenu:GetChildren()) do
+		if tostring(gui) ~= "EmptyNotifier" then
+			if not gui:IsA("NumberValue") and not gui:IsA("ObjectValue") then
+				gui.Visible = bool
+			end
+		else
+			gui.Visible = bool2
+			if ItemName then
+				gui.Text = string.gsub(gui.Text, "ITEM", ItemName)
+			end
+		end
+	end
+end
 
 SelectionMenu.SelectItem.Activated:Connect(function()
 	if SelectionMenu.Visible == true then
+		SelectionMenu.SelectItem.Active = false
 		local ItemName = SelectionMenu.CurrentSelection.Value
 		local ItemAmount = tonumber(SelectionMenu.Amount.Text)
 		SellMenu.MaxAmount.Value = ItemAmount
 		
 		local ItemInfo = FindItemInfo(ItemName, tostring(CurrentMenu))
-		
 		if ItemInfo then
 			SellMenu.SelectedItem.Value = ItemInfo
 			SellMenu.Visible = true	
-			SellMenu.SnapAmount.Value = math.ceil(SellMenu.SliderBar.AbsoluteSize.X/(ItemAmount)) --+1 for 0th
-			SellMenu.SellAll.Text = "Sell All: $" .. tostring(tonumber(ItemAmount*SellMenu.SelectedItem.Value.CurrencyValue.Value))
 			
-			CalculateSliderPosition()
+			if ItemAmount > 0 then
+				SellMenu.SnapAmount.Value = math.ceil(SellMenu.SliderBar.AbsoluteSize.X/(ItemAmount)) --+1 for 0th
+				SellMenu.SellAll.Text = "Sell All: $" .. tostring(tonumber(ItemAmount*SellMenu.SelectedItem.Value.CurrencyValue.Value))
+				
+				DisplaySellMenuElements(true, false)
+				CalculateSliderPosition()
+			else
+				DisplaySellMenuElements(false, true, ItemName)
+				wait(2)
+				SellMenu.Visible = false
+				SellMenu.EmptyNotifier.Text = string.gsub(SellMenu.EmptyNotifier.Text, ItemName, "ITEM")
+			end
 		end
+		SelectionMenu.SelectItem.Active = true
 	end
 end)
 
@@ -477,8 +489,7 @@ function MoveToTile(Menu, amount, RaritySkip)
 				end
 			end
 		end
-		
-		--local NumberOfRarities = #ItemsPreview:FindFirstChild(tostring(Menu)):GetChildren()
+
 		local CurrentSelectionSlotValue = CurrentSelection.SlotNumber.Value
 		if amount then
 			if CurrentSelectionSlotValue + amount > AmountOfSlots or CurrentSelectionSlotValue + amount <= 0 then --Moving to next rarity menu			
@@ -524,10 +535,8 @@ end
 
 local sliderBar = SellMenu.SliderBar
 local slider = sliderBar:WaitForChild("Slider")
-local Mouse = game.Players.LocalPlayer:GetMouse()
-local selectedAmount = SellMenu.SelectedAmount
-
 local movingSlider = false
+local Mouse = game.Players.LocalPlayer:GetMouse()
 
 slider.MouseButton1Down:Connect(function()
 	movingSlider = true
@@ -557,14 +566,16 @@ function CalculateSliderPosition(bool)
 	local sliderPosNew = UDim2.new(0, xOffsetClamped, slider.Position.Y.Scale, 0) --Snap slider bar in place
 	slider.Position = sliderPosNew
 
-	local roundedAbsSize = math.ceil(sliderBar.AbsoluteSize.X / snapAmount) * snapAmount
+	local roundedAbsSize = math.ceil(sliderBar.AbsoluteSize.X / snapAmount) * snapAmount or 0
 	local roundedOffsetClamped = (xOffsetClamped / snapAmount) * snapAmount --highest amount slider can achieve
 	local Percentage = roundedOffsetClamped / roundedAbsSize
 	
 	amountToSellPercent = Percentage
 	local GUIamountToSell = math.ceil(Percentage*SellMenu.MaxAmount.Value)
 
-	selectedAmount.Text = tostring(GUIamountToSell) .. " " .. tostring(SellMenu.SelectedItem.Value)
+	SellMenu.SelectedAmount.Text = tostring(GUIamountToSell)
+	SellMenu.ItemName.Text = tostring(SellMenu.SelectedItem.Value)
+	
 	SellMenu.CashValue.Text = "$" .. tostring(SellMenu.SelectedItem.Value.CurrencyValue.Value*GUIamountToSell)
 end
 
@@ -720,6 +731,7 @@ end)
 
 ---------------------------------------------------<|Cutscene Manager|>-----------------------------------------------------------------------------------------------------------
 local Camera = game.Workspace.CurrentCamera
+local TweenService = game:GetService("TweenService")
 
 function MoveCamera(StartPart, EndPart, Duration, EasingStyle, EasingDirection)
 	Camera.CameraType = Enum.CameraType.Scriptable
@@ -742,13 +754,16 @@ function StartUpCutscene(promptObject)
 	MoveAllBaseScreenUI:Fire("Hide") --Move "surface screen" tiles away
 	MoveCamera(CutsceneFolder.Camera1, CutsceneFolder.Camera2, .7, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
 	
+	StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false)
 	StartUpComputer()
 end
 
 function ShutDownCutscene()
 	local CutsceneFolder = CurrentStorage:FindFirstChild("CutsceneCameras")
 	MoveCamera(CutsceneFolder.Camera2, CutsceneFolder.Camera1, .7, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
+	
 	MoveAllBaseScreenUI:Fire("Show")
+	StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, true)
 
 	wait(.8)
 	Camera.CameraType = Enum.CameraType.Custom
@@ -764,6 +779,4 @@ for i,button in pairs (StorageMenu.DataTabSelect:GetChildren()) do
 		SetupTycoonStorageTiles(button)
 	end
 end
-
-PrepareMenuVisibility()
 
