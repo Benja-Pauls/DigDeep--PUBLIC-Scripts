@@ -23,7 +23,7 @@ local HandleDropMaterialsEvent = EventsFolder.Tycoon:WaitForChild("HandleDropMat
 -------------------------<|Set Up Game|>--------------------------------------------------------------------------------------------------------------------------------------
 
 local DataStoreService = game:GetService("DataStoreService") 
-local PlayerSave = DataStoreService:GetDataStore("Tycoon Test200") --Changing this will change the datastore info is taken from
+local PlayerSave = DataStoreService:GetDataStore("Tycoon Test202") --Changing this will change the datastore info is taken from
 
 --When player joins
 game.Players.PlayerAdded:Connect(function(JoinedPlayer)
@@ -314,7 +314,9 @@ function LoadPlayerData(PlayerDataFile, data, JoinedPlayer)
 	
 	local PlayerInventory = CreateSaveFolder(PlayerDataFile, "Inventory")
 	
-	local TycoonStorageFolder = CreateSaveFolder(PlayerDataFile, "TycoonStorage")	
+	local TycoonStorage = CreateSaveFolder(PlayerDataFile, "TycoonStorage")	
+	
+	local PlayerResearch = CreateSaveFolder(PlayerDataFile, "Research")
 	
 	local PlayerExperience = CreateSaveFolder(PlayerDataFile, "Experience") --Skills, Stats, Reputation
 	local SkillsFolder = CreateSaveFolder(PlayerExperience, "Skills")
@@ -350,7 +352,7 @@ function LoadPlayerData(PlayerDataFile, data, JoinedPlayer)
 			local ItemDiscovery = Instance.new("BoolValue",Item)
 			ItemDiscovery.Name = tostring(Item) .. "Discovered"
 			
-			local AssociatedItemStorage = FindAssociatedFolder(TycoonStorageFolder, "TycoonStorage" .. ItemType, "TycoonStorage" .. tostring(item))
+			local AssociatedItemStorage = FindAssociatedFolder(TycoonStorage, "TycoonStorage" .. ItemType, "TycoonStorage" .. tostring(item))
 			local TycoonStorageItem = Instance.new("IntValue", AssociatedItemStorage) 
 			TycoonStorageItem.Name = "TycoonStorage" .. tostring(item)
 			
@@ -654,7 +656,6 @@ local function HandleDropMaterials(Tycoon, Drop) --Update Tycoon Storage for dro
 	end
 end
 HandleDropMaterialsEvent.Event:Connect(HandleDropMaterials)
-
 
 
 return PlayerStatManager
