@@ -8,7 +8,7 @@ repeat wait() until script.Parent:FindFirstChild("Buttons") --Script has been mo
 local Tycoon = script.Parent
 local CollectibleCash = Tycoon.CurrencyToCollect
 local PurchasedObjects = Tycoon.PurchasedObjects
-local FinishedResearch = Tycoon.FinishedResearch
+local CompletedResearch = Tycoon.CompletedResearch
 
 local PlayerDataFolder = game.ServerStorage:FindFirstChild("PlayerData")
 
@@ -212,7 +212,7 @@ for i,button in pairs(Tycoon.Buttons:GetChildren()) do
 			end
 			if Dependencies:FindFirstChild("TycoonResearch") then
 				local TycoonResearch = Dependencies.TycoonResearch
-				SetUpDependencyChecks(button, ButtonParts, FinishedResearch, TycoonResearch, Object)
+				SetUpDependencyChecks(button, ButtonParts, CompletedResearch, TycoonResearch, Object)
 			end
 		else
 			UpdateButtonVisibility(button, ButtonParts, true, 0)
