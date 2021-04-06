@@ -1,26 +1,48 @@
 --(Module Script)
 --Use as a safe space to store any research data, referred to only by PurchaseHandler and PlayerStatManager
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
 local ResearchData = {
 	
 	["Max Researchers"] = 4,
 	
-	["PlayerItem Improvements"] = {},
+	["Research"] = {
+		
+		["PlayerItem Improvements"] = {
+			["Research Type Name"] = "PlayerItem Research"
+			
+			
+			
+			
+		},
+
+		["Tycoon Improvements"] = {
+			["Research Type Name"] = "Tycoon Research",
+			
+			[1] = {
+				["Research Name"] = "Room Temperature Superconductors",
+				["Rarity"] = "Legendary",
+				["Research Length"] = 5,
+				["Material Cost"] = {},
+				["ExperienceCost"] = {},
+				["Dependencies"] = {}
+				
+			}
+		},
+
+		["Town Improvements"] = {
+			["Research Type Name"] = "Town Research"
+			
+			
+			
+			
+		},
+		
+
+	}
 	
-	["Tycoon Improvements"] = {},
-	
-	["Town Improvements"] = {},
 	
 	
-	
-	
-	
-	
-	
-	
-	
-	
+
 	
 }
 
@@ -32,7 +54,9 @@ local ResearchData = {
 --With shops selling new things, maybe have shops check, when they're displaying their shop tiles, what the player
 --has all unlocked?
 
-
+--After Dinner: lay out research data to be sorted throughout PlayerDataFile; Folders: ResearchTypes, Files: Research
+--Research file name will be research name, number value will be tick count (research length), then 
+--massively checked values like Purchased, FinishTime, and Completed
 
 
 
