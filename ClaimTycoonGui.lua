@@ -1,15 +1,17 @@
 --(LocalScript)
 --Visuals for asking if the player wants to buy the tycoon and loading the tycoon
 ------------------------------------------------------------------------------------------------------------------------------------------------
+local player = game.Players.LocalPlayer
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local ClaimTycoonGui = ReplicatedStorage.Events.Tycoon.ClaimTycoonGui
 local ClaimTycoon = ReplicatedStorage.Events.Tycoon.ClaimTycoon
 local CancelClaimTycoon = ReplicatedStorage.Events.Tycoon.CancelClaimTycoon
 local LocalLoadTycoon = ReplicatedStorage.Events.Tycoon:WaitForChild("LocalLoadTycoon")
 local LoadTycoon = ReplicatedStorage.Events.Tycoon.LoadTycoon
+
 local debounce = false
 local open
-local player = game.Players.LocalPlayer
 
 ClaimTycoonGui.OnClientEvent:Connect(function(tycoon)
 	if debounce == false then
@@ -47,9 +49,11 @@ LocalLoadTycoon.OnClientEvent:Connect(function(tycoon)
 	print("Loading Tycoon: " .. tostring(tycoon))
 	local LoadingTycoonGui = script.Parent.LoadingTycoonGui
 	if tycoon.Owner.Value ~= nil then
+		LoadTycoon:FireServer(tycoon)
+		
+		
 		LoadingTycoonGui.Visible = true
 		LoadingTycoonGui:TweenPosition(UDim2.new(0.625, 0, 0.835, 0), "Out", "Quint", 0.5)
-		LoadTycoon:FireServer(tycoon)
 		wait(.5)
 		--coroutine.resume(coroutine.create(function()
 			--put a progress bar here or the dots moving up and down 
