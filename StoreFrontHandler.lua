@@ -375,9 +375,8 @@ local function InsertProductInfo(Tile, ItemData)
 			
 			--Move model into position
 			DisplayedItem.CFrame = Camera.CFrame
-			DisplayedItem.CFrame = DisplayedItem.CFrame + DisplayedItem.CFrame.lookVector * 6.5 --Move in front of camera
-			local cFrame = DisplayedItem.CFrame
-			DisplayedItem.CFrame = cFrame*CFrame.Angles(-math.pi/2,0,0)
+			DisplayedItem.CFrame += DisplayedItem.CFrame.lookVector * 6.5 --Move in front of camera
+			DisplayedItem.CFrame = DisplayedItem.CFrame*CFrame.Angles(-math.pi/2,0,0)
 			local ItmPos = DisplayedItem.Position
 			DisplayedItem.Position = Vector3.new(ItmPos.X, ItmPos.Y + 0.7, ItmPos.Z)
 			
