@@ -37,11 +37,9 @@ game.Players.PlayerAdded:Connect(function(JoinedPlayer)
 	
 	local isOwner = Instance.new("ObjectValue", PlayerDataFile)
 	isOwner.Name = "OwnsTycoon"
-	
-	FindPlayerData(JoinedPlayer)
 
-	--JoinedPlayer.CharacterAdded:Connect(function(Character) Doesn't seem to be working anymore...
 	if game.Workspace:WaitForChild(tostring(JoinedPlayer)) then
+		print("CHARACTER ASSIGNED TO PLAYERS FOLDER")
 		local Character = game.Workspace:FindFirstChild(tostring(JoinedPlayer))
 		
 		repeat wait() until Character:FindFirstChild("LowerTorso")
@@ -55,6 +53,8 @@ game.Players.PlayerAdded:Connect(function(JoinedPlayer)
 		
 		--Put Proximity Prompt here? (if players need to interact with each other
 	end
+	
+	FindPlayerData(JoinedPlayer)
 end)
 
 --When player leaves
@@ -113,8 +113,8 @@ local function ImportSaveData(data,SaveCheck,Folder,Stat)
 	end
 end
 
-local function CreateSaveFolder(ParentFolder, FolderName)
-	local NewFolder = Instance.new("Folder",ParentFolder)
+local function CreateSaveReference(ParentFolder, FolderName, InstanceType)
+	local NewFolder = Instance.new(InstanceType, ParentFolder)
 	NewFolder.Name = FolderName
 	return NewFolder
 end
@@ -139,7 +139,7 @@ local function FindAssociatedFolder(MotherFolder, ItemType, ItemName)
 			return MotherFolder:FindFirstChild(ItemType)
 		end
 	else
-		return CreateSaveFolder(MotherFolder, ItemType)
+		return CreateSaveReference(MotherFolder, ItemType, "Folder")
 	end
 end
 
@@ -292,15 +292,14 @@ function FindPlayerData(JoinedPlayer)
 			local PlayerCash = LoadPlayerData(PlayerDataFile,data,JoinedPlayer)
 			print(tostring(JoinedPlayer) .. " has $" .. tostring(PlayerCash))
 			SetTycoonPurchases(JoinedPlayer, PlayerCash, playerUserId)
-			print("SETTYCOONPURCHASES HAS FINISHED")
-			
 		else --New player
 			print(tostring(JoinedPlayer) .. " is a new player!")
 			sessionData[playerUserId] = {} --No data
 			
 			local PlayerCash = LoadPlayerData(PlayerDataFile,sessionData[playerUserId],JoinedPlayer)
 			SetTycoonPurchases(JoinedPlayer, PlayerCash, playerUserId)
-		end		
+		end	
+		print("SET TYCOON PURCHASES HAS FINISHED")
 	else
 		warn("Couldn't Get or Set-Up Player Data For " .. tostring(JoinedPlayer))
 	end		
@@ -310,28 +309,64 @@ function LoadPlayerData(PlayerDataFile, data, JoinedPlayer)
 	print("Loading player data")
 	local playerUserId = game.Players:FindFirstChild(tostring(JoinedPlayer)).UserId
 	local DataMenu = JoinedPlayer.PlayerGui:WaitForChild("DataMenu"):WaitForChild("DataMenu")
-	local InventoryGui = DataMenu.InventoryMenu
 	
-	local PlayerInventory = CreateSaveFolder(PlayerDataFile, "Inventory")
+	local PlayerInventory = CreateSaveReference(PlayerDataFile, "Inventory", "Folder")
 	
-	local TycoonStorage = CreateSaveFolder(PlayerDataFile, "TycoonStorage")	
+	local TycoonStorage = CreateSaveReference(PlayerDataFile, "TycoonStorage", "Folder")	
 	
-	local PlayerResearch = CreateSaveFolder(PlayerDataFile, "Research")
+	local PlayerResearch = CreateSaveReference(PlayerDataFile, "Research", "Folder")
+	local RealResearch = require(game.ServerStorage.ResearchData)
 	
-	local PlayerExperience = CreateSaveFolder(PlayerDataFile, "Experience") --Skills, Stats, Reputation
-	local SkillsFolder = CreateSaveFolder(PlayerExperience, "Skills")
+	local PlayerExperience = CreateSaveReference(PlayerDataFile, "Experience", "Folder") --Skills, Stats, Reputation
+	local SkillsFolder = CreateSaveReference(PlayerExperience, "Skills", "Folder")
 	
-	local PlayerStatItems = CreateSaveFolder(PlayerDataFile, "Player")
-	local EquippedItems = CreateSaveFolder(PlayerStatItems, "CurrentlyEquipped")
+	local PlayerStatItems = CreateSaveReference(PlayerDataFile, "Player", "Folder")
+	local EquippedItems = CreateSaveReference(PlayerStatItems, "CurrentlyEquipped", "Folder")
 	
-	--Once new experience folder is available, make for all experience folders
+	
+	local ResearchersAvailable = CreateSaveReference(PlayerResearch, "ResearchersAvailable", "NumberValue")
+	local SavedResearchers = CheckSaveData(data["ResearchersAvailable"])
+	ImportSaveData(data, SavedResearchers, PlayerResearch, ResearchersAvailable)
+	
+	local ResearchTable = RealResearch["Research"]
+	for i,researchType in pairs (ResearchTable) do
+		local ResearchTypeName = researchType["Research Type Name"]
+		print("ResearchTypeName" .. researchType["Research Type Name"])
+		local ResearchTypeFolder = CreateSaveReference(PlayerResearch, ResearchTypeName, "Folder")
+		
+		for r = 1,#researchType,1 do
+			if researchType[r] then
+				local ResearchData = researchType[r]
+				local ResearchName = ResearchData["Research Name"]
+
+				local Research = CreateSaveReference(ResearchTypeFolder, ResearchName, "BoolValue") --true if completed
+				local SavedValue = CheckSaveData(data[ResearchName])
+				ImportSaveData(data, SavedValue, ResearchTypeFolder, Research)
+				
+				local PurchasedBool = CreateSaveReference(Research, "Purchased", "BoolValue")
+				local SavedPurchaseBool = CheckSaveData(data[ResearchName .. "Purchased"])
+				ImportSaveData(data, SavedPurchaseBool, Research, PurchasedBool)
+				
+				local FinishTime = CreateSaveReference(Research, "FinishTime", "NumberValue")
+				local SavedFinishTime = CheckSaveData(data[ResearchName .. "FinishTime"])
+				ImportSaveData(data, SavedFinishTime, Research, FinishTime)
+				
+				--UpdateResearch:FireClient() will be used with all. Then, script will check ResearchData (ResearchType[r])
+				--sent and will determine if it should go in currently researching, previous research, or available research.
+				
+				--If it goes in none of those categories, it will not update menu, and the UpdateResearch event will be
+				--fired whenever research is PURCHASED (not completed) to then see if dependencies are met to add it
+				--to the available research
+			end
+		end
+	end
+	
+	--Once new experience folder is available, make for all experience folders (Skills and Reputation)
 	local RealSkills = game.ReplicatedStorage:WaitForChild("Skills")
 	for i,skill in pairs (RealSkills:GetChildren()) do
-		local Skill = Instance.new("IntValue",SkillsFolder)
-		Skill.Name = tostring(skill)
-		
+		local Skill = CreateSaveReference(SkillsFolder, tostring(skill), "NumberValue")
 		local SavedValue = CheckSaveData(data[tostring(skill)])
-		ImportSaveData(data,SavedValue,SkillsFolder,Skill)
+		ImportSaveData(data, SavedValue, SkillsFolder, Skill)
 		
 		--Make skill tiles acquired
 		print("Making inventory tile for " .. tostring(Skill))
@@ -343,30 +378,23 @@ function LoadPlayerData(PlayerDataFile, data, JoinedPlayer)
 		for i,item in pairs (location:GetChildren()) do --change to mine materials (no longer sorted by type in RS, rather location purposes
 			local AssociatedBag = item.Bag.Value
 			local ItemType = string.gsub(AssociatedBag, "Bag", "") .. "s"
-			
-			--Go through all items and check bag, if save folder not made yet, make one and put it in the folder, then continue
-			local AssociatedFolder = FindAssociatedFolder(PlayerInventory, ItemType, tostring(item))
-				
-			local Item = Instance.new("IntValue",AssociatedFolder)
-			Item.Name = tostring(item)
-			local ItemDiscovery = Instance.new("BoolValue",Item)
-			ItemDiscovery.Name = tostring(Item) .. "Discovered"
-			
-			local AssociatedItemStorage = FindAssociatedFolder(TycoonStorage, "TycoonStorage" .. ItemType, "TycoonStorage" .. tostring(item))
-			local TycoonStorageItem = Instance.new("IntValue", AssociatedItemStorage) 
-			TycoonStorageItem.Name = "TycoonStorage" .. tostring(item)
-			
-			local SavedValue = CheckSaveData(data[tostring(item)])
-			ImportSaveData(data,SavedValue,AssociatedFolder,Item)
-			--print("Data for " .. tostring(Ore) .. " is " .. tostring(data[tostring(Ore)]))
-			UpdateInventory:FireClient(JoinedPlayer, tostring(Item), AssociatedFolder.Name, tostring(data[tostring(Item)]), nil, "Inventory", nil, tostring(location))
 
+			local AssociatedFolder = FindAssociatedFolder(PlayerInventory, ItemType, tostring(item))
+			local AssociatedItemStorage = FindAssociatedFolder(TycoonStorage, "TycoonStorage" .. ItemType, "TycoonStorage" .. tostring(item))
+			
+			local Item = CreateSaveReference(AssociatedFolder, tostring(item), "NumberValue")
+			local SavedValue = CheckSaveData(data[tostring(item)])
+			ImportSaveData(data, SavedValue, AssociatedFolder, Item)
+			UpdateInventory:FireClient(JoinedPlayer, tostring(Item), AssociatedFolder.Name, tostring(data[tostring(Item)]), nil, "Inventory", nil, tostring(location))
+			
+			local ItemDiscovery = CreateSaveReference(Item, tostring(Item) .. "Discovered", "BoolValue")
 			local SavedDiscoverValue = CheckSaveData(data[tostring(ItemDiscovery)])
-			ImportSaveData(data,SavedDiscoverValue,Item,ItemDiscovery)
+			ImportSaveData(data, SavedDiscoverValue, Item, ItemDiscovery)
 			UpdateTycoonStorage:FireClient(JoinedPlayer, AssociatedFolder.Name, tostring(Item) .. "Discovered", data[tostring(ItemDiscovery)], nil, tostring(location))
 			
+			local TycoonStorageItem = CreateSaveReference(AssociatedItemStorage, "TycoonStorage" .. tostring(item), "NumberValue")
 			local SavedTycoonStorageValue = CheckSaveData(data[tostring(TycoonStorageItem)])
-			ImportSaveData(data,SavedTycoonStorageValue,AssociatedItemStorage,TycoonStorageItem)
+			ImportSaveData(data, SavedTycoonStorageValue, AssociatedItemStorage, TycoonStorageItem)
 			UpdateTycoonStorage:FireClient(JoinedPlayer, AssociatedItemStorage.Name, tostring(TycoonStorageItem), tostring(data[tostring(TycoonStorageItem)]), nil, tostring(location))   
 		end	
 	end
@@ -374,22 +402,19 @@ function LoadPlayerData(PlayerDataFile, data, JoinedPlayer)
 	--All Data For Equippables (bags, but pickaxes, boots, pets, etc.)
 	local Equippables = game.ReplicatedStorage.Equippable
 	for i,equiptype in pairs (Equippables:GetChildren()) do
-		
-		local EquippedTypeFolder = CreateSaveFolder(EquippedItems, "Equipped" .. tostring(equiptype))
-		local EquipTypeFolder = CreateSaveFolder(PlayerStatItems, tostring(equiptype))
+		local EquippedTypeFolder = CreateSaveReference(EquippedItems, "Equipped" .. tostring(equiptype), "Folder")
+		local EquipTypeFolder = CreateSaveReference(PlayerStatItems, tostring(equiptype), "Folder")
 		
 		for i,itemtype in pairs (equiptype:GetChildren()) do
 			
 			--data["Equipped" .. tostring(itemtype)] is the player's equipped item (string)
 			--data[tostring(item)] is if the item is purchased (boolean)
 			
-			local ItemTypeFolder = CreateSaveFolder(EquipTypeFolder, tostring(itemtype))
+			local ItemTypeFolder = CreateSaveReference(EquipTypeFolder, tostring(itemtype), "Folder")
 			for i,item in pairs (itemtype:GetChildren()) do
-				local Item = Instance.new("BoolValue",ItemTypeFolder) --true if purchased
-				Item.Name = tostring(item)
-
+				local Item = CreateSaveReference(ItemTypeFolder, tostring(item), "BoolValue")
 				local SavedValue = CheckSaveData(data[tostring(item)])		
-				ImportSaveData(data,SavedValue,ItemTypeFolder,Item)
+				ImportSaveData(data, SavedValue, ItemTypeFolder, Item)
 				
 				if SavedValue == true then
 					print(tostring(item) .. " has been previously purchased")
@@ -397,11 +422,9 @@ function LoadPlayerData(PlayerDataFile, data, JoinedPlayer)
 				end
 			end
 			
-			local EquippedItem = Instance.new("StringValue", EquippedTypeFolder) --name of equipped item
-			EquippedItem.Name = "Equipped" .. tostring(itemtype)
-
+			local EquippedItem = CreateSaveReference(EquippedTypeFolder, "Equipped" .. tostring(itemtype), "StringValue")
 			local SavedValue = CheckSaveData(data["Equipped" .. tostring(itemtype)])
-			ImportSaveData(data,SavedValue,EquippedTypeFolder,EquippedItem)
+			ImportSaveData(data, SavedValue, EquippedTypeFolder, EquippedItem)
 			
 			local EquippedItem = itemtype:FindFirstChild(data["Equipped" .. tostring(itemtype)])
 			
@@ -425,12 +448,9 @@ function LoadPlayerData(PlayerDataFile, data, JoinedPlayer)
 		end
 	end
 	
-	local CurrencyFolder = Instance.new("Folder",PlayerDataFile)
-	CurrencyFolder.Name = "Currencies"
-	local UniversalCurrency = Instance.new("Folder",CurrencyFolder)
-	UniversalCurrency.Name = "UniversalCurrencies"
-	local Currency = Instance.new("NumberValue",UniversalCurrency)
-	Currency.Name = "Currency"
+	local CurrencyFolder = CreateSaveReference(PlayerDataFile, "Currencies", "Folder")
+	local UniversalCurrency = CreateSaveReference(CurrencyFolder, "UniversalCurrencies", "Folder")
+	local Currency = CreateSaveReference(UniversalCurrency, "Currency", "NumberValue")
 
 	local PlayerCash = UniversalCurrency:FindFirstChild("Currency")
 	
@@ -461,7 +481,6 @@ function SetTycoonPurchases(JoinedPlayer, PlayerCash, playerUserId)
 		for key,_ in pairs(TycoonAssetsHandler) do
 			if data[key] == nil then --if a value of the object hasn't been placed in player's sessiondata,
 				--Make one, and set it equal to false (so it can be set to true later)
-				--print(key) --= displays names of items that can be bought (NOT BUTTON NAMES)
 				data[key] = false --Set the objects as not bought
 			end
 		end	
