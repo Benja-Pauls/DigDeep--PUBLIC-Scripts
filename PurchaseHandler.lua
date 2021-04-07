@@ -206,6 +206,17 @@ PurchaseObject.OnServerEvent:Connect(function(player, target)
 	end
 end)
 
+--PurchaseResearch.OnClientEvent:Connect(function()
+
+--Use this function for any data sensitive content associated with research. While this is fired, the research section
+--of the TycoonComputerHandler local script will handle any GUI changes required after the purchase takes place
+--(Use this client event to check integrity of ResearchData compared to the cloned data used as a reference for the
+--GUI)
+
+--Possibly fire TycoonComputerHandler GUI events from here? (like update events used in PlayerStatManager later)
+
+--end)
+
 -------------------------------<|StoreFront Purchase Functions|>---------------------------------------------------------------------------------------------------------
 
 local AllNPCData = require(game.ServerStorage:WaitForChild("NPCData"))
