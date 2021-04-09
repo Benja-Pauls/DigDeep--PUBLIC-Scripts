@@ -14,6 +14,7 @@ local UpdateTycoonStorage = EventsFolder.GUI:WaitForChild("UpdateTycoonStorage")
 local UpdatePlayerMenu = EventsFolder.GUI:WaitForChild("UpdatePlayerMenu")
 local UpdateEquippedItem = EventsFolder.GUI:WaitForChild("UpdateEquippedItem")
 local UpdateItemCount = EventsFolder.GUI:WaitForChild("UpdateItemCount")
+local UpdateResearch = EventsFolder.GUI:WaitForChild("UpdateResearch")
 
 local GetBagCount = EventsFolder.Utility:WaitForChild("GetBagCount")
 local SellItem = EventsFolder.Utility:WaitForChild("SellItem")
@@ -39,7 +40,7 @@ game.Players.PlayerAdded:Connect(function(JoinedPlayer)
 	isOwner.Name = "OwnsTycoon"
 
 	if game.Workspace:WaitForChild(tostring(JoinedPlayer)) then
-		print("CHARACTER ASSIGNED TO PLAYERS FOLDER")
+		print(tostring(JoinedPlayer),"'s CHARACTER WAS ASSIGNED TO PLAYERS FOLDER")
 		local Character = game.Workspace:FindFirstChild(tostring(JoinedPlayer))
 		
 		repeat wait() until Character:FindFirstChild("LowerTorso")
@@ -290,7 +291,6 @@ function FindPlayerData(JoinedPlayer)
 			sessionData[playerUserId] = data
 			
 			local PlayerCash = LoadPlayerData(PlayerDataFile,data,JoinedPlayer)
-			print(tostring(JoinedPlayer) .. " has $" .. tostring(PlayerCash))
 			SetTycoonPurchases(JoinedPlayer, PlayerCash, playerUserId)
 		else --New player
 			print(tostring(JoinedPlayer) .. " is a new player!")
@@ -306,7 +306,7 @@ function FindPlayerData(JoinedPlayer)
 end
 
 function LoadPlayerData(PlayerDataFile, data, JoinedPlayer)
-	print("Loading player data")
+	print("Loading " .. tostring(JoinedPlayer) .. "'s data")
 	local playerUserId = game.Players:FindFirstChild(tostring(JoinedPlayer)).UserId
 	local DataMenu = JoinedPlayer.PlayerGui:WaitForChild("DataMenu"):WaitForChild("DataMenu")
 	
@@ -331,7 +331,6 @@ function LoadPlayerData(PlayerDataFile, data, JoinedPlayer)
 	local ResearchTable = RealResearch["Research"]
 	for i,researchType in pairs (ResearchTable) do
 		local ResearchTypeName = researchType["Research Type Name"]
-		print("ResearchTypeName" .. researchType["Research Type Name"])
 		local ResearchTypeFolder = CreateSaveReference(PlayerResearch, ResearchTypeName, "Folder")
 		
 		for r = 1,#researchType,1 do
@@ -357,6 +356,16 @@ function LoadPlayerData(PlayerDataFile, data, JoinedPlayer)
 				--If it goes in none of those categories, it will not update menu, and the UpdateResearch event will be
 				--fired whenever research is PURCHASED (not completed) to then see if dependencies are met to add it
 				--to the available research
+				
+				--Therefore, the only group not displayed would be the group of research where it's dependencies
+				--are not met
+				
+				--Because of this, What should handle the physical changes of this update research? Should
+				--the purchase handler be fireed at as well to handle physical changes (such as bool,number, or string 
+				--values as well as model placement (which will be a local script event of its own) and updating
+				--NPC shops)
+				
+				UpdateResearch:FireClient(JoinedPlayer)
 			end
 		end
 	end
@@ -368,8 +377,7 @@ function LoadPlayerData(PlayerDataFile, data, JoinedPlayer)
 		local SavedValue = CheckSaveData(data[tostring(skill)])
 		ImportSaveData(data, SavedValue, SkillsFolder, Skill)
 		
-		--Make skill tiles acquired
-		print("Making inventory tile for " .. tostring(Skill))
+		--Make acquired skill tiles
 		UpdateInventory:FireClient(JoinedPlayer, tostring(Skill), SkillsFolder.Name, tostring(data[tostring(Skill)]), nil, "Experience", nil, "Skills")
 	end
 
@@ -416,8 +424,7 @@ function LoadPlayerData(PlayerDataFile, data, JoinedPlayer)
 				local SavedValue = CheckSaveData(data[tostring(item)])		
 				ImportSaveData(data, SavedValue, ItemTypeFolder, Item)
 				
-				if SavedValue == true then
-					print(tostring(item) .. " has been previously purchased")
+				if SavedValue == true then --if previously purchased
 					UpdatePlayerMenu:FireClient(JoinedPlayer, tostring(equiptype), tostring(itemtype), tostring(item))
 				end
 			end
@@ -463,7 +470,7 @@ function LoadPlayerData(PlayerDataFile, data, JoinedPlayer)
 	end
 	
 	print(tostring(JoinedPlayer) .. " has $" .. tostring(data["Currency"]))
-	return PlayerCash
+	return PlayerCash.Value
 end
 
 function SetTycoonPurchases(JoinedPlayer, PlayerCash, playerUserId)
@@ -485,7 +492,7 @@ function SetTycoonPurchases(JoinedPlayer, PlayerCash, playerUserId)
 			end
 		end	
 
-		Utility:UpdateMoneyDisplay(JoinedPlayer, Utility:ConvertShort(PlayerCash.Value))
+		Utility:UpdateMoneyDisplay(JoinedPlayer, Utility:ConvertShort(PlayerCash))
 	end
 end
 
@@ -547,7 +554,6 @@ end
 --------------------------------<|Equip Functions|>----------------------------------------------------------------------------------------------
 
 function UpdateToolbar(Player, ItemType, NewlyEquippedItem)
-	print(ItemType, NewlyEquippedItem)
 	local ItemTypeFolder = game.ReplicatedStorage.Equippable.Tools:FindFirstChild(ItemType)
 	
 	--Delete existing items of type from backpack
