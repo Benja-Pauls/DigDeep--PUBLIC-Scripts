@@ -19,19 +19,17 @@ local ClaimTycoon = game:GetService("ReplicatedStorage").Events.Tycoon.ClaimTyco
 local allObjects = {}
 
 --Hide buttons from previous games
-local function HideButton(Name,Buttons)
+local function HideButton(Name, Buttons)
 	local Item 
 	for i,button in pairs (Buttons) do
 		if button.Object.Value == Name then
 			Item = button
 		end
 	end
-	
-	print("Hiding button for " .. Name)
-	
+
 	if Item ~= nil then 
 		local buttonCheck = Item:FindFirstChild("Object")
-		if buttonCheck ~= nil then 
+		if buttonCheck then 
 			coroutine.resume(coroutine.create(function() --call and create a function
 				local ButtonParts = Item:FindFirstChild("ButtonModel"):GetChildren()
 				for bp = 1,#ButtonParts,1 do
@@ -45,12 +43,12 @@ local function HideButton(Name,Buttons)
 			end
 			Item.Visible.Value = false
 		else
-			print("Button: " .. tostring(Item) .. " doesn't have an affiliated object")
+			print("Button (" .. tostring(Item) .. ") doesn't have an affiliated object")
 		end
 	end
 end
 
-local function PositionPurchase(Buttons, Object, PurchasedObjects)
+local function PositionPurchase(Buttons, Object)
 	if Object:FindFirstChild("Root") ~= nil then
 		Object.PrimaryPart = Object.Root
 												
@@ -61,7 +59,6 @@ local function PositionPurchase(Buttons, Object, PurchasedObjects)
 		ModelPosition:Destroy()
 		Object.PrimaryPart:Destroy()
 	end
-	Object.Parent = PurchasedObjects
 end
 
 local function PrepareTycoon(Tycoon)
@@ -92,10 +89,7 @@ local function PrepareTycoon(Tycoon)
 		local HitPlayer = game.Players:GetPlayerFromCharacter(hit.Parent)
 		
 		LoadTycoon.OnServerEvent:Connect(function(player, tycoon)
-			print("1b",player,HitPlayer,tycoon,TycoonPurchased)
-			--if TycoonPurchased == false then
 			if tycoon == Tycoon and not TycoonPurchased then --Check to make sure repeat isnt happening because of this
-				print("2b",player,HitPlayer,tycoon,TycoonPurchased)
 				if tycoon.Owner.Value == player and HitPlayer == player then
 					local PlayerClaimHead = tycoon.Entrance:FindFirstChild("Touch to Begin Construction!").Head
 					local PlayerDataFile = PlayerData:FindFirstChild(tostring(player.UserId))
@@ -110,27 +104,23 @@ local function PrepareTycoon(Tycoon)
 							
 							for key, object in pairs (TycoonAssetsHandler) do
 								if Data[key] == true then --Looking through sessionData table in Playerstat manager for dropper name
+									local ObjectName = key
 									for i,v in pairs(Buttons) do
-										if v.Object.Value == key then
-											PositionPurchase(v, object, PurchasedObjects)
+										if v.Object.Value == ObjectName then
+											PositionPurchase(v, object)
+											object.Parent = PurchasedObjects
 										else
 											wait()
 										end
 									end
+									HideButton(ObjectName, Buttons)
+									print(key, " has been bought in a previous game session because data = " .. tostring(Data[key]))
 								else
 									print(tostring(object).." hasn't been bought for " .. tostring(tycoon) .. " because data = " .. tostring(Data[key]))
 								end
 							end
+							
 							wait(2) --"Pressing" previously purchased 
-							--print("Finished pressing previously purchased")
-							for key,v in pairs (TycoonAssetsHandler) do
-								--print("TycoonAssetsHandler",key,v)
-								if Data[key] == true then --If purchased
-									local ButtonName = key
-									print(v," has been bought")
-									HideButton(ButtonName,Buttons)
-								end
-							end
 							print(tostring(player) .. " is now the owner of " .. tostring(tycoon))
 						end
 					else
@@ -140,9 +130,10 @@ local function PrepareTycoon(Tycoon)
 					print("Player == nil or " .. tostring(tycoon) .. " has already been purchased")
 				end
 			end
+			print("TYCOON DATA LOADED FOR: " .. tostring(Owner.Value))
 		end)
 	end)
-	print("Data loaded for ")
+	
 	--Save Pressed Buttons
 	if PurchasedObjects ~= nil and Owner ~= nil then
 		PurchasedObjects.ChildAdded:Connect(function(instance)
@@ -150,11 +141,9 @@ local function PrepareTycoon(Tycoon)
 			
 			if player ~= nil then
 				local bought = PlayerStatManager:getStat(player, instance.Name)
-				if bought == false then
+				if bought == false then --if not already bought
 					print("Button (" .. tostring(instance) .. ") will be saved")
 					PlayerStatManager:ChangeStat(player, instance.Name, true)
-				else
-					print(instance.Name .. " has been bought in a previous game session")
 				end
 			end
 		end)
