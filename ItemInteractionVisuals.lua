@@ -4,7 +4,6 @@
 local Player = game.Players.LocalPlayer
 local PlayerCharacterList = workspace:WaitForChild("Players")
 local HRP = PlayerCharacterList:WaitForChild(tostring(Player)):WaitForChild("HumanoidRootPart")
-print("HumanoidRootPart has been found")
 
 local ItemInteractionGui = script.Parent
 local ItemLabel = ItemInteractionGui:WaitForChild("ItemLabel")
