@@ -681,6 +681,16 @@ end
 -------------------------------------------<|Tycoon Research GUI Functions|>-----------------------------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+local UpdateResearch = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateResearch")
+UpdateResearch.OnClientEvent:Connect(function()
+	
+	--Would this also have to be updated in purchase handler or would the PlayerStatManager
+	--assign the appropriate values
+	
+	--Basically, what will know what is purchased and to make sure the dependencies are met for what's
+	--next physically and not just graphically
+	
+end)
 
 
 
