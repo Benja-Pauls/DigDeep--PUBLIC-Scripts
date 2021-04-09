@@ -1259,8 +1259,6 @@ UpdateEquippedItem.OnClientEvent:Connect(function(EquipType, ItemType, Item)
 		local ItemImage = GetStatImage(ItemInfo)
 
 		DefaultMenuButton.Image = ItemImage
-	else
-		print("Item has been unequipped")
 	end
 	
 	--Highlight Equipped Item
