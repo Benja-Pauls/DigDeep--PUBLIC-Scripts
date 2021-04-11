@@ -14,6 +14,17 @@ function Utility:UpdateMoneyDisplay(Player, NewPlayerCash)
 	PlayerGui.StoreFrontGui.StoreFrontMenu.PlayerCashDisplay.PlayerCash.Text = "$" .. tostring(NewPlayerCash)
 end
 
+function Utility:CloneTable(OriginalTable)
+	local copy = {}
+	for i,tbl in pairs(OriginalTable) do
+		if type(tbl) == "table" then
+			tbl = Utility:CloneTable(tbl)
+		end
+		copy[i] = tbl
+	end
+	return copy
+end
+
 function Utility:ConvertShort(Filter_Num)
 	--print(Filter_Num) = money amount player has in total
 	local x = tostring(Filter_Num)
