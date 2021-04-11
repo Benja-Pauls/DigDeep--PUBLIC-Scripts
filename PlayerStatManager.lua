@@ -19,6 +19,7 @@ local UpdateResearch = EventsFolder.GUI:WaitForChild("UpdateResearch")
 local GetBagCount = EventsFolder.Utility:WaitForChild("GetBagCount")
 local SellItem = EventsFolder.Utility:WaitForChild("SellItem")
 local DepositInventory = EventsFolder.Utility:WaitForChild("DepositInventory")
+local CheckResearchDepends = EventsFolder.Utility:WaitForChild("CheckResearchDepends")
 
 local HandleDropMaterialsEvent = EventsFolder.Tycoon:WaitForChild("HandleDropMaterials")
 -------------------------<|Set Up Game|>--------------------------------------------------------------------------------------------------------------------------------------
@@ -93,7 +94,7 @@ local function CheckSaveData(Save)
 end
 
 --Update ServerStorage Folders With Data
-local function ImportSaveData(data,SaveCheck,Folder,Stat)
+local function ImportSaveData(data, SaveCheck, Folder, Stat, Single)
 	if SaveCheck == false then
 		if typeof(Stat.Value) == "number" then
 			Stat.Value = 0
@@ -104,13 +105,20 @@ local function ImportSaveData(data,SaveCheck,Folder,Stat)
 		end
 	end
 	
-	for i,v in pairs (Folder:GetChildren()) do
-		if data[tostring(v)] == nil then
-			data[tostring(v)] = Stat.Value --placeholder value to create (even if not interacted with yet)
-		else
-			v.Value = data[tostring(v)]
+	if not Single then
+		for i,v in pairs (Folder:GetChildren()) do
+			if data[tostring(v)] == nil then
+				data[tostring(v)] = Stat.Value --placeholder value to create (even if not interacted with yet)
+			else
+				v.Value = data[tostring(v)]
+			end
 		end
-		--print(v,v.Value,data[tostring(v)])
+	else
+		if data[tostring(Single)] == nil then
+			data[tostring(Single)] = Stat.Value --placeholder value to create (even if not interacted with yet)
+		else
+			Stat.Value = data[tostring(Single)]
+		end
 	end
 end
 
@@ -227,7 +235,7 @@ function PlayerStatManager:ChangeStat(player, statName, value, File, ItemType, s
 			--print(tostring(statName) .. "'s new value is: " .. tostring(sessionData[playerUserId][statName]))
 			
 			if File then 
-				UpdateGUIForFile(tostring(File),PlayerDataFile, player, playerUserId, statName, value)
+				UpdateGUIForFile(tostring(File), PlayerDataFile, player, playerUserId, statName, value)
 			end
 			
 			--Client script data management so exploiters cant handle sensitive data
@@ -254,7 +262,6 @@ function PlayerStatManager:ChangeStat(player, statName, value, File, ItemType, s
 				end
 			end
 		else
-			print("Trying to update the value of a saved string in " .. tostring(playerUserId))
 			local ItemType = string.gsub(statName, "Equipped", "")
 			
 			if File == "Bags" then --Update Equipped Bag (change bag capacity)
@@ -344,28 +351,20 @@ function LoadPlayerData(PlayerDataFile, data, JoinedPlayer)
 				
 				local PurchasedBool = CreateSaveReference(Research, "Purchased", "BoolValue")
 				local SavedPurchaseBool = CheckSaveData(data[ResearchName .. "Purchased"])
-				ImportSaveData(data, SavedPurchaseBool, Research, PurchasedBool)
+				ImportSaveData(data, SavedPurchaseBool, Research, PurchasedBool, ResearchName .. "Purchased")
 				
 				local FinishTime = CreateSaveReference(Research, "FinishTime", "NumberValue")
 				local SavedFinishTime = CheckSaveData(data[ResearchName .. "FinishTime"])
-				ImportSaveData(data, SavedFinishTime, Research, FinishTime)
+				ImportSaveData(data, SavedFinishTime, Research, FinishTime, ResearchName .. "FinishTime")
+
+				--Purchase Handler will have to place the research appropriately or fire the appropriate events
+				--so different locations understand the research is now available
+				local ClonedResearchData = Utility:CloneTable(ResearchData)
+				local CompletionValue = data[ResearchName]
+				local PurchasedValue = data[ResearchName .. "Purchased"]
+				local FinishTimeValue = data[ResearchName .. "FinishTime"]
 				
-				--UpdateResearch:FireClient() will be used with all. Then, script will check ResearchData (ResearchType[r])
-				--sent and will determine if it should go in currently researching, previous research, or available research.
-				
-				--If it goes in none of those categories, it will not update menu, and the UpdateResearch event will be
-				--fired whenever research is PURCHASED (not completed) to then see if dependencies are met to add it
-				--to the available research
-				
-				--Therefore, the only group not displayed would be the group of research where it's dependencies
-				--are not met
-				
-				--Because of this, What should handle the physical changes of this update research? Should
-				--the purchase handler be fireed at as well to handle physical changes (such as bool,number, or string 
-				--values as well as model placement (which will be a local script event of its own) and updating
-				--NPC shops)
-				
-				UpdateResearch:FireClient(JoinedPlayer)
+				UpdateResearch:FireClient(JoinedPlayer, ClonedResearchData, ResearchTypeName, CompletionValue, PurchasedValue, FinishTimeValue)
 			end
 		end
 	end
@@ -505,7 +504,6 @@ end
 
 function PlayerStatManager:getStat(player, statName) --Stat Check
 	local playerUserId = game.Players:FindFirstChild(tostring(player)).UserId
-	--print(sessionData[playerUserId][statName],statName,playerUserId)
 	return sessionData[playerUserId][statName]
 end 
 
@@ -625,6 +623,22 @@ function GetItemCountSum.OnServerInvoke(Player, StatName)
 	local StorageAmount = sessionData[PlayerUserId]["TycoonStorage" .. StatName]
 	
 	return InventoryAmount + StorageAmount
+end
+
+function CheckResearchDepends.OnServerInvoke(Player, ResearchData)
+	local Dependencies = ResearchData["Dependencies"]
+	
+	local DependenciesMet = 0
+	for i,dependency in pairs (Dependencies) do
+		local ResearchCompleted = PlayerStatManager:getStat(Player, dependency)
+		if ResearchCompleted then
+			DependenciesMet += 1
+		end
+	end
+	
+	if DependenciesMet == #Dependencies then
+		return true
+	end
 end
 
 --Fires when player equips new item (must be saved for when they join back)
