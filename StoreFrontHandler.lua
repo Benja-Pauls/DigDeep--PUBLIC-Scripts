@@ -145,7 +145,6 @@ end
 
 
 ----------------------<|PageManager Functions|>-----------------------------------------------------------------------------------------------
-
 local PageDebounce = false
 
 local function ManagePageInvis(VisiblePage)
@@ -158,9 +157,6 @@ local function ManagePageInvis(VisiblePage)
 			end
 		end
 	end
-	
-	VisiblePage.ZIndex -= 1
-	PageDebounce = false
 end
 
 local function CountPages()
@@ -176,15 +172,15 @@ local function CountPages()
 	return HighPage
 end
 
-
 local function ManageProductPage(MaxTileAmount)
 	local Pages = ProductDisplay:GetChildren()
+	local PageCount = CountPages()
 	
 	local Page
 	local Over
 	local SlotCount = 0
 	for i,page in pairs (Pages) do	
-		if i == #Pages then --Last page
+		if page.Name == "Page" .. tostring(PageCount) then --Last page
 			for i,slot in pairs (page:GetChildren()) do
 				if slot:IsA("TextButton") then
 					SlotCount = SlotCount + 1
@@ -203,14 +199,12 @@ local function ManageProductPage(MaxTileAmount)
 	if Page == nil then
 		local NewPage = GuiElements.StoreFrontPage:Clone()
 		if Over then
-			local LastRarityPage = string.gsub(Over.Name, "Page" , "")
-			NewPage.Name = "Page" .. tostring(tonumber(LastRarityPage) + 1)
 			NewPage.Visible = false
 			SlotCount = 0
 		else
-			NewPage.Name = "Page1"
 			NewPage.Visible = true
 		end
+		NewPage.Name = "Page" .. tostring(PageCount+1)
 		NewPage.Parent = ProductDisplay
 		Page = NewPage
 	end
@@ -227,66 +221,46 @@ local function FinalizePageChange(NewPage, OldPage, NewYValue)
 	wait(.4)
 	
 	ManagePageInvis(NewPage)
+	PageDebounce = false
+end
+
+local function ChangePage(X1, X2, X3)
+	local OldPage = ProductDisplay:FindFirstChild("Page" .. tostring(StoreFrontMenu.CurrentPage.Value))
+
+	if PageDebounce == false then
+		PageDebounce = true
+		local HighPage = CountPages(StoreFrontMenu)
+
+		if HighPage ~= 1 then
+			local NewPage
+			if StoreFrontMenu.CurrentPage.Value + 1 > HighPage then
+				NewPage = ProductDisplay:FindFirstChild("Page1")
+				StoreFrontMenu.CurrentPage.Value = 1
+			else
+				NewPage = ProductDisplay:FindFirstChild("Page" .. tostring(StoreFrontMenu.CurrentPage.Value + 1))
+				StoreFrontMenu.CurrentPage.Value = StoreFrontMenu.CurrentPage.Value + 1
+			end
+			
+			if NewPage then
+				NewPage.Position = UDim2.new(X1,0,0,0)
+				FinalizePageChange(NewPage, OldPage, X2)
+			end
+		else --Bounce effect
+			ProductDisplay:FindFirstChild("Page1"):TweenPosition(UDim2.new(X3,0,0,0), "Out", "Quint", .1)
+			wait(.1)
+			ProductDisplay:FindFirstChild("Page1"):TweenPosition(UDim2.new(0,0,0,0), "Out" , "Bounce", .25)
+			wait(.25)
+			PageDebounce = false
+		end
+	end
 end
 
 StoreFrontMenu.NextPage.Activated:Connect(function()
-	local OldPage = ProductDisplay:FindFirstChild("Page" .. tostring(StoreFrontMenu.CurrentPage.Value))
-	
-	if PageDebounce == false then
-		local HighPage = CountPages()
-		
-		if HighPage ~= 1 then
-			local NewPage
-
-			if StoreFrontMenu.CurrentPage.Value + 1 > HighPage then
-				NewPage = ProductDisplay:FindFirstChild("Page1")
-				StoreFrontMenu.CurrentPage.Value = 1
-			else
-				NewPage = ProductDisplay:FindFirstChild("Page" .. tostring(StoreFrontMenu.CurrentPage.Value+1))
-				StoreFrontMenu.CurrentPage.Value = StoreFrontMenu.CurrentPage.Value+1
-			end
-
-			NewPage.Position = UDim2.new(0,0,1,0)
-			FinalizePageChange(NewPage, OldPage, -1)
-		else --Bounce effect
-			PageDebounce = true
-			ProductDisplay:FindFirstChild("Page1"):TweenPosition(UDim2.new(0,0,0.02,0), "Out", "Quint", .1)
-			wait(.1)
-			ProductDisplay:FindFirstChild("Page1"):TweenPosition(UDim2.new(0,0,0,0), "Out" , "Bounce", .25)
-			wait(.25)
-			PageDebounce = false
-		end
-	end
+	ChangePage(1, -1, 0.02)
 end)
 
 StoreFrontMenu.PreviousPage.Activated:Connect(function()
-	local OldPage = ProductDisplay:FindFirstChild("Page" .. tostring(StoreFrontMenu.CurrentPage.Value))
-	
-	if PageDebounce == false then
-		local HighPage = CountPages()
-
-		if HighPage ~= 1 then
-			local NewPage
-			
-			if StoreFrontMenu.CurrentPage.Value + 1 > HighPage then
-				NewPage = ProductDisplay:FindFirstChild("Page1")
-				StoreFrontMenu.CurrentPage.Value = 1
-			else
-				NewPage = ProductDisplay:FindFirstChild("Page" .. tostring(StoreFrontMenu.CurrentPage.Value+1))
-				StoreFrontMenu.CurrentPage.Value = StoreFrontMenu.CurrentPage.Value+1
-			end
-
-			NewPage.Position = UDim2.new(0,0,-1,0)
-			FinalizePageChange(NewPage, OldPage, 1)
-		else --Bounce effect
-			PageDebounce = true
-			ProductDisplay:FindFirstChild("Page1"):TweenPosition(UDim2.new(0,0,-0.02,0), "Out", "Quint", .1)
-			wait(.1)
-			ProductDisplay:FindFirstChild("Page1"):TweenPosition(UDim2.new(0,0,0,0), "Out" , "Bounce", .25)
-			wait(.25)
-			PageDebounce = false
-		end
-	end
+	ChangePage(-1, 1, -0.02)
 end)
 
 -------------------------<|Tile Management Functions|>-----------------------------------------------------------------------------------------
