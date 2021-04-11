@@ -1,21 +1,15 @@
 --(LocalScript)
---Visuals for data menu associated with items inside of the tycoon's (business) storage
+--Visuals for data menu associated with items inside of the tycoon's (business) storage and all the player's research
 -----------------------------------------------------------------------------------------------------------------------------------------------
 local Players = game:GetService("Players")
 local Player = Players.LocalPlayer
 
 local PlayerGui = Player:WaitForChild("PlayerGui")
 local StarterGui = game:GetService("StarterGui")
-
 local TycoonComputerGui = script.Parent
+
 local ComputerScreen = TycoonComputerGui.ComputerScreen
 local MenuSelect = ComputerScreen.MenuSelect
-
-local StorageMenu = ComputerScreen.StorageMenu
-local SelectionMenu = StorageMenu.SelectionMenu
-local ItemsPreview = StorageMenu.ItemsPreview
-local DataTabSelect = StorageMenu.DataTabSelect
---local BackButton = ComputerScreen.Taskbar.BackButton
 local FadeOut = ComputerScreen.FadeOut
 
 ComputerScreen.Visible = false
@@ -35,7 +29,7 @@ local BeepSound = script.Parent.Beep
 local KeyboardClickSound = script.Parent.KeyboardClick
 local StartUpSound = script.Parent.StartUp
 
----------------<Utility>-----------------------------------------------------------------------------------------------------------------------------
+---------------<|Utility|>-----------------------------------------------------------------------------------------------------------------------------
 
 local function FindItemInfo(statName, bagType)
 	local ItemInformation
@@ -49,13 +43,26 @@ local function FindItemInfo(statName, bagType)
 	return ItemInformation
 end
 
-local function DataTabButtonActiveState(State)
-	for i,button in pairs (DataTabSelect:GetChildren()) do
+local function MenuButtonActiveState(Menu, State)
+	for i,button in pairs (Menu:GetChildren()) do
 		if button:IsA("ImageButton") then
 			button.Active = State
 			button.Selectable = State
 		end
 	end
+end
+
+local function CountPages(Menu)
+	local HighPage = 0
+	for i,page in pairs (Menu:GetChildren()) do
+		if page:IsA("Frame") and string.find(page.Name, "Page") then
+			local PageNumber = string.gsub(page.Name, "Page", "")
+			if tonumber(PageNumber) > HighPage then
+				HighPage = tonumber(PageNumber)
+			end
+		end
+	end
+	return HighPage
 end
 
 --------------------------<|Set Up Menu Functions|>-------------------------------------------------------------------------------------------------------------
@@ -138,7 +145,7 @@ function SetUpCredentials()
 	--BackButton.Position = UDim2.new(BackButton.Position.X.Scale, 0, 1, 0)
 	ComputerScreen.CredentialsScreen:TweenPosition(UDim2.new(0,0,-1.3,0), "Out", "Quint", .5)
 	ComputerScreen.Taskbar.Visible = true
-	ComputerScreen.Taskbar.Time.Text = tostring(os.date(stringTime, timestamp))
+	ComputerScreen.Taskbar.TimeInfo.Time.Text = tostring(os.date(stringTime, timestamp))
 	
 	MenuSelect.Visible = true
 	wait(.5)
@@ -152,27 +159,15 @@ function SetUpCredentials()
 	--Call ^these^ on first load and every time player gets something new in each category
 end
 
-----------------------------<|General Button Functions|>-----------------------------------------------------------------------------------------------
-
-ComputerScreen.Taskbar.UtilityButtons.ShutDown.Activated:Connect(function()
-	SelectionMenu.CurrentSelection.Value = ""
-	SelectionMenu.CurrentRarity.Value = ""
-	SelectionMenu.PreviousSelection.Value = ""
-
-	--Move "back button" back
-	ShutDownComputer()
-end)
-
-ComputerScreen.Taskbar.UtilityButtons.Home.Activated:Connect(function()
-	PrepareAllMenuVisibility()
-	MenuSelect.Visible = true
-	ComputerScreen.Taskbar.Visible = true
-end)
 
 ----------------------------<|Tycoon Storage GUI Functions|>---------------------------------------------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+local StorageMenu = ComputerScreen.StorageMenu
+local SelectionMenu = StorageMenu.SelectionMenu
+local ItemsPreview = StorageMenu.ItemsPreview
+local DataTabSelect = StorageMenu.DataTabSelect
 
---Prepare DataTab Buttons
+--Prepare Storage DataTab Buttons
 for i,button in pairs (DataTabSelect:GetChildren()) do
 	if button:IsA("ImageButton") then
 		button.Activated:Connect(function()
@@ -185,14 +180,13 @@ for i,button in pairs (DataTabSelect:GetChildren()) do
 	end
 end
 
+--Menu Selection
 MenuSelect.StorageMenuButton.Activated:Connect(function()
 	StorageMenu.Visible = true
 	DataTabSelect.Visible = true
-	
 	SelectionMenu.Visible = false
 	ItemsPreview.Visible = false
 	MenuSelect.Visible = false
-	
 	BeepSound:Play()
 end)
 
@@ -227,8 +221,8 @@ function OpenAffiliatedItemPreview(button)
 				end
 			end
 		end
-		--BackButton:TweenPosition(UDim2.new(BackButton.Position.X.Scale, 0, 0, 0), "Out", "Quint", 0.5)
-		ReadySelectionMenu(StorageMenu.ItemsPreview:FindFirstChild(MenuName))
+
+		ReadyItemTypeMenu(StorageMenu.ItemsPreview:FindFirstChild(MenuName))
 	end
 end
 
@@ -261,34 +255,7 @@ local function UpdateSelectionInfo(RarityMenu, tile)
 	end
 end
 
-local UpdateTycoonStorage = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateTycoonStorage")
-UpdateTycoonStorage.OnClientEvent:Connect(function(File, Stat, StatValue, AmountAdded, AcquiredLocation)
-	if typeof(StatValue) == "string" then
-		File = string.gsub(File, "TycoonStorage", "")
-		Stat = string.gsub(Stat, "TycoonStorage", "")
-	else --Bool for Discovered
-		Stat = string.gsub(Stat, "Discovered", "")
-		--print(AcquiredLocation, game.ReplicatedStorage.ItemLocations:FindFirstChild(tostring(AcquiredLocation)))
-		local RarityName = game.ReplicatedStorage.ItemLocations:FindFirstChild(tostring(AcquiredLocation)):FindFirstChild(tostring(Stat)):FindFirstChild("GUI Info").RarityName.Value
-		ItemsPreview:FindFirstChild(tostring(File)):FindFirstChild(RarityName):WaitForChild(tostring(Stat)).Discovered.Value = StatValue
-	end
-	
-	wait() --Allow ItemPreview tiles to be made
-	for i,rarity in pairs (ItemsPreview:FindFirstChild(File):GetChildren()) do
-		if rarity:IsA("TextLabel") then
-			if rarity:FindFirstChild(Stat) then
-				if typeof(StatValue) == "boolean" then
-					rarity:FindFirstChild(Stat).Discovered.Value = StatValue
-					UpdateTileLock(rarity:FindFirstChild(Stat),StatValue)
-				else
-					rarity:FindFirstChild(Stat).AmountInStorage.Value = StatValue
-				end
-			end
-		end
-	end	
-end)
-
-function UpdateTileLock (tile, StatValue)
+local function UpdateTileLock(tile, StatValue)
 	if StatValue == true then
 		tile.LockImage.Visible = false
 	else
@@ -299,7 +266,7 @@ end
 ------------------------<|Tile Selection Buttons|>------------------------------------
 
 local CurrentMenu
-function ReadySelectionMenu(Menu)
+function ReadyItemTypeMenu(Menu)
 	CurrentMenu = Menu
 	
 	for i,item in pairs (Menu.Common:GetChildren()) do
@@ -353,7 +320,7 @@ SelectionMenu.PrevRarity.Activated:Connect(function()
 end)
 
 local SellMenu = SelectionMenu.SellMenu
-local SellItem = game.ReplicatedStorage.Events.Utility.SellItem
+local SellItem = game.ReplicatedStorage.Events.Utility:WaitForChild("SellItem")
 
 local function DisplaySellMenuElements(bool, bool2, ItemName)
 	for i,gui in pairs (SellMenu:GetChildren()) do
@@ -398,20 +365,6 @@ SelectionMenu.SelectItem.Activated:Connect(function()
 		SelectionMenu.SelectItem.Active = true
 	end
 end)
-
---[[ (Removed for now to rework GUI)
-BackButton.Activated:Connect(function()
-	DataTabButtonActiveState(false)
-	ItemsPreview.Visible = false
-	SelectionMenu.Visible = false
-	SelectionMenu.SellMenu.Visible = false
-	
-	BackButton:TweenPosition(UDim2.new(BackButton.Position.X.Scale, 0, 1, 0), "Out", "Quint", 0.5)
-	wait(.5)
-	
-	DataTabButtonActiveState(true)
-end)
-]]
 
 local function ChangeToTileInMenu(Menu, CurrentSelection, SeekedSlotValue)
 	if SeekedSlotValue == 0 then
@@ -678,22 +631,460 @@ function SetupTycoonStorageTiles(button)
 	end
 end
 
+------------------<|Event Functions|>-------------------------------
+
+local UpdateTycoonStorage = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateTycoonStorage")
+UpdateTycoonStorage.OnClientEvent:Connect(function(File, Stat, StatValue, AmountAdded, AcquiredLocation)
+	if typeof(StatValue) == "string" then
+		File = string.gsub(File, "TycoonStorage", "")
+		Stat = string.gsub(Stat, "TycoonStorage", "")
+	else --Bool for Discovered
+		Stat = string.gsub(Stat, "Discovered", "")
+		--print(AcquiredLocation, game.ReplicatedStorage.ItemLocations:FindFirstChild(tostring(AcquiredLocation)))
+		local RarityName = game.ReplicatedStorage.ItemLocations:FindFirstChild(tostring(AcquiredLocation)):FindFirstChild(tostring(Stat)):FindFirstChild("GUI Info").RarityName.Value
+		ItemsPreview:FindFirstChild(tostring(File)):FindFirstChild(RarityName):WaitForChild(tostring(Stat)).Discovered.Value = StatValue
+	end
+
+	wait() --Allow ItemPreview tiles to be made
+	for i,rarity in pairs (ItemsPreview:FindFirstChild(File):GetChildren()) do
+		if rarity:IsA("TextLabel") then
+			if rarity:FindFirstChild(Stat) then
+				if typeof(StatValue) == "boolean" then
+					rarity:FindFirstChild(Stat).Discovered.Value = StatValue
+					UpdateTileLock(rarity:FindFirstChild(Stat),StatValue)
+				else
+					rarity:FindFirstChild(Stat).AmountInStorage.Value = StatValue
+				end
+			end
+		end
+	end	
+end)
+
 -------------------------------------------<|Tycoon Research GUI Functions|>-----------------------------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+local ResearchMenu = ComputerScreen.ResearchMenu
+local AvailableResearch = ResearchMenu.AvailableResearch
+local CurrentResearch = ResearchMenu.CurrentResearch
+local PreviousResearch = ResearchMenu.PreviousResearch
+local CostList = ResearchMenu.CostList
+local InfoMenu = ResearchMenu.InfoMenu
+local ResearchersList = ResearchMenu.ResearchersList
 
+local CheckResearchDepends = game.ReplicatedStorage.Events.Utility:WaitForChild("CheckResearchDepends")
+
+--Prepare all always-available buttons: like previous research and add researchers buttons (not research slots!)
+
+MenuSelect.ResearchMenuButton.Activated:Connect(function()
+	ResearchMenu.Visible = true
+	CurrentResearch.Visible = true
+	ResearchersList.Visible = true
+	AvailableResearch.Visible = true
+	ResearchersList.AvailableResearchPages.Visible = true
+	ResearchersList.ChangeResearchView.Visible = true
+	
+	PreviousResearch.Visible = false
+	ResearchersList.PreviousResearchPages.Visible = false
+	CostList.Visible = false
+	ResearchersList.CostListPages.Visible = false
+	InfoMenu.Visible = false
+	
+	ResetPageOrder(AvailableResearch)
+	ResetPageOrder(PreviousResearch)
+	CostList.CurrentPage.Value = 1
+	
+	ResearchersList.LeftMenuLabel.Text = "Current Research"
+	ResearchersList.RightMenuLabel.Text = "Available Research"
+	
+	UpdatePageDisplay(AvailableResearch, true)
+	UpdatePageDisplay(PreviousResearch, false)
+	UpdatePageDisplay(CostList, false)
+	
+	ChangeTimerActivity(true)
+	
+	MenuSelect.Visible = false
+	BeepSound:Play()
+end)
+
+------------------------<|Time Management|>-----------------------------
+
+function ChangeTimerActivity(bool)
+	for i,outlineTile in pairs (CurrentResearch:GetChildren()) do
+		if outlineTile:IsA("Frame") then
+			for i,tile in pairs (outlineTile:GetChildren()) do
+				if tile:IsA("TextButton") then
+					tile.ProgressBar.Active.Value = bool
+				end
+			end
+		end
+	end
+end
+
+local function toHMS(Sec)
+	return string.format("%02i:%02i:%02i", Sec/60^2, Sec/60%60, Sec%60)
+end
+
+local function ManageTileTimers(Tile, ResearchData, FinishTime)
+	print(ResearchData["Research Length"],ResearchData,FinishTime,ResearchData["Research Name"])
+	local SecondLength = FinishTime - ResearchData["Research Length"]
+	coroutine.resume(coroutine.create(function()
+		while Tile.ProgressBar.Active.Value == true do
+			wait(1)
+			local PercentFinished = os.time() - ResearchData["Research Length"] / SecondLength
+			local SecondsLeft = FinishTime - os.time()
+			Tile.ProgressBar.Timer.Text = toHMS(SecondsLeft)
+			
+			--Tween Progress Bar
+			--Rotate hand on clock to left of progress bar (like CoC timer, 4 points it rotates two going around)
+		end
+	end))
+end
+
+-----------------------<|Tile Info Functions|>-----------------------
+
+local function InsertTileInfo(Tile, ResearchData, ResearchType, FinishTime, StatTable)
+	if StatTable == nil then
+		Tile.ResearchName.Text = ResearchData["Research Name"]
+		Tile.ResearchType.Text = ResearchType
+		
+		--later do rarity coloring when rarity sorting is implemented
+		
+		if FinishTime then
+			Tile.ResearchTime.Visible = false
+			Tile.ProgressBar.Visible = true
+			
+			ManageTileTimers(Tile, ResearchData, FinishTime)
+		else
+			Tile.ProgressBar.Visible = false
+			Tile.ResearchTime.Visible = true
+			
+			Tile.ResearchTime.Text = toHMS(ResearchData["Research Length"])
+		end
+		
+		Tile.Activated:Connect(function()
+			ResearchersList.LeftMenuLabel.Text = "Research Information"
+			ResearchersList.RightMenuLabel.Text = "Research Cost"
+
+			CostList.Visible = true
+			InfoMenu.Visible = true
+			ResearchersList.CostListPages.Visible = true
+
+			AvailableResearch.Visible = false
+			ResearchersList.AvailableResearchPages.Visible = false
+			CurrentResearch.Visible = false
+			PreviousResearch.Visible = false
+			ResearchersList.PreviousResearchPages.Visible = false
+			ResearchersList.ChangeResearchView.Visible = false
+			
+			UpdatePageDisplay(AvailableResearch, false)
+			UpdatePageDisplay(PreviousResearch, false)
+			UpdatePageDisplay(CostList, true)
+
+			--Delete Previous Tiles
+			for i,page in pairs (CostList:GetChildren()) do
+				if page:IsA("Frame") and string.find(page.Name, "Page") then
+					page:Destroy()
+				end
+			end
+
+			--Insert experience and material costs into cost list
+			for i,expRequire in pairs (ResearchData["Experience Cost"]) do
+				ManageResearchTile(CostList, ResearchData, ResearchType, nil, expRequire)
+			end
+			
+			for i,matRequire in pairs (ResearchData["Material Cost"]) do
+				ManageResearchTile(CostList, ResearchData, ResearchType, nil, matRequire)
+			end
+		end)
+	else --Material Tile
+		local StatInfo = StatTable[1]
+		local StatAmount = StatTable[2]
+		
+		Tile.ResearchName.Text = tostring(StatInfo)
+		local StatType
+		if StatInfo:FindFirstChild("Levels") then --ExpRequirement
+			StatType = tostring(StatInfo.Parent)
+			StatAmount = "Level " .. tostring(StatAmount) 
+		else
+			StatType = string.gsub(StatInfo.Bag.Value, "Bag", "") .. "s"
+		end
+		Tile.ResearchType.Text = StatType
+		Tile.ResearchTime.Text = tostring(StatAmount)
+		Tile.ResearchImage.Image = StatInfo["GUI Info"].StatImage.Value
+		
+		--Color ResearchTime red or green if player has met the requirements for the stat cost
+		--Do similar way as tycoon purchase menu checks player data
+		
+		Tile.ResearchName.Position = UDim2.new(0.162, 0, -0.08, 0)
+		Tile.ResearchName.Size = UDim2.new(0.8, 0, 0.55, 0)
+		Tile.ResearchType.Position = UDim2.new(0.162, 0, 0.3, 0)
+		Tile.ResearchType.Size = UDim2.new(0.377, 0, 0.35, 0)
+		
+		Tile.ProgressBar.Visible = false
+		Tile.ResearchTime.Visible = true
+		
+		--Tile.Activated:Connect(function()
+			--Possibly send to storage menu?
+			--Or make an ItemInfo menu
+		--end)
+	end
+end
+
+--------------------<|Research Tile Management|>---------------------
+
+local function RearrangeAvailableTiles(ResearchData, MoveType)
+	--Can finally be implemented once rarity sorting is handled
+	--Find page actually grabs the page that the tile will go into, but this functions job is to move the tiles
+	--into their appropriate positions once this tile's position has been affected
+	
+	local AffectedPage
+	local AffectedTileNumber
+	for i,page in pairs (AvailableResearch:GetChildren()) do
+		for i,tile in pairs (page:GetChildren()) do
+			if tile.ResearchName.Text == ResearchData["Research Name"] then
+				AffectedPage = page
+				AffectedTileNumber = tonumber(string.gsub(tile.Name, "Slot", ""))
+				tile:Destroy()
+			end
+		end
+	end
+	
+	--Move Tiles To Fill Gap (or move tiles away from new tile)
+	local AffectedPageNumber = tonumber(string.gsub(AffectedPage.Name, "Page", ""))
+	for i,page in pairs (AvailableResearch:GetChildren()) do
+		local PageNumber = tonumber(string.gsub(AffectedPage.Name, "Page", ""))
+		if PageNumber >= AffectedPageNumber then
+			
+		end
+	end
+end
+
+function ManageResearchTile(Menu, ResearchData, ResearchType, FinishTime, StatTable)
+	if Menu == CurrentResearch and FinishTime then --Guaranteed to only be one page
+		local ParentTile
+		for i,outlineTile in pairs (CurrentResearch:GetChildren()) do
+			if not outlineTile:FindFirstChild("ResearchSlot") and not ParentTile then
+				ParentTile = outlineTile
+			end
+		end
+		
+		if ParentTile then
+			local NewTile = game.ReplicatedStorage.GuiElements.ResearchSlot:Clone()
+			NewTile.Name = "ResearchSlot"
+			NewTile.Position = UDim2.new(0, 0, 0, 0)
+			NewTile.Size = UDim2.new(1, 0, 1, 0)
+			NewTile.Parent = ParentTile
+			
+			--RearrangeAvailableTiles(Menu, "Destroy")
+			InsertTileInfo(NewTile, ResearchData, ResearchType, FinishTime)
+		end
+	else --Previous and Available Research
+		local Page,SlotCount = FindResearchPage(Menu, 5) --number may change for each menu
+		
+		local NewTile = game.ReplicatedStorage.GuiElements.ResearchSlot:Clone()
+		NewTile.Name = "Slot" .. tostring(SlotCount + 1)
+		NewTile.Position = UDim2.new(0.05, 0, 0.059+0.173*SlotCount, 0)
+		NewTile.Size = UDim2.new(0.9, 0, 0.14, 0)
+		NewTile.Parent = Page
+		
+		--RearrangeAvailableTiles(Menu, "Add")
+		InsertTileInfo(NewTile, ResearchData, ResearchType, nil, StatTable)
+	end
+end
+
+--------------------<|Page Manager Functions|>------------------------
+
+function ResetPageOrder(Menu)
+	for i,page in pairs (Menu:GetChildren()) do
+		if page:IsA("Frame") and string.find(page.Name, "Page") then
+			page.Position = UDim2.new(0, 0, 0, 0)
+			if page.Name == "Page1" then
+				page.Visible = true
+			else
+				page.Visible = false
+			end
+		end
+	end
+	Menu.CurrentPage.Value = 1
+end
+
+function UpdatePageDisplay(Menu, bool)
+	local PageDisplay = ResearchersList:FindFirstChild(tostring(Menu) .. "Pages")
+	local HighPage = CountPages(Menu)
+	
+	if HighPage == 0 then
+		HighPage = 1
+	end
+	if bool then
+		Menu.NextPage.Active = bool
+		Menu.PreviousPage.Active = bool
+		PageDisplay.Visible = bool
+	end
+
+	PageDisplay.Text = tostring(Menu.CurrentPage.Value) .. "/" .. tostring(HighPage)
+end
+
+function FindResearchPage(Menu, MaxTileAmount)
+	local Pages = Menu:GetChildren()
+	local PageCount = CountPages(Menu)
+
+	local Page
+	local Over
+	local SlotCount = 0
+	if Menu:FindFirstChild("Page" .. tostring(PageCount)) then
+		local CheckedPage = Menu:FindFirstChild("Page" .. tostring(PageCount))
+
+		for i,slot in pairs (CheckedPage:GetChildren()) do
+			if slot:IsA("TextButton") then
+				SlotCount += 1
+			end
+		end
+		if SlotCount < MaxTileAmount then
+			Page = CheckedPage
+		else
+			Over = CheckedPage
+		end
+	end
+	
+	--Sort by rarity later (if rarity, because experience tiles are not (put non-rarities on top))
+	
+	if Page == nil then --Make new page
+		local NewPage = game.ReplicatedStorage.GuiElements.ResearchPage:Clone()
+		if Over then
+			NewPage.Visible = false
+			SlotCount = 0
+		else
+			NewPage.Visible = true
+		end
+		NewPage.Name = "Page" .. tostring(PageCount+1)
+		NewPage.Parent = Menu
+		Page = NewPage
+	end
+
+	return Page,SlotCount
+end
+
+local function ManagePageInvis(VisiblePage)
+	for i,page in pairs (VisiblePage.Parent:GetChildren()) do
+		if page:IsA("Frame") then
+			if page ~= VisiblePage then
+				page.Visible = false
+			else
+				page.Visible = true
+			end
+		end
+	end
+end
+
+local PageDebounce = false
+local function FinalizePageChange(NewPage, OldPage, NewXValue)
+	NewPage.Visible = true
+	OldPage:TweenPosition(UDim2.new(NewXValue, 0, 0, 0), "Out", "Quint", .4)
+	NewPage:TweenPosition(UDim2.new(0, 0, 0, 0), "Out", "Quint", .4)
+	wait(.4)
+
+	ManagePageInvis(NewPage)
+end
+
+local function ChangePage(Menu, X1, X2, X3)
+	local OldPage = Menu:FindFirstChild("Page" .. tostring(Menu.CurrentPage.Value))
+	
+	if PageDebounce == false then
+		PageDebounce = true
+		local HighPage = CountPages(Menu)
+
+		if HighPage ~= 1 then
+			local NewPage
+			if Menu.CurrentPage.Value + 1 > HighPage then
+				NewPage = Menu:FindFirstChild("Page1")
+				Menu.CurrentPage.Value = 1
+			else
+				NewPage = Menu:FindFirstChild("Page" .. tostring(Menu.CurrentPage.Value + 1))
+				Menu.CurrentPage.Value = Menu.CurrentPage.Value + 1
+			end
+			
+			UpdatePageDisplay(Menu)
+			
+			if NewPage then
+				NewPage.Position = UDim2.new(X1,0,0,0)
+				FinalizePageChange(NewPage, OldPage, X2)
+			end
+			PageDebounce = false
+		else --Bounce effect
+			UpdatePageDisplay(Menu)
+			
+			Menu:FindFirstChild("Page1"):TweenPosition(UDim2.new(X3,0,0,0), "Out", "Quint", .1)
+			wait(.1)
+			Menu:FindFirstChild("Page1"):TweenPosition(UDim2.new(0,0,0,0), "Out" , "Bounce", .25)
+			wait(.25)
+			PageDebounce = false
+		end
+	end
+end
+
+--------------------<|Button Activations|>-------------------------------
+
+ResearchersList.ChangeResearchView.Activated:Connect(function()
+	if CurrentResearch.Visible then
+		CurrentResearch.Visible = false
+		PreviousResearch.Visible = true
+		UpdatePageDisplay(PreviousResearch, true)
+		ResearchersList.PreviousResearchPages.Visible = true
+		
+		ResearchersList.LeftMenuLabel.Text = "Previous Research"
+		ResearchersList.ChangeResearchView.Text = "Current Research"
+	else
+		CurrentResearch.Visible = true
+		PreviousResearch.Visible = false
+		UpdatePageDisplay(PreviousResearch, false)
+		ResearchersList.PreviousResearchPages.Visible = false
+		
+		ResearchersList.LeftMenuLabel.Text = "Current Research"
+		ResearchersList.ChangeResearchView.Text = "Previous Research"
+	end
+end)
+
+AvailableResearch.NextPage.Activated:Connect(function()
+	ChangePage(AvailableResearch, 1, -1, 0.02)
+end)
+
+AvailableResearch.PreviousPage.Activated:Connect(function()
+	ChangePage(AvailableResearch, -1, 1, -0.02)
+end)
+
+PreviousResearch.NextPage.Activated:Connect(function()
+	ChangePage(PreviousResearch, 1, -1, 0.02)
+end)
+
+PreviousResearch.PreviousPage.Activated:Connect(function()
+	ChangePage(PreviousResearch, -1, 1, -0.02)
+end)
+
+CostList.NextPage.Activated:Connect(function()
+	ChangePage(CostList, 1, -1, 0.02)
+end)
+
+CostList.PreviousPage.Activated:Connect(function()
+	ChangePage(CostList, -1, 1, -0.02)
+end)
+
+--------------------<|Event Functions|>------------------------------
 local UpdateResearch = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateResearch")
-UpdateResearch.OnClientEvent:Connect(function()
-	
-	--Would this also have to be updated in purchase handler or would the PlayerStatManager
-	--assign the appropriate values
-	
-	--Basically, what will know what is purchased and to make sure the dependencies are met for what's
-	--next physically and not just graphically
-	
+UpdateResearch.OnClientEvent:Connect(function(ResearchData, ResearchType, Completed, Purchased, FinishTime)
+	if Purchased and Completed then --Previous
+		--ManageResearchTile(PreviousResearch, ResearchData, ResearchType)
+		
+	elseif Purchased and not Completed then --Current
+		ManageResearchTile(CurrentResearch, ResearchData, ResearchType, FinishTime)
+	else --Check If Can Be Available
+		local AllDependenciesMet = CheckResearchDepends:InvokeServer(ResearchData)
+		if AllDependenciesMet then
+			ManageResearchTile(AvailableResearch, ResearchData, ResearchType)
+		end	
+	end
 end)
 
 
-
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -------------------------------------------------<|Interaction Functions|>-------------------------------------------------------------------------------------------------------
 
 local DepositInteract = game.ReplicatedStorage.Events.HotKeyInteract:WaitForChild("DepositInteract")
@@ -739,6 +1130,26 @@ StorageInteract.Event:Connect(function(promptObject)
 	StartUpCutscene(promptObject)
 end)
 
+----------------------------<|General Button Functions|>-----------------------------------------------------------------------------------------------
+
+ComputerScreen.Taskbar.UtilityButtons.ShutDown.Activated:Connect(function()
+	SelectionMenu.CurrentSelection.Value = ""
+	SelectionMenu.CurrentRarity.Value = ""
+	SelectionMenu.PreviousSelection.Value = ""
+
+	--Move "back button" back
+	ShutDownComputer()
+end)
+
+ComputerScreen.Taskbar.UtilityButtons.Home.Activated:Connect(function()
+	PrepareAllMenuVisibility()
+	MenuSelect.Visible = true
+	ChangeTimerActivity(false)
+	ComputerScreen.Taskbar.Visible = true
+end)
+
+--Back button to return to current menu type's main menu, instead of the menu type selection menu?
+
 ---------------------------------------------------<|Cutscene Manager|>-----------------------------------------------------------------------------------------------------------
 local Camera = game.Workspace.CurrentCamera
 local TweenService = game:GetService("TweenService")
@@ -771,9 +1182,10 @@ end
 function ShutDownCutscene()
 	local CutsceneFolder = CurrentStorage:FindFirstChild("CutsceneCameras")
 	MoveCamera(CutsceneFolder.Camera2, CutsceneFolder.Camera1, .7, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
-	
 	MoveAllBaseScreenUI:Fire("Show")
 	StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, true)
+	
+	ChangeTimerActivity(false)
 
 	wait(.8)
 	Camera.CameraType = Enum.CameraType.Custom
