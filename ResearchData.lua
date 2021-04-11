@@ -1,14 +1,17 @@
 --(Module Script)
 --Use as a safe space to store any research data, referred to only by PurchaseHandler and PlayerStatManager
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+local RS = game.ReplicatedStorage
+
+
 local ResearchData = {
 	
 	["Max Researchers"] = 4,
 	
 	["Research"] = {
 		
-		["PlayerItem Improvements"] = {
-			["Research Type Name"] = "PlayerItem Research"
+		["Equipment Improvements"] = {
+			["Research Type Name"] = "Equipment Research"
 			
 			
 			
@@ -20,12 +23,114 @@ local ResearchData = {
 			
 			[1] = {
 				["Research Name"] = "Room Temperature Superconductors",
+				["Research Image"] = "",
 				["Rarity"] = "Legendary",
+				["Research Length"] = 60,
+				["Material Cost"] = {
+					{RS.ItemLocations.Mineshaft.Stone, 5}
+				},
+				["Experience Cost"] = {
+					{RS.Skills.MiningSkill, 3}
+				},
+				["Dependencies"] = {"More Efficient Fuel Cells"}
+			},
+			
+			[2] = {
+				["Research Name"] = "More Efficient Fuel Cells",
+				["Research Image"] = "",
+				["Rarity"] = "Uncommon",
+				["Research Length"] = 15,
+				["Material Cost"] = {
+					{RS.ItemLocations.Mineshaft.Stone, 5}
+				},
+				["Experience Cost"] = {
+					{RS.Skills.MiningSkill, 3}
+				},
+				["Dependencies"] = {"Fuel Cells"}
+			},
+			
+			[3] = {
+				["Research Name"] = "Fuel Cells",
+				["Research Image"] = "",
+				["Rarity"] = "Common",
 				["Research Length"] = 5,
-				["Material Cost"] = {},
-				["ExperienceCost"] = {},
+				["Material Cost"] = {
+					{RS.ItemLocations.Mineshaft.Stone, 5}
+				},
+				["Experience Cost"] = {
+					{RS.Skills.MiningSkill, 3}
+				},
 				["Dependencies"] = {}
-				
+			},
+			
+			[4] = {
+				["Research Name"] = "Fuel Cells2",
+				["Research Image"] = "",
+				["Rarity"] = "Common",
+				["Research Length"] = 10,
+				["Material Cost"] = {
+					{RS.ItemLocations.Mineshaft.Stone, 5}
+				},
+				["Experience Cost"] = {
+					{RS.Skills.MiningSkill, 3}
+				},
+				["Dependencies"] = {}
+			},
+			
+			[5] = {
+				["Research Name"] = "Fuel Cells3",
+				["Research Image"] = "",
+				["Rarity"] = "Common",
+				["Research Length"] = 30,
+				["Material Cost"] = {
+					{RS.ItemLocations.Mineshaft.Stone, 5}
+				},
+				["Experience Cost"] = {
+					{RS.Skills.MiningSkill, 3}
+				},
+				["Dependencies"] = {}
+			},
+			
+			[6] = {
+				["Research Name"] = "Fuel Cells4",
+				["Research Image"] = "",
+				["Rarity"] = "Common",
+				["Research Length"] = 60,
+				["Material Cost"] = {
+					{RS.ItemLocations.Mineshaft.Stone, 5}
+				},
+				["Experience Cost"] = {
+					{RS.Skills.MiningSkill, 3}
+				},
+				["Dependencies"] = {}
+			},
+			
+			[7] = {
+				["Research Name"] = "Fuel Cells5",
+				["Research Image"] = "",
+				["Rarity"] = "Common",
+				["Research Length"] = 120,
+				["Material Cost"] = {
+					{RS.ItemLocations.Mineshaft.Stone, 5}
+				},
+				["Experience Cost"] = {
+					{RS.Skills.MiningSkill, 3}
+				},
+				["Dependencies"] = {}
+			},
+			
+			[8] = {
+				["Research Name"] = "Fuel Cells6",
+				["Research Image"] = "",
+				["Rarity"] = "Common",
+				["Research Length"] = 300,
+				["Material Cost"] = {
+					{RS.ItemLocations.Mineshaft.Stone, 5}
+				},
+				["Experience Cost"] = {
+					{RS.Skills.MiningSkill, 3}
+				},
+				["Dependencies"] = {}
 			}
 		},
 
