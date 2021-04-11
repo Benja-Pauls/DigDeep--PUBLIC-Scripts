@@ -187,6 +187,8 @@ function CleanupMenuTabs(Menu)
 	
 	--Prep Default Menu
 	if Menu.Name == "DataMenu" or Menu.Name == "PlayerMenu" then
+		DataMenu.PlayerMenu.EmptyNotifier.Visible = false
+		
 		for i,gui in pairs (DataMenu.PlayerMenu:GetChildren()) do
 			if gui:IsA("ImageButton") and string.find(tostring(gui), "Bag") then
 				gui.Visible = true
@@ -422,20 +424,22 @@ local function FindStatPage(Stat, Menu, MaxTileAmount, RaritySort, AcquiredLocat
 	local SlotCount = 0
 	local found = false
 	for i,page in pairs (Pages) do	
-		if page.Rarity.Value == StatRarity then
-			--print("Found existing page for " .. tostring(StatRarity))
+		if page:IsA("Frame") then
+			if page.Rarity.Value == StatRarity then
+				--print("Found existing page for " .. tostring(StatRarity))
 
-			for i,slot in pairs (page:GetChildren()) do
-				if slot:IsA("TextButton") or slot:IsA("ImageButton") then
-					SlotCount = SlotCount + 1
+				for i,slot in pairs (page:GetChildren()) do
+					if slot:IsA("TextButton") or slot:IsA("ImageButton") then
+						SlotCount += 1
+					end
 				end
-			end
 
-			if SlotCount < MaxTileAmount then
-				found = true
-				Page = page
-			else
-				Over = page --Too many tiles on rarity page
+				if SlotCount < MaxTileAmount then
+					found = true
+					Page = page
+				else
+					Over = page --Too many tiles on rarity page
+				end
 			end
 		end
 	end
@@ -450,7 +454,6 @@ local function FindStatPage(Stat, Menu, MaxTileAmount, RaritySort, AcquiredLocat
 			NewPage.Name = "Page" .. tostring(tonumber(LastRarityPage) + 1)
 			
 		elseif not Over and StatRarity ~= "No Rarity" then --No Page of Rarity Exists, Must Sort Rarities by Order
-			--Sort by rarity
 			local HighestLowerRarityPage = 0
 			
 			local RarityOrder = GuiElements.RarityColors:FindFirstChild(StatRarity).Order.Value
@@ -729,7 +732,7 @@ local function InsertTileInfo(Type, tile, Stat, Value, found, AcquiredLocation)
 	return found
 end
 
-local function ManageTileInsertion(tile, slotNumber, previousTile, tilesPerRow)
+local function ManageTileAdvancedInsertion(tile, slotNumber, previousTile, tilesPerRow)
 	if (slotNumber-1)%tilesPerRow == 0 then
 		tile.Row.Value = previousTile.Row.Value + 1
 		tile.Column.Value = 0
@@ -805,18 +808,18 @@ function ManageTiles(Stat, Menu, Value, Type, AcquiredLocation)
 			print("Making a new tile: " .. tostring(Stat))
 			local tile = OriginalMaterialSlot:Clone()
 			local PreviousTile = Page:FindFirstChild("Slot" .. tostring(SlotCount))
-			local slotNumber = SlotCount + 1
-			tile.Name = "Slot" .. tostring(slotNumber)
+			local SlotNumber = SlotCount + 1
+			tile.Name = "Slot" .. tostring(SlotNumber)
 			
 			if Type == "Inventory" or Type == "Bags" then
-				ManageTileInsertion(tile, slotNumber, PreviousTile, 5)
+				ManageTileAdvancedInsertion(tile, SlotNumber, PreviousTile, 5)
 				
 				tile.Rarity.Value = Rarity
 				tile.Position = UDim2.new(0.017+0.196*tile.Column.Value, 0, 0.02+0.298*tile.Row.Value, 0)
 			elseif Type == "Experience" then
 				tile.Position = UDim2.new(0.028,0,0.037+((SlotCount)*0.24),0)
 			else --Non-Bag Player Item
-				ManageTileInsertion(tile, slotNumber, PreviousTile, 2)
+				ManageTileAdvancedInsertion(tile, SlotNumber, PreviousTile, 2)
 				
 				tile.Position = UDim2.new(0.017+.492*tile.Column.Value, 0, 0.02+0.298*tile.Row.Value, 0)
 			end
@@ -824,13 +827,10 @@ function ManageTiles(Stat, Menu, Value, Type, AcquiredLocation)
 			tile.Parent = Page
 			InsertTileInfo(Type, tile, Stat, Value, found, AcquiredLocation)
 		end
-	else
-		
-		--First tile to be made for menu (Change to first tile for page) (function for making a new page to replace canvas function?)
+	else --First tile to be made for menu
 		if Value ~= 0 then			
 			local FirstSlot = OriginalMaterialSlot:Clone()
 			FirstSlot.Name = "Slot1"
-			FirstSlot.Parent = Page
 			
 			if Type == "Experience" then
 				FirstSlot.Position = UDim2.new(0.028,0,0.037,0)
@@ -841,6 +841,7 @@ function ManageTiles(Stat, Menu, Value, Type, AcquiredLocation)
 				FirstSlot.Position = UDim2.new(0.017, 0, 0.02, 0)
 			end
 			
+			FirstSlot.Parent = Page
 			InsertTileInfo(Type, FirstSlot, Stat, Value, nil, AcquiredLocation)
 		end
 	end
