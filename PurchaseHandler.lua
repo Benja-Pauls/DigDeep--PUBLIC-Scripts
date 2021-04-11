@@ -24,17 +24,6 @@ local function GetPlayer(WantedPlayer)
 	end
 end
 
-local function CloneTable(OriginalTable)
-	local copy = {}
-	for i,tbl in pairs(OriginalTable) do
-		if type(tbl) == "table" then
-			tbl = CloneTable(tbl)
-		end
-		copy[i] = tbl
-	end
-	return copy
-end
-
 -------------------------------<|Tycoon Purchases|>----------------------------------------------------------------------------------------------------------
 
 local function CheckMaterialCosts(Inventory, Storage, Button)
@@ -66,7 +55,7 @@ local function CheckMaterialCosts(Inventory, Storage, Button)
 end
 
 --Tycoon Purchase Function
-function Purchase(Table, Tycoon, Material)
+function PurchaseTycoonObject(Table, Tycoon, Material)
 	local cost = Table[1]
 	local item = Table[2]
 	local stat = Table[3] 
@@ -157,7 +146,7 @@ PurchaseObject.OnServerEvent:Connect(function(player, target)
 					--If it's a gamepass button
 					if (target:FindFirstChild('Gamepass')) and (target.Gamepass.Value >= 1) then
 						if game:GetService("MarketplaceService"):PlayerOwnsAsset(player,target.Gamepass.Value) then
-							Purchase({target.Price.Value, target, PlayerCash}, AssociatedTycoon)
+							PurchaseTycoonObject({target.Price.Value, target, PlayerCash}, AssociatedTycoon)
 						else
 							game:GetService('MarketplaceService'):PromptPurchase(player,target.Gamepass.Value)
 						end
@@ -168,7 +157,7 @@ PurchaseObject.OnServerEvent:Connect(function(player, target)
 
 					--Normal Button, player can afford it
 					elseif PlayerCash.Value >= target.Price.Value and MaterialCostCheck == nil then
-						Purchase({target.Price.Value, target, PlayerCash}, AssociatedTycoon)
+						PurchaseTycoonObject({target.Price.Value, target, PlayerCash}, AssociatedTycoon)
 						SoundEffects:PlaySound(target, SoundEffects.Tycoon.Purchase)
 						
 					--Material Button, player can afford it
@@ -179,12 +168,12 @@ PurchaseObject.OnServerEvent:Connect(function(player, target)
 							for i,material in pairs (typeGroup:GetChildren()) do
 								local cost = material.Value
 
-								Purchase({cost, target, PlayerInventory}, AssociatedTycoon, material)
+								PurchaseTycoonObject({cost, target, PlayerInventory}, AssociatedTycoon, material)
 								--extra ",material" at end to say what specifically in the [3]'s menu that's affected)
 								wait(.51) --Delay between purchases to successfully stack material popups
 							end
 						end
-						Purchase({target.Price.Value, target, PlayerCash}, AssociatedTycoon)
+						PurchaseTycoonObject({target.Price.Value, target, PlayerCash}, AssociatedTycoon)
 						SoundEffects:PlaySound(target, SoundEffects.Tycoon.Purchase)
 
 						--put another for only materials required to purchase "buttons"
@@ -206,7 +195,7 @@ PurchaseObject.OnServerEvent:Connect(function(player, target)
 	end
 end)
 
---PurchaseResearch.OnClientEvent:Connect(function()
+--PurchaseResearch.OnServerEvent:Connect(function()
 
 --Use this function for any data sensitive content associated with research. While this is fired, the research section
 --of the TycoonComputerHandler local script will handle any GUI changes required after the purchase takes place
@@ -214,6 +203,15 @@ end)
 --GUI)
 
 --Possibly fire TycoonComputerHandler GUI events from here? (like update events used in PlayerStatManager later)
+
+--also should update the player's stats
+--end)
+
+--CompletedResearch.OnServerEvent:Connect(function()
+--Add to TycoonResearch group to player's tycoon
+--done after player has "checked off" on their research, officially completing it and firing this remote event
+
+--also should update the player's stats
 
 --end)
 
@@ -224,7 +222,7 @@ local StoreFrontInteract = EventsFolder.HotKeyInteract:WaitForChild("StoreFrontI
 local UpdateStoreFront = EventsFolder.GUI:WaitForChild("UpdateStoreFront")
 
 StoreFrontInteract.OnServerEvent:Connect(function(player, NPC)
-	local npcData = CloneTable(AllNPCData[tostring(NPC)])
+	local npcData = Utility:CloneTable(AllNPCData[tostring(NPC)])
 	local AlreadyPurchased = {}
 	
 	for item = 1,#npcData["Items"],1 do
