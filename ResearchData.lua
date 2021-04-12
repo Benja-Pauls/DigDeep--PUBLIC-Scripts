@@ -160,10 +160,7 @@ local ResearchData = {
 --With shops selling new things, maybe have shops check, when they're displaying their shop tiles, what the player
 --has all unlocked?
 
---After Dinner: lay out research data to be sorted throughout PlayerDataFile; Folders: ResearchTypes, Files: Research
---Research file name will be research name, number value will be tick count (research length), then 
---massively checked values like Purchased, FinishTime, and Completed
-
+--Quest items? Player must have a quest item? (like a blueprint provided by an NPC?)
 
 
 --Firing types: Saved value is read by another script or models are inserted by local script
