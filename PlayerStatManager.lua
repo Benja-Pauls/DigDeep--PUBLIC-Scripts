@@ -22,8 +22,8 @@ local DepositInventory = EventsFolder.Utility:WaitForChild("DepositInventory")
 local CheckResearchDepends = EventsFolder.Utility:WaitForChild("CheckResearchDepends")
 
 local HandleDropMaterialsEvent = EventsFolder.Tycoon:WaitForChild("HandleDropMaterials")
--------------------------<|Set Up Game|>--------------------------------------------------------------------------------------------------------------------------------------
 
+-------------------------<|Set Up Game|>--------------------------------------------------------------------------------------------------------------------------------------
 local DataStoreService = game:GetService("DataStoreService") 
 local PlayerSave = DataStoreService:GetDataStore("Tycoon Test202") --Changing this will change the datastore info is taken from
 
@@ -53,7 +53,7 @@ game.Players.PlayerAdded:Connect(function(JoinedPlayer)
 		Light.Range = 7
 		Light.Parent = Character.Head
 		
-		--Put Proximity Prompt here? (if players need to interact with each other
+		--Insert ProxPrompt in Player Here? (if players need to interact with each other
 	end
 	
 	FindPlayerData(JoinedPlayer)
@@ -623,6 +623,26 @@ function GetItemCountSum.OnServerInvoke(Player, StatName)
 	local StorageAmount = sessionData[PlayerUserId]["TycoonStorage" .. StatName]
 	
 	return InventoryAmount + StorageAmount
+end
+
+local GetCurrentSkillLevel = EventsFolder.Utility:WaitForChild("GetCurrentSkillLevel")
+function GetCurrentSkillLevel.OnServerInvoke(Player, SkillInfo)
+	local PlayerUserId = Player.UserId
+	local ExpAmount = sessionData[PlayerUserId][tostring(SkillInfo)]
+	
+	local HighestLevel
+	for i,level in pairs (SkillInfo.Levels:GetChildren()) do
+		if level.Value <= ExpAmount then
+			if HighestLevel then
+				if level.Value > HighestLevel.Value then
+					HighestLevel = level
+				end
+			else
+				HighestLevel = level
+			end
+		end
+	end
+	return tonumber(HighestLevel.Name)
 end
 
 function CheckResearchDepends.OnServerInvoke(Player, ResearchData)
