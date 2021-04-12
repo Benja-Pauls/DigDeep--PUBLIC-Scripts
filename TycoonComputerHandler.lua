@@ -21,6 +21,8 @@ local DefaultJumpPower = Character.Humanoid.JumpPower
 
 local LocalLoadTycoon = game.ReplicatedStorage.Events.Tycoon:WaitForChild("LocalLoadTycoon")
 local MoveAllBaseScreenUI = game.ReplicatedStorage.Events.GUI:WaitForChild("MoveAllBaseScreenUI")
+local GetItemCountSum = game.ReplicatedStorage.Events.Utility:WaitForChild("GetItemCountSum")
+local GetCurrentSkillLevel = game.ReplicatedStorage.Events.Utility:WaitForChild("GetCurrentSkillLevel")
 
 local ComputerIsOn = false
 local CurrentStorage
@@ -50,19 +52,6 @@ local function MenuButtonActiveState(Menu, State)
 			button.Selectable = State
 		end
 	end
-end
-
-local function CountPages(Menu)
-	local HighPage = 0
-	for i,page in pairs (Menu:GetChildren()) do
-		if page:IsA("Frame") and string.find(page.Name, "Page") then
-			local PageNumber = string.gsub(page.Name, "Page", "")
-			if tonumber(PageNumber) > HighPage then
-				HighPage = tonumber(PageNumber)
-			end
-		end
-	end
-	return HighPage
 end
 
 --------------------------<|Set Up Menu Functions|>-------------------------------------------------------------------------------------------------------------
@@ -741,100 +730,130 @@ end
 
 -----------------------<|Tile Info Functions|>-----------------------
 
+local function ChangeCostColor(Tile, PlayerAmount, Cost)
+	if PlayerAmount >= Cost then
+		Tile.ResearchCost.TextColor3 = Color3.fromRGB(91, 170, 111)
+	else
+		Tile.ResearchCost.TextColor3 = Color3.fromRGB(170, 0, 0)
+	end
+end
+
+local function ColorTileRarity(Tile, RarityInfo)
+	Tile.Parent.BackgroundColor3 = RarityInfo.Value
+	Tile.Parent.BorderColor3 = RarityInfo.TileColor.Value
+	Tile.DisplayImage.BorderColor3 = RarityInfo.TileColor.Value
+end
+
 local function InsertTileInfo(Tile, ResearchData, ResearchType, FinishTime, StatTable)
 	if StatTable == nil then
-		Tile.ResearchName.Text = ResearchData["Research Name"]
-		Tile.ResearchType.Text = ResearchType
+		Tile.ResearchTile.Visible = true
+		Tile.CostTile.Visible = false
+		local ResearchTile = Tile.ResearchTile
 		
-		--later do rarity coloring when rarity sorting is implemented
+		ResearchTile.ResearchName.Text = ResearchData["Research Name"]
+		ResearchTile.ResearchType.Text = ResearchType
+		ColorTileRarity(ResearchTile, Tile.Rarity.Value)
 		
 		if FinishTime then
-			Tile.ResearchTime.Visible = false
-			Tile.ProgressBar.Visible = true
-			
-			ManageTileTimers(Tile, ResearchData, FinishTime)
+			ResearchTile.ResearchTime.Visible = false
+			ResearchTile.ProgressBar.Visible = true
+			ManageTileTimers(ResearchTile, ResearchData, FinishTime)
 		else
-			Tile.ProgressBar.Visible = false
-			Tile.ResearchTime.Visible = true
-			
-			Tile.ResearchTime.Text = toHMS(ResearchData["Research Length"])
+			ResearchTile.ProgressBar.Visible = false
+			ResearchTile.ResearchTime.Visible = true
+			ResearchTile.ResearchTime.Text = toHMS(ResearchData["Research Length"])
 		end
 		
+		local TileDebounce = false
 		Tile.Activated:Connect(function()
-			ResearchersList.LeftMenuLabel.Text = "Research Information"
-			ResearchersList.RightMenuLabel.Text = "Research Cost"
+			if TileDebounce == false then
+				TileDebounce = true
 
-			CostList.Visible = true
-			InfoMenu.Visible = true
-			ResearchersList.CostListPages.Visible = true
+				ResearchersList.LeftMenuLabel.Text = "Research Information"
+				ResearchersList.RightMenuLabel.Text = "Research Cost"
+				
+				UpdatePageDisplay(AvailableResearch, false)
+				UpdatePageDisplay(PreviousResearch, false)
+				UpdatePageDisplay(CostList, true)
 
-			AvailableResearch.Visible = false
-			ResearchersList.AvailableResearchPages.Visible = false
-			CurrentResearch.Visible = false
-			PreviousResearch.Visible = false
-			ResearchersList.PreviousResearchPages.Visible = false
-			ResearchersList.ChangeResearchView.Visible = false
-			
-			UpdatePageDisplay(AvailableResearch, false)
-			UpdatePageDisplay(PreviousResearch, false)
-			UpdatePageDisplay(CostList, true)
-
-			--Delete Previous Tiles
-			for i,page in pairs (CostList:GetChildren()) do
-				if page:IsA("Frame") and string.find(page.Name, "Page") then
-					page:Destroy()
+				--Delete Previous Tiles
+				for i,page in pairs (CostList:GetChildren()) do
+					if page:IsA("Frame") and string.find(page.Name, "Page") then
+						page:Destroy()
+					end
 				end
-			end
 
-			--Insert experience and material costs into cost list
-			for i,expRequire in pairs (ResearchData["Experience Cost"]) do
-				ManageResearchTile(CostList, ResearchData, ResearchType, nil, expRequire)
-			end
-			
-			for i,matRequire in pairs (ResearchData["Material Cost"]) do
-				ManageResearchTile(CostList, ResearchData, ResearchType, nil, matRequire)
+				--Insert experience and material costs into cost list
+				for i,expRequire in pairs (ResearchData["Experience Cost"]) do
+					ManageResearchTile(CostList, ResearchData, ResearchType, nil, expRequire)
+				end
+				
+				for i,matRequire in pairs (ResearchData["Material Cost"]) do
+					ManageResearchTile(CostList, ResearchData, ResearchType, nil, matRequire)
+				end
+				
+				CostList.Visible = true
+				InfoMenu.Visible = true
+				AvailableResearch.Visible = false
+				CurrentResearch.Visible = false
+				PreviousResearch.Visible = false
+				ResearchersList.ChangeResearchView.Visible = false
+				
+				TileDebounce = false
 			end
 		end)
 	else --Material Tile
+		Tile.ResearchTile.Visible = false
+		Tile.CostTile.Visible = true
+		local CostTile = Tile.CostTile
+		
 		local StatInfo = StatTable[1]
 		local StatAmount = StatTable[2]
+		local Discovered = false
 		
-		Tile.ResearchName.Text = tostring(StatInfo)
 		local StatType
 		if StatInfo:FindFirstChild("Levels") then --ExpRequirement
 			StatType = tostring(StatInfo.Parent)
 			StatAmount = "Level " .. tostring(StatAmount) 
+			Discovered = true
+			
+			local PlayerLevel = GetCurrentSkillLevel:InvokeServer(StatInfo)
+			ChangeCostColor(CostTile, PlayerLevel, StatTable[2])
 		else
 			StatType = string.gsub(StatInfo.Bag.Value, "Bag", "") .. "s"
+			
+			--Change rarity name to be grabbed from rarity string value
+			local RarityName = tostring(Tile.Rarity.Value)
+			Discovered = ItemsPreview:FindFirstChild(StatType):FindFirstChild(RarityName):WaitForChild(tostring(StatInfo)).Discovered.Value
+			
+			local PlayerItemCount = GetItemCountSum:InvokeServer(tostring(StatInfo))
+			ChangeCostColor(CostTile, PlayerItemCount, StatAmount)
 		end
-		Tile.ResearchType.Text = StatType
-		Tile.ResearchTime.Text = tostring(StatAmount)
-		Tile.ResearchImage.Image = StatInfo["GUI Info"].StatImage.Value
-		
-		--Color ResearchTime red or green if player has met the requirements for the stat cost
-		--Do similar way as tycoon purchase menu checks player data
-		
-		Tile.ResearchName.Position = UDim2.new(0.162, 0, -0.08, 0)
-		Tile.ResearchName.Size = UDim2.new(0.8, 0, 0.55, 0)
-		Tile.ResearchType.Position = UDim2.new(0.162, 0, 0.3, 0)
-		Tile.ResearchType.Size = UDim2.new(0.377, 0, 0.35, 0)
-		
-		Tile.ProgressBar.Visible = false
-		Tile.ResearchTime.Visible = true
-		
-		--Tile.Activated:Connect(function()
-			--Possibly send to storage menu?
-			--Or make an ItemInfo menu
-		--end)
+		CostTile.StatType.Text = StatType
+		CostTile.ResearchCost.Text = tostring(StatAmount)
+		ColorTileRarity(CostTile, Tile.Rarity.Value)
+
+		if not Discovered then
+			CostTile.StatName.Text = "[UNKNOWN]" 
+			CostTile.DisplayImage.Image = "rbxgameasset://Images/lock2"
+		else
+			CostTile.StatName.Text = string.gsub(tostring(StatInfo), "Skill", "")
+			CostTile.DisplayImage.Image = StatInfo["GUI Info"].StatImage.Value
+			
+			--local TileDebounce = false
+			--Tile.Activated:Connect(function()
+				--Select item in storage menu and display storage menu
+			--end)
+		end
+
 	end
 end
 
 --------------------<|Research Tile Management|>---------------------
 
 local function RearrangeAvailableTiles(ResearchData, MoveType)
-	--Can finally be implemented once rarity sorting is handled
-	--Find page actually grabs the page that the tile will go into, but this functions job is to move the tiles
-	--into their appropriate positions once this tile's position has been affected
+
+
 	
 	local AffectedPage
 	local AffectedTileNumber
@@ -874,19 +893,22 @@ function ManageResearchTile(Menu, ResearchData, ResearchType, FinishTime, StatTa
 			NewTile.Size = UDim2.new(1, 0, 1, 0)
 			NewTile.Parent = ParentTile
 			
+			local RarityName = ResearchData["Rarity"]
+			local RarityInfo = game.ReplicatedStorage.GuiElements.RarityColors:FindFirstChild(RarityName)
+			NewTile.Rarity.Value = RarityInfo
 			--RearrangeAvailableTiles(Menu, "Destroy")
 			InsertTileInfo(NewTile, ResearchData, ResearchType, FinishTime)
 		end
 	else --Previous and Available Research
-		local Page,SlotCount = FindResearchPage(Menu, 5) --number may change for each menu
+		local Page,SlotCount,RarityInfo = FindMenuPage(Menu, 5, ResearchData, StatTable) --number may change for each menu
 		
 		local NewTile = game.ReplicatedStorage.GuiElements.ResearchSlot:Clone()
 		NewTile.Name = "Slot" .. tostring(SlotCount + 1)
 		NewTile.Position = UDim2.new(0.05, 0, 0.059+0.173*SlotCount, 0)
 		NewTile.Size = UDim2.new(0.9, 0, 0.14, 0)
+		NewTile.Rarity.Value = RarityInfo
 		NewTile.Parent = Page
 		
-		--RearrangeAvailableTiles(Menu, "Add")
 		InsertTileInfo(NewTile, ResearchData, ResearchType, nil, StatTable)
 	end
 end
@@ -909,12 +931,12 @@ end
 
 function UpdatePageDisplay(Menu, bool)
 	local PageDisplay = ResearchersList:FindFirstChild(tostring(Menu) .. "Pages")
-	local HighPage = CountPages(Menu)
+	local HighPage = GetHighPage(Menu)
 	
 	if HighPage == 0 then
 		HighPage = 1
 	end
-	if bool then
+	if bool ~= nil then
 		Menu.NextPage.Active = bool
 		Menu.PreviousPage.Active = bool
 		PageDisplay.Visible = bool
@@ -923,10 +945,171 @@ function UpdatePageDisplay(Menu, bool)
 	PageDisplay.Text = tostring(Menu.CurrentPage.Value) .. "/" .. tostring(HighPage)
 end
 
-function FindResearchPage(Menu, MaxTileAmount)
-	local Pages = Menu:GetChildren()
-	local PageCount = CountPages(Menu)
+local function CompareHighPage(Page, HighPage)
+	local PageNumber = string.gsub(Page.Name, "Page", "")
+	if tonumber(PageNumber) > HighPage then
+		return tonumber(PageNumber)
+	else
+		return HighPage
+	end
+end
 
+function GetHighPage(Menu, RarityName)
+	local HighPage = 0
+	for i,page in pairs (Menu:GetChildren()) do
+		if page:IsA("Frame") and string.find(page.Name, "Page") then
+			if RarityName then
+				local RarityPageFound
+				for i,tile in pairs (page:GetChildren()) do
+					if RarityPageFound == nil then
+						if tile:IsA("TextButton") and string.find(tile.Name, "Slot") then
+							local RarityInfo = tile.Rarity.Value
+							if tostring(RarityInfo) == RarityName then
+								RarityPageFound = page
+							end
+						end 
+					end
+				end
+
+				if RarityPageFound then
+					HighPage = CompareHighPage(page, HighPage)
+				end
+			else
+				HighPage = CompareHighPage(page, HighPage)
+			end
+		end
+	end
+	return HighPage
+end
+
+local function FindDifferentRarity(Menu, RarityInfo, OrderValue, Change)
+	local CheckedRarity
+	for i,rarity in pairs (RarityInfo.Parent:GetChildren()) do
+		if rarity:IsA("Color3Value") then
+			if rarity.Order.Value == OrderValue + Change then
+				CheckedRarity = rarity
+			end
+		end
+	end
+	
+	local HighPage = GetHighPage(Menu, CheckedRarity)
+	if HighPage ~= 0 then
+		return Menu:FindFirstChild("Page" .. tostring(HighPage))
+	else --Continue searching lower/higher
+		if OrderValue ~= 0 or OrderValue ~= GetHighPage(Menu) then
+			return FindDifferentRarity(RarityInfo, OrderValue + Change, Change)
+		else
+			return nil
+		end
+	end
+end
+
+function FindMenuPage(Menu, MaxTileAmount, ResearchData, StatTable)
+	local Pages = Menu:GetChildren()
+	
+	local RarityName
+	local StatInfo
+	if StatTable == nil then
+		StatInfo = ResearchData
+		RarityName = StatInfo["Rarity"]
+	else
+		StatInfo = StatTable[1]
+		if StatInfo["GUI Info"]:FindFirstChild("RarityName") then
+			RarityName = StatInfo["GUI Info"].RarityName.Value
+		else
+			RarityName = "No Rarity"
+		end
+	end
+	local RarityInfo = game.ReplicatedStorage.GuiElements.RarityColors:FindFirstChild(RarityName)
+	local RarityOrderValue = RarityInfo.Order.Value
+	
+	local PageCount = GetHighPage(Menu) --Count number of pages with rarity present
+	local HighRarityPage = GetHighPage(Menu, RarityName)
+	--If no rarity page: put right after rarity with one less order value than this one (or top)
+	--If rarity page is full: find next page with rarity with one higher order value than this one (or new page entirely)
+	
+	--Redo way tiles are sorted within pages. Position will be based off number value called TruePosition, and this value
+	--will affect the other values around it to increase and subsequently change position
+	
+	local Page
+	if HighRarityPage ~= 0 then
+		local PossiblePage = Menu:FindFirstChild("Page" .. tostring(HighRarityPage))
+		local SlotCount = 0
+		
+		for i,slot in pairs (PossiblePage:GetChildren()) do
+			if slot:IsA("TextButton") and string.find(slot.Name, "Slot") then
+				local CheckedRarity = slot.Rarity.Value
+				if tostring(CheckedRarity) == RarityName then
+					SlotCount += 1
+				end
+			end
+		end
+		
+		if SlotCount < MaxTileAmount then
+			--insert tile and move others' true positions down
+			--(this function will always only affect below where it was inserted, so function will check true positions
+			--that are higher or equal to this tile's true position)
+		else
+			if Menu:FindFirstChild("Page" .. tostring(HighRarityPage + 1)) then
+				local Page = Menu:FindFirstChild("Page" .. tostring(HighRarityPage + 1))
+				--insert tile and move others' true positions down
+				
+			else
+				local NewPage = game.ReplicatedStorage.GuiElements.ResearchPage:Clone()
+				NewPage.Visible = false
+				NewPage.Name = "Page" .. tostring(HighRarityPage + 1)
+				NewPage.Parent = Menu
+				Page = NewPage
+			end
+			SlotCount = 0
+		end
+		
+	else
+		local LesserRarityPage = FindDifferentRarity(Menu, RarityInfo, RarityOrderValue, -1)
+
+		if LesserRarityPage then
+			--Insert as next slot after all lower rarity slots
+			
+			--insert tile and move others' true positions down
+			
+			
+			
+		else
+			local HigherRarityPage = FindDifferentRarity(Menu, RarityInfo, RarityOrderValue, 1)
+			
+			if HigherRarityPage then
+				--Insert as slot 1 of new page, move all others down
+				
+				--insert tile and move others' true positions down
+				
+				
+			else --No pages even available, make new page
+				local NewPage = game.ReplicatedStorage.GuiElements.ResearchPage:Clone()
+				NewPage.Visible = true
+				NewPage.Name = "Page1"
+				NewPage.Parent = Menu
+				Page = NewPage
+			end
+		end
+	end
+	
+	--PAGE SORTING STRATEGY:
+	--Look for pages with rarity in them
+	--if one is available, check if slot available
+		--(function)
+		--if slot, insert and move tiles below
+		--if no slot, put in next page
+			--if no next page, make a new page
+	
+	--if no pages with rarity, look for page with order value less
+		--if found, put tile at end and move any with higher order value (do slot checks above)
+	--if none available, look for one with order value more
+		--if found, put tile at top and move any with higher order value
+	--if none available, make a new page (check this first, only scenario this would happen is no page yet,
+	--and this should be quick to start loading fast) (Check this, if one, do above checks. If none: new page)
+	
+	
+--[[
 	local Page
 	local Over
 	local SlotCount = 0
@@ -959,8 +1142,10 @@ function FindResearchPage(Menu, MaxTileAmount)
 		NewPage.Parent = Menu
 		Page = NewPage
 	end
+]]
+	
 
-	return Page,SlotCount
+	return Page,SlotCount,RarityInfo
 end
 
 local function ManagePageInvis(VisiblePage)
@@ -990,7 +1175,7 @@ local function ChangePage(Menu, X1, X2, X3)
 	
 	if PageDebounce == false then
 		PageDebounce = true
-		local HighPage = CountPages(Menu)
+		local HighPage = GetHighPage(Menu)
 
 		if HighPage ~= 1 then
 			local NewPage
