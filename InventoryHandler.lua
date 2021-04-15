@@ -672,7 +672,7 @@ local function InsertTileInfo(Type, tile, Stat, Value, found, AcquiredLocation)
 		ProgressBar.Progress.Size = UDim2.new(Percentage, 0, 1, 0)
 		found = true
 		
-	else --Non-Bag, Equippable PlayerItems
+	else --Non-Bag, Equippable PlayerItems (Stat Table Referencing)
 		local RSTypeFile = game.ReplicatedStorage.Equippable:FindFirstChild(tostring(Type))
 		StatInfo = RSTypeFile:FindFirstChild(tostring(AcquiredLocation)):FindFirstChild(tostring(Stat))
 		
@@ -804,7 +804,8 @@ function ManageTiles(Stat, Menu, Value, Type, AcquiredLocation)
 		end
 		
 		--Make new tile
-		if found == false and (Value > 0 or Value:IsA("LocalizationTable")) then
+		print("VALUE: ",Value,typeof(Value),type(Value))
+		if found == false and (typeof(Value) == "table" or Value > 0) then
 			print("Making a new tile: " .. tostring(Stat))
 			local tile = OriginalMaterialSlot:Clone()
 			local PreviousTile = Page:FindFirstChild("Slot" .. tostring(SlotCount))
