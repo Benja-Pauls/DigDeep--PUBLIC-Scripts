@@ -218,7 +218,7 @@ local function UpdateGUIForFile(DataTabName, PlayerDataFile, player, playerUserI
 end
 
 --Change saved stat to new value
-function PlayerStatManager:ChangeStat(player, statName, value, File, ItemType, special)
+function PlayerStatManager:ChangeStat(player, statName, value, Folder, ItemType, special)
 	local playerUserId = game.Players:FindFirstChild(tostring(player)).UserId
 	local PlayerDataFile = PlayerData:FindFirstChild(tostring(playerUserId))
 	
@@ -234,13 +234,13 @@ function PlayerStatManager:ChangeStat(player, statName, value, File, ItemType, s
 			end
 			--print(tostring(statName) .. "'s new value is: " .. tostring(sessionData[playerUserId][statName]))
 			
-			if File then 
-				UpdateGUIForFile(tostring(File), PlayerDataFile, player, playerUserId, statName, value)
+			if Folder then 
+				UpdateGUIForFile(tostring(Folder), PlayerDataFile, player, playerUserId, statName, value)
 			end
 			
 			--Client script data management so exploiters cant handle sensitive data
 			--Updating where data is stored in ServerStorage (viewed by server scripts)
-			for i,file in pairs (PlayerDataFile:FindFirstChild(File):GetChildren()) do
+			for i,file in pairs (PlayerDataFile:FindFirstChild(Folder):GetChildren()) do
 				if file:FindFirstChild(statName) then
 					file:FindFirstChild(statName).Value = sessionData[playerUserId][statName]
 				end
@@ -250,21 +250,21 @@ function PlayerStatManager:ChangeStat(player, statName, value, File, ItemType, s
 		sessionData[playerUserId][statName] = value 
 
 		if typeof(sessionData[playerUserId][statName]) == "boolean" then
-			if File then
-				if game.ReplicatedStorage.Equippable:FindFirstChild(File) then --Player Item Purchase Bool
-					UpdatePlayerMenu:FireClient(player, File, ItemType, statName)
-					PlayerDataFile.Player:FindFirstChild(File):FindFirstChild(ItemType):FindFirstChild(statName).Value = value
+			if Folder then
+				if game.ReplicatedStorage.Equippable:FindFirstChild(Folder) then --Player Item Purchase Bool
+					UpdatePlayerMenu:FireClient(player, Folder, ItemType, statName)
+					PlayerDataFile.Player:FindFirstChild(Folder):FindFirstChild(ItemType):FindFirstChild(statName).Value = value
 					
 				elseif string.find(statName, "Discovered") then
 					--Unlock tile in tycoon storage
-					local LocationOfAcquirement = FindItemInfo(string.gsub(statName, "Discovered", ""), tostring(File), true)
-					UpdateTycoonStorage:FireClient(player, tostring(File), statName, value, nil, LocationOfAcquirement)
+					local LocationOfAcquirement = FindItemInfo(string.gsub(statName, "Discovered", ""), tostring(Folder), true)
+					UpdateTycoonStorage:FireClient(player, tostring(Folder), statName, value, nil, LocationOfAcquirement)
 				end
 			end
 		else
 			local ItemType = string.gsub(statName, "Equipped", "")
 			
-			if File == "Bags" then --Update Equipped Bag (change bag capacity)
+			if Folder == "Bags" then --Update Equipped Bag (change bag capacity)
 				local TypeAmount = PlayerStatManager:getItemTypeCount(player, string.gsub(ItemType, "Bag", ""))
 				local MaxItemAmount
 				if value and value ~= "" then
@@ -274,9 +274,12 @@ function PlayerStatManager:ChangeStat(player, statName, value, File, ItemType, s
 				end
 				
 				UpdateItemCount:FireClient(player, TypeAmount, MaxItemAmount, ItemType)
+				
+			elseif Folder == "Tools" then
+				UpdateToolbar(player, tostring(ItemType), value)
 			end
 			
-			UpdateEquippedItem:FireClient(player, File, ItemType, value)
+			UpdateEquippedItem:FireClient(player, Folder, ItemType, value)
 		end
 	end
 end
@@ -364,6 +367,7 @@ function LoadPlayerData(PlayerDataFile, data, JoinedPlayer)
 				local PurchasedValue = data[ResearchName .. "Purchased"]
 				local FinishTimeValue = data[ResearchName .. "FinishTime"]
 				
+				--wait(.5)
 				UpdateResearch:FireClient(JoinedPlayer, ClonedResearchData, ResearchTypeName, CompletionValue, PurchasedValue, FinishTimeValue)
 			end
 		end
@@ -561,7 +565,7 @@ function UpdateToolbar(Player, ItemType, NewlyEquippedItem)
 		end
 	end
 	
-	if NewlyEquippedItem then
+	if NewlyEquippedItem and NewlyEquippedItem ~= "" then
 		local Tool = ItemTypeFolder:FindFirstChild(NewlyEquippedItem):Clone()
 		Tool.Parent = Player.Backpack
 	end
