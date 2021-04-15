@@ -261,8 +261,9 @@ StoreFrontPurchase.OnServerEvent:Connect(function(player, NPC, ItemName, ItemTyp
 			Utility:UpdateMoneyDisplay(player, PlayerCash.Value)
 			UpdateInventory:FireClient(player, "Currency", "Currencies", nil, -ItemPrice, "Inventory", "Money1")
 			
-			--Get Item
+			--Get & Equip Item
 			PlayerStatManager:ChangeStat(player, ItemName, true, EquipType, ItemType)
+			PlayerStatManager:ChangeStat(player, "Equipped" .. ItemType, ItemName, EquipType, ItemType)
 			
 			StoreFrontPurchase:FireClient(player, Item)
 		else
@@ -274,4 +275,6 @@ StoreFrontPurchase.OnServerEvent:Connect(function(player, NPC, ItemName, ItemTyp
 		--warn(player, "This player could have interfered with item info")
 	end
 end)
+
+--PurchaseResearch Remote Event
 
