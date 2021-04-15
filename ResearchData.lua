@@ -53,7 +53,7 @@ local ResearchData = {
 				["Research Name"] = "Fuel Cells",
 				["Research Image"] = "",
 				["Rarity"] = "Common",
-				["Research Length"] = 5,
+				["Research Length"] = 108000,
 				["Material Cost"] = {
 					{RS.ItemLocations.Mineshaft.Stone, 5},
 					{RS.ItemLocations.Mineshaft["Scrap Metal"], 5}
@@ -67,8 +67,8 @@ local ResearchData = {
 			[4] = {
 				["Research Name"] = "Fuel Cells2",
 				["Research Image"] = "",
-				["Rarity"] = "Uncommon",
-				["Research Length"] = 10,
+				["Rarity"] = "Rare",
+				["Research Length"] = 4500,
 				["Material Cost"] = {
 					{RS.ItemLocations.Mineshaft.Stone, 5}
 				},
@@ -123,7 +123,49 @@ local ResearchData = {
 			[8] = {
 				["Research Name"] = "Fuel Cells6",
 				["Research Image"] = "",
-				["Rarity"] = "Common",
+				["Rarity"] = "Uncommon",
+				["Research Length"] = 300,
+				["Material Cost"] = {
+					{RS.ItemLocations.Mineshaft.Stone, 5}
+				},
+				["Experience Cost"] = {
+					{RS.Skills.MiningSkill, 3}
+				},
+				["Dependencies"] = {}
+			},
+			
+			[9] = {
+				["Research Name"] = "Fuel Cells7",
+				["Research Image"] = "",
+				["Rarity"] = "Legendary",
+				["Research Length"] = 300,
+				["Material Cost"] = {
+					{RS.ItemLocations.Mineshaft.Stone, 5}
+				},
+				["Experience Cost"] = {
+					{RS.Skills.MiningSkill, 3}
+				},
+				["Dependencies"] = {}
+			},
+			
+			[10] = {
+				["Research Name"] = "Fuel Cells8",
+				["Research Image"] = "",
+				["Rarity"] = "Rare",
+				["Research Length"] = 300,
+				["Material Cost"] = {
+					{RS.ItemLocations.Mineshaft.Stone, 5}
+				},
+				["Experience Cost"] = {
+					{RS.Skills.MiningSkill, 3}
+				},
+				["Dependencies"] = {}
+			},
+			
+			[11] = {
+				["Research Name"] = "Fuel Cells9",
+				["Research Image"] = "",
+				["Rarity"] = "Uncommon",
 				["Research Length"] = 300,
 				["Material Cost"] = {
 					{RS.ItemLocations.Mineshaft.Stone, 5}
