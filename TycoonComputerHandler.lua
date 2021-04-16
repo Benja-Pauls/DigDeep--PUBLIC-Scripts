@@ -708,7 +708,7 @@ function ChangeTimerActivity(bool)
 	end
 end
 
-local function toHMS(Sec)
+local function toDHMS(Sec, TileTimePreview)
 	local Days = math.floor(Sec/(24*3600))
 	local Hours = math.floor(Sec%(24 * 3600) / 3600)
 	local Minutes = math.floor(Sec/60%60)
@@ -718,6 +718,7 @@ local function toHMS(Sec)
 	local FormatString = ""
 	local Display1
 	local Display2
+	local Display3
 	for i,t in pairs (TimeTable) do
 		if type(t) == "number" and t ~= 0 then
 			local LetterRefernece = TimeTable[i+1]
@@ -727,44 +728,18 @@ local function toHMS(Sec)
 			elseif Display2 == nil then
 				FormatString = FormatString .. " %01i" .. LetterRefernece
 				Display2 = t
+			elseif Display3 == nil and TileTimePreview then
+				FormatString = FormatString .. " %01i" .. LetterRefernece
+				Display3 = t
 			end
 		end
 	end
-	
-	print(FormatString, Display1, Display2)
-	
-	--Check for any zero values and reference only the two highest values to be more efficient..?
-	--Idea, append string value of %01i(symbol) if it is not equal to zero, then delete everything except last two
-	--Or, if it's only one or two, leave it
-	
-	--[[ [Inefficient]
-	if Days == 0 and Hours == 0 and Minutes == 0 then
-		--only s
-		
-		
-	elseif Days == 0 and Hours == 0 then
-		--m and s
-		
-		
-	elseif Days == 0 then
-		--h and m
-		
-		
-		
-	else
-		--d and h
-		
-		
-	end
-	]]
 
-	
-	print("DAYS: ", Days)
-	print("HOURS: ", Hours)
-	print("MINUTES: ", Minutes)
-	print("SECONDS: ", Seconds)
-	
-	return string.format("%01id %01ih %01im %01is", Days, Hours, Minutes, Seconds)
+	if Display1 then
+		return string.format(FormatString, Display1, Display2, Display3)
+	else
+		return string.format("%01is", 0)
+	end
 end
 
 local function ManageTileTimers(Tile, ResearchData, FinishTime)
@@ -772,12 +747,12 @@ local function ManageTileTimers(Tile, ResearchData, FinishTime)
 	local SecondLength = FinishTime - ResearchData["Research Length"]
 	coroutine.resume(coroutine.create(function()
 		while Tile.ProgressBar.Active.Value == true do
-			wait(1)
+			wait(1) --update every second
 			local PercentFinished = os.time() - ResearchData["Research Length"] / SecondLength
 			local SecondsLeft = FinishTime - os.time()
-			Tile.ProgressBar.Timer.Text = toHMS(SecondsLeft)
+			Tile.ProgressBar.Timer.Text = toDHMS(SecondsLeft)
 			
-			--Tween Progress Bar
+			Tile.ProgressBar.Progress:TweenSize(UDim2.new(PercentFinished, 0, 1, 0), "Out", "Quint", 0.8)
 			--Rotate hand on clock to left of progress bar (like CoC timer, 4 points it rotates two going around)
 		end
 	end))
@@ -787,9 +762,9 @@ end
 
 local function ChangeCostColor(Tile, PlayerAmount, Cost)
 	if PlayerAmount >= Cost then
-		Tile.ResearchCost.TextColor3 = Color3.fromRGB(91, 170, 111)
+		Tile.ResearchCost.TextColor3 = Color3.fromRGB(0, 208, 0)
 	else
-		Tile.ResearchCost.TextColor3 = Color3.fromRGB(170, 0, 0)
+		Tile.ResearchCost.TextColor3 = Color3.fromRGB(208, 0, 0)
 	end
 end
 
@@ -816,7 +791,7 @@ local function InsertTileInfo(Tile, ResearchData, ResearchType, FinishTime, Stat
 		else
 			ResearchTile.ProgressBar.Visible = false
 			ResearchTile.ResearchTime.Visible = true
-			ResearchTile.ResearchTime.Text = toHMS(ResearchData["Research Length"])
+			ResearchTile.ResearchTime.Text = toDHMS(ResearchData["Research Length"], true)
 		end
 		
 		local TileDebounce = false
@@ -1001,7 +976,6 @@ local function ManageTileTruePosition(Menu, Page, NewTile, TruePosition, MaxTile
 									if Menu:FindFirstChild("Page" .. tostring(tonumber(CurrentPageNumber) + 1)) then
 										Page = Menu:FindFirstChild("Page" .. tostring(tonumber(CurrentPageNumber) + 1))
 									else
-										print("Making new page for ",tile," to be moved to")
 										Page = game.ReplicatedStorage.GuiElements.ResearchPage:Clone()
 										Page.Visible = false
 										Page.Name = "Page" .. tostring(tonumber(CurrentPageNumber) + 1)
@@ -1073,21 +1047,6 @@ local function CompareHighPage(Page, HighPage)
 	end
 end
 
-local function CheckPageSlots(PossiblePage, RarityName)
-	--Problem, rarity needs to find slot number to insert, not number of slots that are of rarity
-	
-	local SlotCount = 0
-	for i,slot in pairs (PossiblePage:GetChildren()) do
-		if slot:IsA("TextButton") and string.find(slot.Name, "Slot") then
-			local CheckedRarity = slot.Rarity.Value
-			if tostring(CheckedRarity) == RarityName then
-				SlotCount += 1
-			end
-		end
-	end
-	return SlotCount
-end
-
 local function GetHighestSlotOfRarity(Page, RarityName)
 	local HighestSlotValue = 0
 	for i,slot in pairs (Page:GetChildren()) do
@@ -1110,21 +1069,15 @@ local function SeekSlotAvailability(Menu, CheckedPageNumber, RarityName, MaxTile
 
 	local PossiblePage = Menu:FindFirstChild("Page" .. tostring(CheckedPageNumber))
 	local HighestSlotValue = GetHighestSlotOfRarity(PossiblePage, RarityName)
-	
-	--The high slot count is messing up and continuously declares 0, putting the new rarity tiles at the top
-	--of the menu instead of after their referenced rarity
-	
-	
-	print("Highest " .. RarityName .. " slot value is " .. tostring(HighestSlotValue))
+
 	if HighestSlotValue < MaxTileAmount then --Slot available on rarity page
 		Page = PossiblePage
 		SlotCount = HighestSlotValue
 		TruePosition = GetTileTruePosition(Page, SlotCount, MaxTileAmount)
 	else 
-		if Menu:FindFirstChild("Page" .. tostring(CheckedPageNumber + 1)) then 	--go to next page and insert on top
+		if Menu:FindFirstChild("Page" .. tostring(CheckedPageNumber + 1)) then --go to next page and insert on top
 			Page = Menu:FindFirstChild("Page" .. tostring(CheckedPageNumber + 1))
-		else 														--no next page, make a new page
-			print("Making new page")
+		else --no next page, make a new page
 			local NewPage = game.ReplicatedStorage.GuiElements.ResearchPage:Clone()
 			NewPage.Visible = false
 			NewPage.Name = "Page" .. tostring(CheckedPageNumber + 1)
@@ -1191,7 +1144,8 @@ end
 
 function FindMenuPage(Menu, MaxTileAmount, ResearchData, StatTable)
 	--PAGE SORTING STRATEGY:
-	--Look for pages with rarity in them
+	--if 0 pages, make the first page
+	--Otherwise, look for pages with rarity in them
 	--if one is available, check if slot available
 	--(function)
 	--if slot, insert and move tiles below
@@ -1202,8 +1156,6 @@ function FindMenuPage(Menu, MaxTileAmount, ResearchData, StatTable)
 	--if found, put tile at end and move any with higher order value (do slot checks above)
 	--if none available, look for one with order value more
 	--if found, put tile at top and move any with higher order value
-	--if none available, make a new page (check this first, only scenario this would happen is no page yet,
-	--and this should be quick to start loading fast) (Check this, if one, do above checks. If none: new page)
 	
 	local Pages = Menu:GetChildren()
 	
