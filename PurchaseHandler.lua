@@ -7,8 +7,9 @@ local SoundEffects = require(game.ReplicatedStorage:WaitForChild("SoundEffects")
 local PlayerData = game.ServerStorage:WaitForChild("PlayerData")
 
 local EventsFolder = game.ReplicatedStorage.Events
-local PurchaseObject = EventsFolder.Utility.PurchaseObject
-local UpdateInventory = EventsFolder.GUI.UpdateInventory
+local PurchaseObject = EventsFolder.Utility:WaitForChild("PurchaseObject")
+local PurchaseResearch = EventsFolder.Utility:WaitForChild("PurchaseResearch")
+local UpdateInventory = EventsFolder.GUI:WaitForChild("UpdateInventory")
 
 local function GetPlayer(WantedPlayer)
 	local Players = game.Players:GetChildren()
@@ -195,6 +196,86 @@ PurchaseObject.OnServerEvent:Connect(function(player, target)
 	end
 end)
 
+--------------------------------------<|Research Functions|>----------------------------------------------------------------------------------------------------------------
+
+local AllResearchData = require(game.ServerStorage:WaitForChild("ResearchData"))
+
+local function MeetResearchCost(player, ResearchData, CostName, Paying)
+	if #ResearchData[CostName] > 0 then
+		local TotalCosts = #ResearchData[CostName]
+		local CostsMet = 0
+		for i,cost in pairs (ResearchData[CostName]) do
+			local PlayerValue = PlayerStatManager:getStat(player, tostring(cost[1]))
+			local PlayerStored = PlayerStatManager:getStat(player, "TycoonStorage" .. tostring(cost[1]))
+			
+			--PlayerStored == nil, must know if checking material or not
+			
+			if PlayerValue + PlayerStored >= cost[2] then
+				if not Paying then
+					CostsMet += 1
+					if CostsMet == TotalCosts then
+						return true
+					end
+				else
+					--TOMORROW: check storage and player's inventory for values to remove. Remove values like purchase
+					--object method above in this script (PurchaseHandler)
+					
+					--After that, ensure values are properly affected and created, along with then displaying the 
+					--tile in current rather than available research
+					
+					print("Updating " .. tostring(player) .. "'s saved value for " .. tostring(cost[1]))
+					if Paying == "Experience" then
+						print("Updating experience")
+						PlayerStatManager:ChangeStat(player, tostring(cost[1]), 0, Paying)
+					else
+						print("Updating inventory")
+						PlayerStatManager:ChangeStat(player, tostring(cost[1]), -cost[2], Paying)
+					end
+				end
+			end
+		end
+	else
+		return true
+	end
+	return false
+end
+
+
+PurchaseResearch.OnServerEvent:Connect(function(player, ResearchName, ResearchType)
+	--Check if current slot is available (compare true max researchers and player's max researchers)
+	print("1",player,ResearchName,ResearchType)
+	for i,rType in pairs (AllResearchData["Research"]) do
+		if rType["Research Type Name"] == ResearchType then
+			print("2")
+			for i,r in pairs (rType) do
+				if rType[i]["Research Name"] == ResearchName then
+					print("3")
+					local ResearchData = rType[i]
+					
+					local ExpMet = MeetResearchCost(player, ResearchData, "Experience Cost")
+					local MatMet = MeetResearchCost(player, ResearchData, "Material Cost")
+					
+					if ExpMet and MatMet then
+						local ClonedTable = Utility:CloneTable(ResearchData)
+						PurchaseResearch:FireClient(player, ClonedTable)
+						
+						MeetResearchCost(player, ResearchData, "Material Cost", "Inventory")
+						MeetResearchCost(player, ResearchData, "Experience Cost", "Experience")
+						
+						local FinishTime = os.time() + ResearchData["Research Length"]
+						PlayerStatManager:ChangeStat(player, ResearchData["Research Name"] .. "FinishTime", FinishTime, ResearchType)
+						PlayerStatManager:ChangeStat(player, ResearchData["Research Name"] .. "Purchased", true)
+					else
+						PurchaseResearch:FireClient(player)
+					end
+				end
+			end
+		end
+		
+	end
+	
+	
+end)
 --PurchaseResearch.OnServerEvent:Connect(function()
 
 --Use this function for any data sensitive content associated with research. While this is fired, the research section
@@ -207,7 +288,8 @@ end)
 --also should update the player's stats
 --end)
 
---CompletedResearch.OnServerEvent:Connect(function()
+--Possibly only have this as a PlayerStatManager:ChangeStat()
+--CompleteResearch.OnServerEvent:Connect(function()
 --Add to TycoonResearch group to player's tycoon
 --done after player has "checked off" on their research, officially completing it and firing this remote event
 
