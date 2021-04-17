@@ -661,7 +661,8 @@ local ResearchersList = ResearchMenu.ResearchersList
 
 local CheckResearchDepends = game.ReplicatedStorage.Events.Utility:WaitForChild("CheckResearchDepends")
 
---Prepare all always-available buttons: like previous research and add researchers buttons (not research slots!)
+local SelectedResearch
+local SelectedResearchType
 
 MenuSelect.ResearchMenuButton.Activated:Connect(function()
 	ResearchMenu.Visible = true
@@ -786,11 +787,13 @@ local function InsertTileInfo(Tile, ResearchData, ResearchType, FinishTime, Stat
 		
 		if FinishTime then
 			ResearchTile.ResearchTime.Visible = false
+			ResearchTile.ResearchType.Visible = false
 			ResearchTile.ProgressBar.Visible = true
 			ManageTileTimers(ResearchTile, ResearchData, FinishTime)
 		else
 			ResearchTile.ProgressBar.Visible = false
 			ResearchTile.ResearchTime.Visible = true
+			ResearchTile.ResearchType.Visible = true
 			ResearchTile.ResearchTime.Text = toDHMS(ResearchData["Research Length"], true)
 		end
 		
@@ -882,9 +885,6 @@ end
 --------------------<|Research Tile Management|>---------------------
 
 local function RearrangeAvailableTiles(ResearchData, MoveType)
-
-
-	
 	local AffectedPage
 	local AffectedTileNumber
 	for i,page in pairs (AvailableResearch:GetChildren()) do
@@ -931,8 +931,15 @@ function ManageResearchTile(Menu, ResearchData, ResearchType, FinishTime, StatTa
 		end
 	else --Previous and Available Research
 		local NewTile = FindMenuPage(Menu, 5, ResearchData, StatTable)
-		
 		InsertTileInfo(NewTile, ResearchData, ResearchType, nil, StatTable)
+		
+		if NewTile.Parent.Parent == CostList then
+			SelectedResearch = ResearchData
+			SelectedResearchType = ResearchType
+		else
+			SelectedResearch = nil
+			SelectedResearchType = nil
+		end
 	end
 end
 
@@ -1288,7 +1295,7 @@ ResearchersList.ChangeResearchView.Activated:Connect(function()
 		ResearchersList.PreviousResearchPages.Visible = true
 		
 		ResearchersList.LeftMenuLabel.Text = "Previous Research"
-		ResearchersList.ChangeResearchView.Text = "Current Research"
+		ResearchersList.ChangeResearchView.ButtonLabel.Text = "Current Research"
 	else
 		CurrentResearch.Visible = true
 		PreviousResearch.Visible = false
@@ -1296,8 +1303,17 @@ ResearchersList.ChangeResearchView.Activated:Connect(function()
 		ResearchersList.PreviousResearchPages.Visible = false
 		
 		ResearchersList.LeftMenuLabel.Text = "Current Research"
-		ResearchersList.ChangeResearchView.Text = "Previous Research"
+		ResearchersList.ChangeResearchView.ButtonLabel.Text = "Previous Research"
 	end
+end)
+
+local PurchaseResearch = game.ReplicatedStorage.Events.Utility:WaitForChild("PurchaseResearch")
+InfoMenu.ResearchButton.Activated:Connect(function()
+	print("Research button")
+	
+	PurchaseResearch:FireServer(SelectedResearch["Research Name"], SelectedResearchType)
+	
+	
 end)
 
 AvailableResearch.NextPage.Activated:Connect(function()
@@ -1338,6 +1354,19 @@ UpdateResearch.OnClientEvent:Connect(function(ResearchData, ResearchType, Comple
 			ManageResearchTile(AvailableResearch, ResearchData, ResearchType)
 		end	
 	end
+end)
+
+PurchaseResearch.OnClientEvent:Connect(function(ResearchData)
+	if ResearchData then
+		print("Player can afford to purchase this research")
+		--put tile in current research and remove from available, moving the tiles below the
+		--up visually, but down in trueposition
+		
+	else	
+		print("Player cannot afford this research")
+		--Warning message
+	end
+
 end)
 
 
