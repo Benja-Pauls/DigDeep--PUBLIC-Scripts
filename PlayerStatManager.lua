@@ -232,14 +232,14 @@ function PlayerStatManager:ChangeStat(player, statName, value, Folder, ItemType,
 			else
 				sessionData[playerUserId][statName] = sessionData[playerUserId][statName] + value
 			end
-			--print(tostring(statName) .. "'s new value is: " .. tostring(sessionData[playerUserId][statName]))
-			
+	
 			if Folder then 
 				UpdateGUIForFile(tostring(Folder), PlayerDataFile, player, playerUserId, statName, value)
 			end
 			
 			--Client script data management so exploiters cant handle sensitive data
 			--Updating where data is stored in ServerStorage (viewed by server scripts)
+			print(player, statName, value, Folder, PlayerDataFile)
 			for i,file in pairs (PlayerDataFile:FindFirstChild(Folder):GetChildren()) do
 				if file:FindFirstChild(statName) then
 					file:FindFirstChild(statName).Value = sessionData[playerUserId][statName]
@@ -352,11 +352,11 @@ function LoadPlayerData(PlayerDataFile, data, JoinedPlayer)
 				local SavedValue = CheckSaveData(data[ResearchName])
 				ImportSaveData(data, SavedValue, ResearchTypeFolder, Research)
 				
-				local PurchasedBool = CreateSaveReference(Research, "Purchased", "BoolValue")
+				local PurchasedBool = CreateSaveReference(Research, ResearchName .. "Purchased", "BoolValue")
 				local SavedPurchaseBool = CheckSaveData(data[ResearchName .. "Purchased"])
 				ImportSaveData(data, SavedPurchaseBool, Research, PurchasedBool, ResearchName .. "Purchased")
 				
-				local FinishTime = CreateSaveReference(Research, "FinishTime", "NumberValue")
+				local FinishTime = CreateSaveReference(Research, ResearchName .. "FinishTime", "NumberValue")
 				local SavedFinishTime = CheckSaveData(data[ResearchName .. "FinishTime"])
 				ImportSaveData(data, SavedFinishTime, Research, FinishTime, ResearchName .. "FinishTime")
 
