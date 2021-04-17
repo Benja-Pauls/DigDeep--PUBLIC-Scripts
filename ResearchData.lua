@@ -6,7 +6,7 @@ local RS = game.ReplicatedStorage
 
 local ResearchData = {
 	
-	["Max Researchers"] = 4,
+	["Max Researchers"] = 5,
 	
 	["Research"] = {
 		
