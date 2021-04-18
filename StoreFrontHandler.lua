@@ -224,7 +224,7 @@ local function FinalizePageChange(NewPage, OldPage, NewYValue)
 	PageDebounce = false
 end
 
-local function ChangePage(X1, X2, X3)
+local function ChangePage(Y1, Y2, Y3)
 	local OldPage = ProductDisplay:FindFirstChild("Page" .. tostring(StoreFrontMenu.CurrentPage.Value))
 
 	if PageDebounce == false then
@@ -242,11 +242,11 @@ local function ChangePage(X1, X2, X3)
 			end
 			
 			if NewPage then
-				NewPage.Position = UDim2.new(X1,0,0,0)
-				FinalizePageChange(NewPage, OldPage, X2)
+				NewPage.Position = UDim2.new(0,0,Y1,0)
+				FinalizePageChange(NewPage, OldPage, Y2)
 			end
 		else --Bounce effect
-			ProductDisplay:FindFirstChild("Page1"):TweenPosition(UDim2.new(X3,0,0,0), "Out", "Quint", .1)
+			ProductDisplay:FindFirstChild("Page1"):TweenPosition(UDim2.new(0,0,Y3,0), "Out", "Quint", .1)
 			wait(.1)
 			ProductDisplay:FindFirstChild("Page1"):TweenPosition(UDim2.new(0,0,0,0), "Out" , "Bounce", .25)
 			wait(.25)
