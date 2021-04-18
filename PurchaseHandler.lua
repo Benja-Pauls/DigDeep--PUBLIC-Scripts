@@ -8,7 +8,6 @@ local PlayerData = game.ServerStorage:WaitForChild("PlayerData")
 
 local EventsFolder = game.ReplicatedStorage.Events
 local PurchaseObject = EventsFolder.Utility:WaitForChild("PurchaseObject")
-local PurchaseResearch = EventsFolder.Utility:WaitForChild("PurchaseResearch")
 local UpdateInventory = EventsFolder.GUI:WaitForChild("UpdateInventory")
 
 local function GetPlayer(WantedPlayer)
@@ -75,11 +74,8 @@ function PurchaseTycoonObject(Table, Tycoon, Material)
 			if menu == stat:FindFirstChild(tostring(Menu)) then
 				for i,item in pairs(menu:GetChildren()) do
 					if item.Name == tostring(Material) then
-						print(tostring(item) .. "'s value has been subtracted by " .. tostring(cost))
 						item.Value = item.Value - cost
-
 						PlayerStatManager:ChangeStat(Player, item.Name, -cost, tostring(stat), true)
-						--PlayerStatManager is updated here because materials are only updated when "harvested" otherwise
 
 						if item.Value < 0 then --replace inventory with storage
 							local PlayerDataFile = stat.Parent
@@ -87,9 +83,9 @@ function PurchaseTycoonObject(Table, Tycoon, Material)
 							local MaterialStorage = PlayerStorage:FindFirstChild("TycoonStorage" .. tostring(Menu))
 
 							--Zero inventory material
-							--Subtract the absolute value of the material's previous value
-							PlayerStatManager:ChangeStat(Player, "TycoonStorage" .. item.Name, item.Value, tostring(PlayerStorage), true)
-							PlayerStatManager:ChangeStat(Player, item.Name, 0, tostring(stat), true, "Zero")
+							--Subtract the absolute value of the material's previous value (replace offset)
+							PlayerStatManager:ChangeStat(Player, "TycoonStorage" .. item.Name, item.Value, "TycoonStorage", true)
+							PlayerStatManager:ChangeStat(Player, item.Name, item.Value, tostring(stat), true, "Zero")
 						end
 					end
 				end
@@ -182,7 +178,7 @@ PurchaseObject.OnServerEvent:Connect(function(player, target)
 
 					else --If the player can't afford it
 						print("Cannot afford")
-						local CashWarning = game.Players:FindFirstChild(tostring(player)).PlayerGui.HotkeyInteractionGui.TycoonPurchaseMenu.CashWarning
+						local CashWarning = game.Players:FindFirstChild(tostring(player)).PlayerGui.TycoonPurchaseGui.TycoonPurchaseMenu.CashWarning
 						CashWarning.Visible = true
 						SoundEffects:PlaySound(target, SoundEffects.Tycoon.ErrorBuy)
 						wait(2)
@@ -206,10 +202,12 @@ local function MeetResearchCost(player, ResearchData, CostName, Paying)
 		local CostsMet = 0
 		for i,cost in pairs (ResearchData[CostName]) do
 			local PlayerValue = PlayerStatManager:getStat(player, tostring(cost[1]))
-			local PlayerStored = PlayerStatManager:getStat(player, "TycoonStorage" .. tostring(cost[1]))
+			local PlayerStored = 0
 			
-			--PlayerStored == nil, must know if checking material or not
-			
+			if CostName == "Material Cost" then
+				PlayerStored = PlayerStatManager:getStat(player, "TycoonStorage" .. tostring(cost[1]))
+			end
+
 			if PlayerValue + PlayerStored >= cost[2] then
 				if not Paying then
 					CostsMet += 1
@@ -217,19 +215,18 @@ local function MeetResearchCost(player, ResearchData, CostName, Paying)
 						return true
 					end
 				else
-					--TOMORROW: check storage and player's inventory for values to remove. Remove values like purchase
-					--object method above in this script (PurchaseHandler)
-					
-					--After that, ensure values are properly affected and created, along with then displaying the 
-					--tile in current rather than available research
-					
-					print("Updating " .. tostring(player) .. "'s saved value for " .. tostring(cost[1]))
 					if Paying == "Experience" then
-						print("Updating experience")
-						PlayerStatManager:ChangeStat(player, tostring(cost[1]), 0, Paying)
+						local ItemType = tostring(cost[1].Parent)
+						PlayerStatManager:ChangeStat(player, tostring(cost[1]), 0, Paying, ItemType)
 					else
-						print("Updating inventory")
-						PlayerStatManager:ChangeStat(player, tostring(cost[1]), -cost[2], Paying)
+						local ItemType = string.gsub(cost[1].Bag.Value, "Bag", "") .. "s"
+						PlayerStatManager:ChangeStat(player, tostring(cost[1]), -cost[2], Paying, ItemType)
+						
+						local AmountRemaining = PlayerStatManager:getStat(player, tostring(cost[1]))
+						if AmountRemaining < 0 then
+							PlayerStatManager:ChangeStat(player, "TycoonStorage" .. tostring(cost[1]), AmountRemaining, "TycoonStorage", true)
+							PlayerStatManager:ChangeStat(player, tostring(cost[1]), AmountRemaining, Paying, true, "Zero")
+						end
 					end
 				end
 			end
@@ -240,53 +237,49 @@ local function MeetResearchCost(player, ResearchData, CostName, Paying)
 	return false
 end
 
+local PurchaseResearch = EventsFolder.Utility:WaitForChild("PurchaseResearch")
+local UpdateResearch = EventsFolder.GUI:WaitForChild("UpdateResearch")
 
 PurchaseResearch.OnServerEvent:Connect(function(player, ResearchName, ResearchType)
-	--Check if current slot is available (compare true max researchers and player's max researchers)
-	print("1",player,ResearchName,ResearchType)
-	for i,rType in pairs (AllResearchData["Research"]) do
-		if rType["Research Type Name"] == ResearchType then
-			print("2")
-			for i,r in pairs (rType) do
-				if rType[i]["Research Name"] == ResearchName then
-					print("3")
-					local ResearchData = rType[i]
-					
-					local ExpMet = MeetResearchCost(player, ResearchData, "Experience Cost")
-					local MatMet = MeetResearchCost(player, ResearchData, "Material Cost")
-					
-					if ExpMet and MatMet then
-						local ClonedTable = Utility:CloneTable(ResearchData)
-						PurchaseResearch:FireClient(player, ClonedTable)
+	local PurchaseHistory = PlayerStatManager:getStat(player, ResearchName .. "Purchased")
+	local CompletionHistory = PlayerStatManager:getStat(player, ResearchName)
+	
+	if PurchaseHistory == false and CompletionHistory == false then
+		for i,rType in pairs (AllResearchData["Research"]) do
+			if rType["Research Type Name"] == ResearchType then
+				for i,r in pairs (rType) do
+					if rType[i]["Research Name"] == ResearchName then
+						local ResearchData = rType[i]
 						
-						MeetResearchCost(player, ResearchData, "Material Cost", "Inventory")
-						MeetResearchCost(player, ResearchData, "Experience Cost", "Experience")
+						local ExpMet = MeetResearchCost(player, ResearchData, "Experience Cost")
+						local MatMet = MeetResearchCost(player, ResearchData, "Material Cost")
 						
-						local FinishTime = os.time() + ResearchData["Research Length"]
-						PlayerStatManager:ChangeStat(player, ResearchData["Research Name"] .. "FinishTime", FinishTime, ResearchType)
-						PlayerStatManager:ChangeStat(player, ResearchData["Research Name"] .. "Purchased", true)
-					else
-						PurchaseResearch:FireClient(player)
+						if ExpMet and MatMet then
+							local ClonedTable = Utility:CloneTable(ResearchData)
+							
+							MeetResearchCost(player, ResearchData, "Material Cost", "Inventory")
+							MeetResearchCost(player, ResearchData, "Experience Cost", "Experience")
+							
+							local FinishTime = os.time() + ResearchData["Research Length"]
+							PlayerStatManager:ChangeStat(player, ResearchData["Research Name"] .. "FinishTime", FinishTime, "Research", ResearchData["Research Name"])
+							PlayerStatManager:ChangeStat(player, ResearchData["Research Name"] .. "Purchased", true, "Research", ResearchData["Research Name"])
+							
+							UpdateResearch:FireClient(player, ClonedTable, ResearchType, false, true, FinishTime)
+							PurchaseResearch:FireClient(player, ClonedTable)
+						else
+							PurchaseResearch:FireClient(player)
+						end
 					end
 				end
 			end
+			
 		end
-		
+	else
+		warn("Research (" .. ResearchName .. ") has already been purchased or completed")
 	end
 	
 	
 end)
---PurchaseResearch.OnServerEvent:Connect(function()
-
---Use this function for any data sensitive content associated with research. While this is fired, the research section
---of the TycoonComputerHandler local script will handle any GUI changes required after the purchase takes place
---(Use this client event to check integrity of ResearchData compared to the cloned data used as a reference for the
---GUI)
-
---Possibly fire TycoonComputerHandler GUI events from here? (like update events used in PlayerStatManager later)
-
---also should update the player's stats
---end)
 
 --Possibly only have this as a PlayerStatManager:ChangeStat()
 --CompleteResearch.OnServerEvent:Connect(function()
@@ -357,6 +350,4 @@ StoreFrontPurchase.OnServerEvent:Connect(function(player, NPC, ItemName, ItemTyp
 		--warn(player, "This player could have interfered with item info")
 	end
 end)
-
---PurchaseResearch Remote Event
 
