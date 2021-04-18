@@ -773,7 +773,7 @@ function ManageTiles(Stat, Menu, Value, Type, AcquiredLocation)
 			if tile:IsA("TextButton") or tile:IsA("ImageButton") then
 				if tile.StatName.Value == tostring(Stat) and found == false then --Update Tile
 					
-					if Value > 0 or Value:IsA("LocalizationTable")then
+					if Value ~= 0 or Value:IsA("LocalizationTable")then
 						found = InsertTileInfo(Type, tile, Stat, Value, found, AcquiredLocation)
 					else --Deleting existing tile because value = 0 or zeroed from storage transaction 
 						found = true
@@ -804,7 +804,6 @@ function ManageTiles(Stat, Menu, Value, Type, AcquiredLocation)
 		end
 		
 		--Make new tile
-		print("VALUE: ",Value,typeof(Value),type(Value))
 		if found == false and (typeof(Value) == "table" or Value > 0) then
 			print("Making a new tile: " .. tostring(Stat))
 			local tile = OriginalMaterialSlot:Clone()
