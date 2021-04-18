@@ -689,27 +689,14 @@ MenuSelect.ResearchMenuButton.Activated:Connect(function()
 	UpdatePageDisplay(PreviousResearch, false)
 	UpdatePageDisplay(CostList, false)
 	
-	ChangeTimerActivity(true)
-	
 	MenuSelect.Visible = false
 	BeepSound:Play()
 end)
 
 ------------------------<|Time Management|>-----------------------------
 
-function ChangeTimerActivity(bool)
-	for i,outlineTile in pairs (CurrentResearch:GetChildren()) do
-		if outlineTile:IsA("Frame") then
-			for i,tile in pairs (outlineTile:GetChildren()) do
-				if tile:IsA("TextButton") then
-					tile.ProgressBar.Active.Value = bool
-				end
-			end
-		end
-	end
-end
-
 local function toDHMS(Sec, TileTimePreview)
+	print("Using toDHMS",Sec, TileTimePreview)
 	local Days = math.floor(Sec/(24*3600))
 	local Hours = math.floor(Sec%(24 * 3600) / 3600)
 	local Minutes = math.floor(Sec/60%60)
@@ -729,7 +716,7 @@ local function toDHMS(Sec, TileTimePreview)
 			elseif Display2 == nil then
 				FormatString = FormatString .. " %01i" .. LetterRefernece
 				Display2 = t
-			elseif Display3 == nil and TileTimePreview then
+			elseif Display3 == nil and TileTimePreview then --Preview is more exact
 				FormatString = FormatString .. " %01i" .. LetterRefernece
 				Display3 = t
 			end
@@ -743,18 +730,34 @@ local function toDHMS(Sec, TileTimePreview)
 	end
 end
 
-local function ManageTileTimers(Tile, ResearchData, FinishTime)
-	print(ResearchData["Research Length"],ResearchData,FinishTime,ResearchData["Research Name"])
-	local SecondLength = FinishTime - ResearchData["Research Length"]
+local function ManageTileTimer(Tile, ResearchData, FinishTime)
+	Tile.ProgressBar.ProgressButton.Visible = true
+	Tile.ProgressBar.ProgressButton.SkipTime.Visible = true
+	Tile.ProgressBar.ProgressButton.CompleteResearch.Visible = false
 	coroutine.resume(coroutine.create(function()
-		while Tile.ProgressBar.Active.Value == true do
+		while Tile do
 			wait(1) --update every second
-			local PercentFinished = os.time() - ResearchData["Research Length"] / SecondLength
-			local SecondsLeft = FinishTime - os.time()
-			Tile.ProgressBar.Timer.Text = toDHMS(SecondsLeft)
-			
-			Tile.ProgressBar.Progress:TweenSize(UDim2.new(PercentFinished, 0, 1, 0), "Out", "Quint", 0.8)
-			--Rotate hand on clock to left of progress bar (like CoC timer, 4 points it rotates two going around)
+			if os.time() <= FinishTime then
+				local SecondsLeft = FinishTime - os.time()
+				local RoundedPercentage = math.ceil(100 * (1 - (SecondsLeft / ResearchData["Research Length"])))
+				local PercentFinished = RoundedPercentage/100
+						
+				Tile.ProgressBar.Timer.Text = toDHMS(SecondsLeft)
+				Tile.ProgressBar.Progress:TweenSize(UDim2.new(PercentFinished, 0, 1, 0), "Out", "Quint", 0.8)
+				
+				--SOME EFFECT TO LOOK LIKE PROGRESS IS BEING MADE, EVEN WITH HUGE TIMERS
+				--Some gradient shine effect for progress bar? (like windows progress bar)
+				--Rotate hand on clock to left of progress bar (like CoC timer, 4 points it rotates two going around)
+			else
+				Tile.ProgressBar.Progress.Size = UDim2.new(1, 0, 1, 0)
+				Tile.ProgressBar.Timer.Text = "Completed!"
+				
+				Tile.ProgressBar.ProgressButton.SkipTime.Visible = false
+				Tile.ProgressBar.ProgressButton.CompleteResearch.Visible = true
+				
+				--been completed
+				break
+			end
 		end
 	end))
 end
@@ -762,6 +765,7 @@ end
 -----------------------<|Tile Info Functions|>-----------------------
 
 local function ChangeCostColor(Tile, PlayerAmount, Cost)
+	print("Changing cost color for",Tile)
 	if PlayerAmount >= Cost then
 		Tile.ResearchCost.TextColor3 = Color3.fromRGB(0, 208, 0)
 	else
@@ -789,7 +793,7 @@ local function InsertTileInfo(Tile, ResearchData, ResearchType, FinishTime, Stat
 			ResearchTile.ResearchTime.Visible = false
 			ResearchTile.ResearchType.Visible = false
 			ResearchTile.ProgressBar.Visible = true
-			ManageTileTimers(ResearchTile, ResearchData, FinishTime)
+			ManageTileTimer(ResearchTile, ResearchData, FinishTime)
 		else
 			ResearchTile.ProgressBar.Visible = false
 			ResearchTile.ResearchTime.Visible = true
@@ -854,8 +858,7 @@ local function InsertTileInfo(Tile, ResearchData, ResearchType, FinishTime, Stat
 			ChangeCostColor(CostTile, PlayerLevel, StatTable[2])
 		else
 			StatType = string.gsub(StatInfo.Bag.Value, "Bag", "") .. "s"
-			
-			--Change rarity name to be grabbed from rarity string value
+
 			local RarityName = tostring(Tile.Rarity.Value)
 			Discovered = ItemsPreview:FindFirstChild(StatType):FindFirstChild(RarityName):WaitForChild(tostring(StatInfo)).Discovered.Value
 			
@@ -884,27 +887,19 @@ end
 
 --------------------<|Research Tile Management|>---------------------
 
-local function RearrangeAvailableTiles(ResearchData, MoveType)
-	local AffectedPage
-	local AffectedTileNumber
+local function FindPrevAvailableTile(ResearchData)
+	local Page
+	local Tile
 	for i,page in pairs (AvailableResearch:GetChildren()) do
 		for i,tile in pairs (page:GetChildren()) do
-			if tile.ResearchName.Text == ResearchData["Research Name"] then
-				AffectedPage = page
-				AffectedTileNumber = tonumber(string.gsub(tile.Name, "Slot", ""))
-				tile:Destroy()
+			if tile.ResearchTile.ResearchName.Text == ResearchData["Research Name"] then
+				Page = page
+				Tile = tile
 			end
 		end
 	end
 	
-	--Move Tiles To Fill Gap (or move tiles away from new tile)
-	local AffectedPageNumber = tonumber(string.gsub(AffectedPage.Name, "Page", ""))
-	for i,page in pairs (AvailableResearch:GetChildren()) do
-		local PageNumber = tonumber(string.gsub(AffectedPage.Name, "Page", ""))
-		if PageNumber >= AffectedPageNumber then
-			
-		end
-	end
+	return Page,Tile
 end
 
 function ManageResearchTile(Menu, ResearchData, ResearchType, FinishTime, StatTable)
@@ -921,16 +916,32 @@ function ManageResearchTile(Menu, ResearchData, ResearchType, FinishTime, StatTa
 			NewTile.Name = "ResearchSlot"
 			NewTile.Position = UDim2.new(0, 0, 0, 0)
 			NewTile.Size = UDim2.new(1, 0, 1, 0)
+			NewTile.Active = false
+			NewTile.Selectable = false
 			NewTile.Parent = ParentTile
 			
 			local RarityName = ResearchData["Rarity"]
 			local RarityInfo = game.ReplicatedStorage.GuiElements.RarityColors:FindFirstChild(RarityName)
 			NewTile.Rarity.Value = RarityInfo
-			--RearrangeAvailableTiles(Menu, "Destroy")
+			
 			InsertTileInfo(NewTile, ResearchData, ResearchType, FinishTime)
+			
+			--Delete tile from available research menu
+			local AvailPage,AvailTile = FindPrevAvailableTile(ResearchData)
+			if AvailPage and AvailTile then
+				CurrentResearch.Visible = true
+				AvailableResearch.Visible = true
+				CostList.Visible = false
+				InfoMenu.Visible = false
+				ManageTileTruePosition(AvailableResearch, AvailPage, AvailTile, AvailTile.TruePosition.Value, 5, -1)
+			end
+		else
+			warn("No tile available for a current research!",ResearchData)
 		end
 	else --Previous and Available Research
 		local NewTile = FindMenuPage(Menu, 5, ResearchData, StatTable)
+		NewTile.Active = true
+		NewTile.Selectable = true
 		InsertTileInfo(NewTile, ResearchData, ResearchType, nil, StatTable)
 		
 		if NewTile.Parent.Parent == CostList then
@@ -961,7 +972,7 @@ local function GetTileSlotCount(Page, TileTruePosition)
 	return SlotCount
 end
 
-local function ManageTileTruePosition(Menu, Page, NewTile, TruePosition, MaxTileAmount)
+function ManageTileTruePosition(Menu, Page, AffectingTile, TruePosition, MaxTileAmount, Change)
 	local PageNumber = string.gsub(Page.Name, "Page", "")
 	
 	for i,page in pairs (Menu:GetChildren()) do
@@ -971,14 +982,13 @@ local function ManageTileTruePosition(Menu, Page, NewTile, TruePosition, MaxTile
 			if tonumber(CurrentPageNumber) >= tonumber(PageNumber) then
 				for i,tile in pairs (page:GetChildren()) do
 					if tile:IsA("TextButton") and string.find(tile.Name, "Slot") then
-						if tile.TruePosition.Value >= TruePosition then
+						if tile.TruePosition.Value >= TruePosition then --Every tile "above" affecting tile
 							local SlotCount = 0
 							local Page
 							
-							if tile ~= NewTile then
-								tile.TruePosition.Value += 1
+							if tile ~= AffectingTile then
+								tile.TruePosition.Value = tile.TruePosition.Value + Change
 								SlotCount = GetTileSlotCount(page, tile.TruePosition.Value)
-								--print("SLOTCOUNT for ",tile," is ",SlotCount, tile.Rarity.Value," MaxTiles: ",MaxTileAmount)
 								if SlotCount >= MaxTileAmount then
 									if Menu:FindFirstChild("Page" .. tostring(tonumber(CurrentPageNumber) + 1)) then
 										Page = Menu:FindFirstChild("Page" .. tostring(tonumber(CurrentPageNumber) + 1))
@@ -989,22 +999,31 @@ local function ManageTileTruePosition(Menu, Page, NewTile, TruePosition, MaxTile
 										Page.Parent = Menu
 									end
 									SlotCount = 0
+								elseif SlotCount < 0 then
+									Page = Menu:FindFirstChild("Page" .. tostring(tonumber(CurrentPageNumber) - 1))
 								else
 									Page = page
 								end
 								tile.Name = "Slot" .. tostring(SlotCount + 1)
 							else
-								SlotCount = GetTileSlotCount(page, tile.TruePosition.Value)
-								Page = page
+								if Change == -1 then
+									tile:Destroy()
+								else
+									SlotCount = GetTileSlotCount(page, tile.TruePosition.Value)
+									Page = page
+								end
 							end	
-							tile.Parent = Page
 							
-							local PageNumber = string.gsub(Page.Name, "Page", "")
-							local TruePositionValue = SlotCount + (tonumber(PageNumber)-1)*MaxTileAmount
-							tile.TruePosition.Value = TruePositionValue
-							
-							tile.Position = UDim2.new(0.05, 0, 0.059+0.173*SlotCount, 0)
-							tile.Size = UDim2.new(0.9, 0, 0.14, 0)
+							if Page then
+								tile.Parent = Page
+
+								local PageNumber = string.gsub(Page.Name, "Page", "")
+								local TruePositionValue = SlotCount + (tonumber(PageNumber)-1)*MaxTileAmount
+								tile.TruePosition.Value = TruePositionValue
+
+								tile.Position = UDim2.new(0.05, 0, 0.059+0.173*SlotCount, 0)
+								tile.Size = UDim2.new(0.9, 0, 0.14, 0)
+							end
 						end
 					end
 				end
@@ -1222,7 +1241,7 @@ function FindMenuPage(Menu, MaxTileAmount, ResearchData, StatTable)
 	NewTile.TruePosition.Value = TruePosition
 	NewTile.Parent = Page
 	
-	ManageTileTruePosition(Menu, Page, NewTile, TruePosition, MaxTileAmount)
+	ManageTileTruePosition(Menu, Page, NewTile, TruePosition, MaxTileAmount, 1)
 	
 	return NewTile
 end
@@ -1311,6 +1330,9 @@ local PurchaseResearch = game.ReplicatedStorage.Events.Utility:WaitForChild("Pur
 InfoMenu.ResearchButton.Activated:Connect(function()
 	print("Research button")
 	
+	--if current research slot available
+	--Disable research button and reenable it when event is fired back to client
+	
 	PurchaseResearch:FireServer(SelectedResearch["Research Name"], SelectedResearchType)
 	
 	
@@ -1356,17 +1378,18 @@ UpdateResearch.OnClientEvent:Connect(function(ResearchData, ResearchType, Comple
 	end
 end)
 
-PurchaseResearch.OnClientEvent:Connect(function(ResearchData)
+PurchaseResearch.OnClientEvent:Connect(function(ResearchData) --Error with purchase
 	if ResearchData then
 		print("Player can afford to purchase this research")
+		
 		--put tile in current research and remove from available, moving the tiles below the
 		--up visually, but down in trueposition
-		
+		--reenable button
 	else	
 		print("Player cannot afford this research")
 		--Warning message
+		--reenable button
 	end
-
 end)
 
 
@@ -1430,7 +1453,6 @@ end)
 ComputerScreen.Taskbar.UtilityButtons.Home.Activated:Connect(function()
 	PrepareAllMenuVisibility()
 	MenuSelect.Visible = true
-	ChangeTimerActivity(false)
 	ComputerScreen.Taskbar.Visible = true
 end)
 
@@ -1470,8 +1492,6 @@ function ShutDownCutscene()
 	MoveCamera(CutsceneFolder.Camera2, CutsceneFolder.Camera1, .7, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
 	MoveAllBaseScreenUI:Fire("Show")
 	StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, true)
-	
-	ChangeTimerActivity(false)
 
 	wait(.8)
 	Camera.CameraType = Enum.CameraType.Custom
