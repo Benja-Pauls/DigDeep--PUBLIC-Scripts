@@ -10,6 +10,8 @@ local ItemLabel = ItemInteractionGui:WaitForChild("ItemLabel")
 local ProgressBar = ItemInteractionGui:WaitForChild("ProgressBarBillboardGui")
 local MineshaftItems = game.ReplicatedStorage.ItemLocations.Mineshaft
 
+script.Parent:WaitForChild("ToSurfaceButton").Visible = false
+
 repeat wait() until workspace.CurrentCamera.SelectedItem ~= nil
 
 local OriginalSelectOreColor = ItemInteractionGui.SelectedOre.Color3
