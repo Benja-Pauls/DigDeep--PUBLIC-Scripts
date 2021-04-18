@@ -25,7 +25,7 @@ local HandleDropMaterialsEvent = EventsFolder.Tycoon:WaitForChild("HandleDropMat
 
 -------------------------<|Set Up Game|>--------------------------------------------------------------------------------------------------------------------------------------
 local DataStoreService = game:GetService("DataStoreService") 
-local PlayerSave = DataStoreService:GetDataStore("Tycoon Test202") --Changing this will change the datastore info is taken from
+local PlayerSave = DataStoreService:GetDataStore("Tycoon Test207") --Changing this will change the datastore info is taken from
 
 --When player joins
 game.Players.PlayerAdded:Connect(function(JoinedPlayer)
@@ -153,11 +153,10 @@ local function FindAssociatedFolder(MotherFolder, ItemType, ItemName)
 end
 
 local function SavePlayerData(playerUserId)
-	if sessionData[playerUserId] then --if there is a sessiondata value with the player's userid...
-		local success = pcall(function() --Check to make sure it is saving
-			PlayerSave:SetAsync(playerUserId, sessionData[playerUserId]) --save sessionData[playerUserId] as playerUserId
+	if sessionData[playerUserId] then
+		local success = pcall(function()
+			PlayerSave:SetAsync(playerUserId, sessionData[playerUserId]) --save sessionData as playerUserId
 			print(playerUserId .. "'s held data was SAVED!")
-			--playerUserId = string (key), and sessionData[playerUserId] = variant (value of given key)
 		end)
 		if not success then
 			warn("Cannot save data for " .. tostring(playerUserId))
@@ -233,16 +232,20 @@ function PlayerStatManager:ChangeStat(player, statName, value, Folder, ItemType,
 				sessionData[playerUserId][statName] = sessionData[playerUserId][statName] + value
 			end
 	
-			if Folder then 
+			if Folder and Folder ~= "Research" then 
 				UpdateGUIForFile(tostring(Folder), PlayerDataFile, player, playerUserId, statName, value)
 			end
 			
 			--Client script data management so exploiters cant handle sensitive data
-			--Updating where data is stored in ServerStorage (viewed by server scripts)
-			print(player, statName, value, Folder, PlayerDataFile)
-			for i,file in pairs (PlayerDataFile:FindFirstChild(Folder):GetChildren()) do
-				if file:FindFirstChild(statName) then
-					file:FindFirstChild(statName).Value = sessionData[playerUserId][statName]
+			if ItemType then
+				if Folder == "Research" then
+					sessionData[playerUserId][statName] = value
+				end
+			else
+				for i,file in pairs (PlayerDataFile:FindFirstChild(Folder):GetChildren()) do
+					if file:FindFirstChild(statName) then
+						file:FindFirstChild(statName).Value = sessionData[playerUserId][statName]
+					end
 				end
 			end
 		end
@@ -263,6 +266,8 @@ function PlayerStatManager:ChangeStat(player, statName, value, Folder, ItemType,
 			end
 		else
 			local ItemType = string.gsub(statName, "Equipped", "")
+			local EquippedItem = PlayerDataFile.Player.CurrentlyEquipped:FindFirstChild("Equipped" .. Folder):FindFirstChild("Equipped" .. ItemType)
+			EquippedItem.Value = value
 			
 			if Folder == "Bags" then --Update Equipped Bag (change bag capacity)
 				local TypeAmount = PlayerStatManager:getItemTypeCount(player, string.gsub(ItemType, "Bag", ""))
@@ -532,7 +537,7 @@ function PlayerStatManager:getEquippedData(player, Equippable, Type)
 	if PlayerDataFile.Player.CurrentlyEquipped:FindFirstChild("Equipped" .. Type):FindFirstChild("Equipped" .. Equippable) then
 		local EquippedItem = PlayerDataFile.Player.CurrentlyEquipped:FindFirstChild("Equipped" .. Type):FindFirstChild("Equipped" .. Equippable)
 		local EquipmentName = EquippedItem.Value
-		
+
 		if EquipmentName ~= "" then
 			local EquipmentStats = game.ReplicatedStorage.Equippable:FindFirstChild(Type):FindFirstChild(Equippable):FindFirstChild(EquipmentName)
 			return EquipmentStats
@@ -542,15 +547,15 @@ function PlayerStatManager:getEquippedData(player, Equippable, Type)
 	end
 end
 
-function PlayerStatManager:initiateSaving(player, statName, value)
-	print("Saving Data for Player: " .. tostring(player))
+function PlayerStatManager:initiateSaving(player, statName, PlayerMoney)
+	--print("Saving Data for Player: " .. tostring(player))
 	local playerUserId = game.Players:FindFirstChild(tostring(player)).UserId
 
-	sessionData[playerUserId][statName] = value 
-	print(tostring(player) .. "'s Money: $" .. tostring(sessionData[playerUserId]["Currency"]))
+	sessionData[playerUserId][statName] = PlayerMoney
+	--print("Saving Data for Player: " .. tostring(player))
+	--print(tostring(player) .. "'s Money: $" .. tostring(sessionData[playerUserId]["Currency"]))
 	
-	SavePlayerData(playerUserId) --After saving money amount, update datastore for other stats!
-	--Other stats include purhcases, inventory, etc.
+	SavePlayerData(playerUserId)
 end
 
 --------------------------------<|Equip Functions|>----------------------------------------------------------------------------------------------
