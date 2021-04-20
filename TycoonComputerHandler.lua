@@ -1,6 +1,6 @@
 --(LocalScript)
---Visuals for data menu associated with items inside of the tycoon's (business) storage and all the player's research
------------------------------------------------------------------------------------------------------------------------------------------------
+--Visuals for TycoonComputer GUI that handles player storage and the research menu
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 local Players = game:GetService("Players")
 local Player = Players.LocalPlayer
 
@@ -98,7 +98,7 @@ function SetUpCredentials()
 	local stringTime = "%I:%M %p"
 	local timestamp = os.time()
 	ComputerScreen.CredentialsScreen.Time.Text = tostring(os.date(stringTime, timestamp))
-	ComputerScreen.CredentialsScreen.Username.Text = tostring(Player)
+	ComputerScreen.CredentialsScreen.User_Login.Username.Text = tostring(Player)
 	
 	local PlayerThumbnail = ComputerScreen.CredentialsScreen.PlayerThumbnail
 	local thumbType = Enum.ThumbnailType.HeadShot
@@ -108,10 +108,11 @@ function SetUpCredentials()
 	
 	PrepareAllMenuVisibility()
 	
+	ComputerScreen.Taskbar.Visible = false
 	ComputerScreen.CredentialsScreen.Visible = true
 	
 	--Fade-in login screen
-	local PasswordInput = ComputerScreen.CredentialsScreen.Password
+	local PasswordInput = ComputerScreen.CredentialsScreen.Pass_Login.Password
 	for i = 1,4,1 do
 		PasswordInput:FindFirstChild(tostring(i)).Visible = false
 	end
@@ -134,7 +135,7 @@ function SetUpCredentials()
 	--BackButton.Position = UDim2.new(BackButton.Position.X.Scale, 0, 1, 0)
 	ComputerScreen.CredentialsScreen:TweenPosition(UDim2.new(0,0,-1.3,0), "Out", "Quint", .5)
 	ComputerScreen.Taskbar.Visible = true
-	ComputerScreen.Taskbar.TimeInfo.Time.Text = tostring(os.date(stringTime, timestamp))
+	ComputerScreen.Taskbar.Time.Text = tostring(os.date(stringTime, timestamp))
 	
 	MenuSelect.Visible = true
 	wait(.5)
@@ -682,8 +683,11 @@ MenuSelect.ResearchMenuButton.Activated:Connect(function()
 	ResetPageOrder(PreviousResearch)
 	CostList.CurrentPage.Value = 1
 	
-	ResearchersList.LeftMenuLabel.Text = "Current Research"
-	ResearchersList.RightMenuLabel.Text = "Available Research"
+	ResearchersList.InfoMenuLabel.Visible = false
+	ResearchersList.CostMenuLabel.Visible = false
+	ResearchersList.CurrentMenuLabel.Visible = true
+	ResearchersList.AvailableMenuLabel.Visible = true
+	ResearchersList.PreviousMenuLabel.Visible = false
 	
 	UpdatePageDisplay(AvailableResearch, true)
 	UpdatePageDisplay(PreviousResearch, false)
@@ -696,7 +700,6 @@ end)
 ------------------------<|Time Management|>-----------------------------
 
 local function toDHMS(Sec, TileTimePreview)
-	print("Using toDHMS",Sec, TileTimePreview)
 	local Days = math.floor(Sec/(24*3600))
 	local Hours = math.floor(Sec%(24 * 3600) / 3600)
 	local Minutes = math.floor(Sec/60%60)
@@ -731,9 +734,10 @@ local function toDHMS(Sec, TileTimePreview)
 end
 
 local function ManageTileTimer(Tile, ResearchData, FinishTime)
-	Tile.ProgressBar.ProgressButton.Visible = true
-	Tile.ProgressBar.ProgressButton.SkipTime.Visible = true
-	Tile.ProgressBar.ProgressButton.CompleteResearch.Visible = false
+	local ProgressBar = Tile.TimerBar.ProgressBar
+	ProgressBar.ProgressButton.Visible = true
+	ProgressBar.ProgressButton.SkipTime.Visible = true
+	ProgressBar.ProgressButton.CompleteResearch.Visible = false
 	coroutine.resume(coroutine.create(function()
 		while Tile do
 			wait(1) --update every second
@@ -742,18 +746,18 @@ local function ManageTileTimer(Tile, ResearchData, FinishTime)
 				local RoundedPercentage = math.ceil(100 * (1 - (SecondsLeft / ResearchData["Research Length"])))
 				local PercentFinished = RoundedPercentage/100
 						
-				Tile.ProgressBar.Timer.Text = toDHMS(SecondsLeft)
-				Tile.ProgressBar.Progress:TweenSize(UDim2.new(PercentFinished, 0, 1, 0), "Out", "Quint", 0.8)
+				ProgressBar.Timer.Text = toDHMS(SecondsLeft)
+				ProgressBar.Progress:TweenSize(UDim2.new(PercentFinished, 0, 1, 0), "Out", "Quint", 0.8)
 				
-				--SOME EFFECT TO LOOK LIKE PROGRESS IS BEING MADE, EVEN WITH HUGE TIMERS
+				--SOME EFFECT TO LOOK LIKE PROGRESS IS BEING MADE, EVEN WITH HUGE TIMERS (something moving)?
 				--Some gradient shine effect for progress bar? (like windows progress bar)
 				--Rotate hand on clock to left of progress bar (like CoC timer, 4 points it rotates two going around)
 			else
-				Tile.ProgressBar.Progress.Size = UDim2.new(1, 0, 1, 0)
-				Tile.ProgressBar.Timer.Text = "Completed!"
+				ProgressBar.Progress.Size = UDim2.new(1, 0, 1, 0)
+				ProgressBar.Timer.Text = "Completed!"
 				
-				Tile.ProgressBar.ProgressButton.SkipTime.Visible = false
-				Tile.ProgressBar.ProgressButton.CompleteResearch.Visible = true
+				ProgressBar.ProgressButton.SkipTime.Visible = false
+				ProgressBar.ProgressButton.CompleteResearch.Visible = true
 				
 				--been completed
 				break
@@ -792,10 +796,12 @@ local function InsertTileInfo(Tile, ResearchData, ResearchType, FinishTime, Stat
 		if FinishTime then
 			ResearchTile.ResearchTime.Visible = false
 			ResearchTile.ResearchType.Visible = false
-			ResearchTile.ProgressBar.Visible = true
+			ResearchTile.TimerBar.Visible = true
+			ResearchTile.TimerSymbol.Visible = true
 			ManageTileTimer(ResearchTile, ResearchData, FinishTime)
 		else
-			ResearchTile.ProgressBar.Visible = false
+			ResearchTile.TimerBar.Visible = false
+			ResearchTile.TimerSymbol.Visible = false
 			ResearchTile.ResearchTime.Visible = true
 			ResearchTile.ResearchType.Visible = true
 			ResearchTile.ResearchTime.Text = toDHMS(ResearchData["Research Length"], true)
@@ -806,8 +812,11 @@ local function InsertTileInfo(Tile, ResearchData, ResearchType, FinishTime, Stat
 			if TileDebounce == false then
 				TileDebounce = true
 
-				ResearchersList.LeftMenuLabel.Text = "Research Information"
-				ResearchersList.RightMenuLabel.Text = "Research Cost"
+				ResearchersList.InfoMenuLabel.Visible = true
+				ResearchersList.CostMenuLabel.Visible = true
+				ResearchersList.CurrentMenuLabel.Visible = false
+				ResearchersList.AvailableMenuLabel.Visible = false
+				ResearchersList.PreviousMenuLabel.Visible = false
 				
 				UpdatePageDisplay(AvailableResearch, false)
 				UpdatePageDisplay(PreviousResearch, false)
@@ -1021,7 +1030,7 @@ function ManageTileTruePosition(Menu, Page, AffectingTile, TruePosition, MaxTile
 								local TruePositionValue = SlotCount + (tonumber(PageNumber)-1)*MaxTileAmount
 								tile.TruePosition.Value = TruePositionValue
 
-								tile.Position = UDim2.new(0.05, 0, 0.059+0.173*SlotCount, 0)
+								tile.Position = UDim2.new(0.05, 0, 0.054+0.173*SlotCount, 0)
 								tile.Size = UDim2.new(0.9, 0, 0.14, 0)
 							end
 						end
@@ -1313,7 +1322,8 @@ ResearchersList.ChangeResearchView.Activated:Connect(function()
 		UpdatePageDisplay(PreviousResearch, true)
 		ResearchersList.PreviousResearchPages.Visible = true
 		
-		ResearchersList.LeftMenuLabel.Text = "Previous Research"
+		ResearchersList.CurrentMenuLabel.Visible = false
+		ResearchersList.PreviousMenuLabel.Visible = true
 		ResearchersList.ChangeResearchView.ButtonLabel.Text = "Current Research"
 	else
 		CurrentResearch.Visible = true
@@ -1321,7 +1331,8 @@ ResearchersList.ChangeResearchView.Activated:Connect(function()
 		UpdatePageDisplay(PreviousResearch, false)
 		ResearchersList.PreviousResearchPages.Visible = false
 		
-		ResearchersList.LeftMenuLabel.Text = "Current Research"
+		ResearchersList.CurrentMenuLabel.Visible = true
+		ResearchersList.PreviousMenuLabel.Visible = false
 		ResearchersList.ChangeResearchView.ButtonLabel.Text = "Previous Research"
 	end
 end)
@@ -1441,7 +1452,7 @@ end)
 
 ----------------------------<|General Button Functions|>-----------------------------------------------------------------------------------------------
 
-ComputerScreen.Taskbar.UtilityButtons.ShutDown.Activated:Connect(function()
+ComputerScreen.Taskbar.Shutdown.Activated:Connect(function()
 	SelectionMenu.CurrentSelection.Value = ""
 	SelectionMenu.CurrentRarity.Value = ""
 	SelectionMenu.PreviousSelection.Value = ""
@@ -1450,7 +1461,7 @@ ComputerScreen.Taskbar.UtilityButtons.ShutDown.Activated:Connect(function()
 	ShutDownComputer()
 end)
 
-ComputerScreen.Taskbar.UtilityButtons.Home.Activated:Connect(function()
+ComputerScreen.Taskbar.Home.Activated:Connect(function()
 	PrepareAllMenuVisibility()
 	MenuSelect.Visible = true
 	ComputerScreen.Taskbar.Visible = true
@@ -1507,4 +1518,3 @@ for i,button in pairs (StorageMenu.DataTabSelect:GetChildren()) do
 		SetupTycoonStorageTiles(button)
 	end
 end
-
