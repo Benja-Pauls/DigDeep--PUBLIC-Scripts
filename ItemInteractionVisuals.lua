@@ -10,7 +10,18 @@ local ItemLabel = ItemInteractionGui:WaitForChild("ItemLabel")
 local ProgressBar = ItemInteractionGui:WaitForChild("ProgressBarBillboardGui")
 local MineshaftItems = game.ReplicatedStorage.ItemLocations.Mineshaft
 
-script.Parent:WaitForChild("ToSurfaceButton").Visible = false
+local MoveAllBaseScreenUI = game.ReplicatedStorage.Events.GUI:WaitForChild("MoveAllBaseScreenUI")
+local ToSurfaceButton = script.Parent:WaitForChild("ToSurfaceButton")
+ToSurfaceButton.Visible = false
+
+MoveAllBaseScreenUI.Event:Connect(function(ChangeTo)
+	if ChangeTo == "Hide" then
+		ToSurfaceButton:TweenPosition(UDim2.new(-.15, 0, ToSurfaceButton.Position.Y.Scale, 0), "Out", "Quint", 1)
+	else
+		ToSurfaceButton:TweenPosition(UDim2.new(0.01, 0, ToSurfaceButton.Position.Y.Scale, 0), "Out", "Quint", 1)
+	end
+end)
+
 
 repeat wait() until workspace.CurrentCamera.SelectedItem ~= nil
 
