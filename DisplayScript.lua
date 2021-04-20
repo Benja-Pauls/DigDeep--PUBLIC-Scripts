@@ -2,7 +2,7 @@
 --Updates money amount display, also waits for player to press the display's hide button
 ---------------------------------------------------------------------------------------------------------------------------------------------
 local TweenService = game:GetService("TweenService")
-local MoveAllBaseScreenUI = game.ReplicatedStorage.Events.GUI.MoveAllBaseScreenUI
+local MoveAllBaseScreenUI = game.ReplicatedStorage.Events.GUI:WaitForChild("MoveAllBaseScreenUI")
 
 local Display = script.Parent:WaitForChild("Display")
 local Interact = Display:WaitForChild("Interact")
