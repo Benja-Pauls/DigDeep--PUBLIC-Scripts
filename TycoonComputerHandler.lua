@@ -735,9 +735,8 @@ end
 
 local function ManageTileTimer(Tile, ResearchData, FinishTime)
 	local ProgressBar = Tile.TimerBar.ProgressBar
-	ProgressBar.ProgressButton.Visible = true
-	ProgressBar.ProgressButton.SkipTime.Visible = true
-	ProgressBar.ProgressButton.CompleteResearch.Visible = false
+	ProgressBar.SkipTime.Visible = true
+	ProgressBar.CompleteResearch.Visible = false
 	coroutine.resume(coroutine.create(function()
 		while Tile do
 			wait(1) --update every second
@@ -756,8 +755,8 @@ local function ManageTileTimer(Tile, ResearchData, FinishTime)
 				ProgressBar.Progress.Size = UDim2.new(1, 0, 1, 0)
 				ProgressBar.Timer.Text = "Completed!"
 				
-				ProgressBar.ProgressButton.SkipTime.Visible = false
-				ProgressBar.ProgressButton.CompleteResearch.Visible = true
+				ProgressBar.SkipTime.Visible = false
+				ProgressBar.CompleteResearch.Visible = true
 				
 				--been completed
 				break
@@ -771,16 +770,25 @@ end
 local function ChangeCostColor(Tile, PlayerAmount, Cost)
 	print("Changing cost color for",Tile)
 	if PlayerAmount >= Cost then
-		Tile.ResearchCost.TextColor3 = Color3.fromRGB(0, 208, 0)
+		Tile.ResearchCost.TextColor3 = Color3.fromRGB(85, 255, 0)
 	else
 		Tile.ResearchCost.TextColor3 = Color3.fromRGB(208, 0, 0)
 	end
 end
 
 local function ColorTileRarity(Tile, RarityInfo)
-	Tile.Parent.BackgroundColor3 = RarityInfo.Value
-	Tile.Parent.BorderColor3 = RarityInfo.TileColor.Value
-	Tile.DisplayImage.BorderColor3 = RarityInfo.TileColor.Value
+	print(Tile, Tile:FindFirstChild("RarityFrame"))
+	print(Tile, Tile.RarityFrame)
+	local Main = RarityInfo.Value
+	local Accent = RarityInfo.TileColor.Value
+	
+	Tile.Parent.BorderColor3 = Main
+	Tile.DisplayImage.BorderColor3 = Main
+	Tile.RarityFrame.BorderColor3 = Main
+	Tile.RarityFrame.BackgroundColor3 = Accent
+	Tile.DisplayImage.BackgroundColor3 = Accent
+	RarityInfo.RarityGradient:Clone().Parent = Tile.Parent
+	RarityInfo.RarityGradient:Clone().Parent = Tile.RarityFrame
 end
 
 local function InsertTileInfo(Tile, ResearchData, ResearchType, FinishTime, StatTable)
@@ -1518,3 +1526,4 @@ for i,button in pairs (StorageMenu.DataTabSelect:GetChildren()) do
 		SetupTycoonStorageTiles(button)
 	end
 end
+
