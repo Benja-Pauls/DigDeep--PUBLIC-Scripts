@@ -76,7 +76,7 @@ end
 
 local function PrepareAllMenuVisibility()
 	for i,menu in pairs(ComputerScreen:GetChildren()) do
-		if menu:IsA("Frame") and tostring(menu) ~= "FadeOut" then
+		if (menu:IsA("Frame") or menu:IsA("ImageLabel")) and tostring(menu) ~= "FadeOut" then
 			menu.Visible = false
 
 			if tostring(menu) == "StorageMenu" or tostring(menu) == "ResearchMenu" then
@@ -662,6 +662,9 @@ local ResearchersList = ResearchMenu.ResearchersList
 
 local CheckResearchDepends = game.ReplicatedStorage.Events.Utility:WaitForChild("CheckResearchDepends")
 
+local PurchaseResearch = game.ReplicatedStorage.Events.Utility:WaitForChild("PurchaseResearch")
+local CompleteResearch = game.ReplicatedStorage.Events.Utility:WaitForChild("CompleteResearch")
+
 local SelectedResearch
 local SelectedResearchType
 
@@ -736,7 +739,10 @@ end
 local function ManageTileTimer(Tile, ResearchData, FinishTime)
 	local ProgressBar = Tile.TimerBar.ProgressBar
 	ProgressBar.SkipTime.Visible = true
+	ProgressBar.SkipTime.Active = true
 	ProgressBar.CompleteResearch.Visible = false
+	ProgressBar.CompleteResearch.Active = false
+	
 	coroutine.resume(coroutine.create(function()
 		while Tile do
 			wait(1) --update every second
@@ -756,9 +762,10 @@ local function ManageTileTimer(Tile, ResearchData, FinishTime)
 				ProgressBar.Timer.Text = "Completed!"
 				
 				ProgressBar.SkipTime.Visible = false
+				ProgressBar.SkipTime.Active = false
 				ProgressBar.CompleteResearch.Visible = true
-				
-				--been completed
+				ProgressBar.CompleteResearch.Active = true
+
 				break
 			end
 		end
@@ -768,7 +775,6 @@ end
 -----------------------<|Tile Info Functions|>-----------------------
 
 local function ChangeCostColor(Tile, PlayerAmount, Cost)
-	print("Changing cost color for",Tile)
 	if PlayerAmount >= Cost then
 		Tile.ResearchCost.TextColor3 = Color3.fromRGB(85, 255, 0)
 	else
@@ -777,8 +783,6 @@ local function ChangeCostColor(Tile, PlayerAmount, Cost)
 end
 
 local function ColorTileRarity(Tile, RarityInfo)
-	print(Tile, Tile:FindFirstChild("RarityFrame"))
-	print(Tile, Tile.RarityFrame)
 	local Main = RarityInfo.Value
 	local Accent = RarityInfo.TileColor.Value
 	
@@ -923,8 +927,10 @@ function ManageResearchTile(Menu, ResearchData, ResearchType, FinishTime, StatTa
 	if Menu == CurrentResearch and FinishTime then --Guaranteed to only be one page
 		local ParentTile
 		for i,outlineTile in pairs (CurrentResearch:GetChildren()) do
-			if not outlineTile:FindFirstChild("ResearchSlot") and not ParentTile then
-				ParentTile = outlineTile
+			if outlineTile:IsA("Frame") or outlineTile:IsA("ImageLabel") then
+				if not outlineTile:FindFirstChild("ResearchSlot") and ParentTile == nil then
+					ParentTile = outlineTile
+				end
 			end
 		end
 		
@@ -952,6 +958,18 @@ function ManageResearchTile(Menu, ResearchData, ResearchType, FinishTime, StatTa
 				InfoMenu.Visible = false
 				ManageTileTruePosition(AvailableResearch, AvailPage, AvailTile, AvailTile.TruePosition.Value, 5, -1)
 			end
+			
+			local ProgressBar = NewTile.ResearchTile.TimerBar.ProgressBar
+			ProgressBar.CompleteResearch.Activated:Connect(function()
+				print("complete research activated")
+				CompleteResearch:FireServer(ResearchData["Research Name"], ResearchType)
+			end)
+			
+			ProgressBar.SkipTime.Activated:Connect(function()
+				print("skip research activated")
+				--robux amount will be updated in ManageTileTimer
+				--this will bring up robux charge popup for player to pay robux
+			end)
 		else
 			warn("No tile available for a current research!",ResearchData)
 		end
@@ -1345,11 +1363,8 @@ ResearchersList.ChangeResearchView.Activated:Connect(function()
 	end
 end)
 
-local PurchaseResearch = game.ReplicatedStorage.Events.Utility:WaitForChild("PurchaseResearch")
 InfoMenu.ResearchButton.Activated:Connect(function()
-	print("Research button")
-	
-	--if current research slot available
+	InfoMenu.ResearchButton.Active = false
 	--Disable research button and reenable it when event is fired back to client
 	
 	PurchaseResearch:FireServer(SelectedResearch["Research Name"], SelectedResearchType)
@@ -1383,17 +1398,27 @@ end)
 
 --------------------<|Event Functions|>------------------------------
 local UpdateResearch = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateResearch")
-UpdateResearch.OnClientEvent:Connect(function(ResearchData, ResearchType, Completed, Purchased, FinishTime)
-	if Purchased and Completed then --Previous
-		--ManageResearchTile(PreviousResearch, ResearchData, ResearchType)
+UpdateResearch.OnClientEvent:Connect(function(ResearchData, ResearchType, Completed, Purchased, FinishTime, Researchers)
+	if Researchers == nil then
+		if Purchased and Completed then --Previous
+			ManageResearchTile(PreviousResearch, ResearchData, ResearchType)
+		elseif Purchased and not Completed then --Current
+			ManageResearchTile(CurrentResearch, ResearchData, ResearchType, FinishTime)
+		else --Check If Can Be Available
+			local AllDependenciesMet = CheckResearchDepends:InvokeServer(ResearchData)
+			if AllDependenciesMet then
+				ManageResearchTile(AvailableResearch, ResearchData, ResearchType)
+			end	
+		end
+	else
+		for slot = 1,5 do
+			if slot <= Researchers then
+				CurrentResearch:FindFirstChild("ResesarchOutline" .. tostring(slot)).Visible = true
+			else
+				CurrentResearch:FindFirstChild("ResesarchOutline" .. tostring(slot)).Visible = false
+			end
+		end
 		
-	elseif Purchased and not Completed then --Current
-		ManageResearchTile(CurrentResearch, ResearchData, ResearchType, FinishTime)
-	else --Check If Can Be Available
-		local AllDependenciesMet = CheckResearchDepends:InvokeServer(ResearchData)
-		if AllDependenciesMet then
-			ManageResearchTile(AvailableResearch, ResearchData, ResearchType)
-		end	
 	end
 end)
 
@@ -1409,8 +1434,25 @@ PurchaseResearch.OnClientEvent:Connect(function(ResearchData) --Error with purch
 		--Warning message
 		--reenable button
 	end
+	InfoMenu.ResearchButton.Active = true
 end)
 
+CompleteResearch.OnClientEvent:Connect(function(ResearchData)
+	for i,tile in pairs (CurrentResearch:GetChildren()) do
+		if tile:FindFirstChild("ResearchSlot") then
+			if tile.ResearchSlot.ResearchTile.ResearchName.Text == ResearchData["Research Name"] then
+				tile.ResearchSlot:Destroy()
+				--PurchaseHandler created previous research tile
+			end
+		end
+	end
+	
+	--Little GUI animation with "show me" written on bottom to play cutscene if player wants to
+	--(likely a blueprint somewhere or a shop with new items!)
+	
+	--Must lookvector towards the object, but must not be too close or too far, along with not being at
+	--an angle where some other object gets in the way
+end)
 
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -------------------------------------------------<|Interaction Functions|>-------------------------------------------------------------------------------------------------------
