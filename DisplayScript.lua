@@ -39,7 +39,6 @@ end)
 
 
 MoveAllBaseScreenUI.Event:Connect(function(ChangeTo)
-	print("Hide All Base Screen UI bindable event has been fired")
 	Showing = false --shelf display
 	if ChangeTo == "Hide" then
 		Display:TweenPosition(UDim2.new(1.03, 0, 0.04), "Out", "Quint", 1)
