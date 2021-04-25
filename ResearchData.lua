@@ -3,6 +3,11 @@
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 local RS = game.ReplicatedStorage
 
+--Hour: 3600
+--4 Hours: 14400
+--6 Hours: 21600
+--12 Hours: 43200
+--1 Day: 86400
 
 local ResearchData = {
 	
@@ -13,7 +18,11 @@ local ResearchData = {
 		["Equipment Improvements"] = {
 			["Research Type Name"] = "Equipment Research"
 			
+			--Shop keepers could check player every time they interact if they have completed research
+			--for any of their items requiring research...
 			
+			--However, that could be inefficient, especially in local script, so possibly have server script handle
+			--these changes every time and send out UpdateStoreFront event?
 			
 			
 		},
@@ -41,12 +50,13 @@ local ResearchData = {
 				["Rarity"] = "Uncommon",
 				["Research Length"] = 15,
 				["Material Cost"] = {
-					{RS.ItemLocations.Mineshaft.Stone, 5}
+					{RS.ItemLocations.Mineshaft.Stone, 1},
+					{RS.ItemLocations.Mineshaft.Coal, 1}
 				},
 				["Experience Cost"] = {
 					{RS.Skills.MiningSkill, 3}
 				},
-				["Dependencies"] = {"Fuel Cells"}
+				["Dependencies"] = {"Fuel Cells7"}
 			},
 			
 			[3] = {
