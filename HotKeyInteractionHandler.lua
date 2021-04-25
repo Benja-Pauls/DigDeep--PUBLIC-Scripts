@@ -94,7 +94,6 @@ ProximityPromptService.PromptTriggered:Connect(function(promptObject, player)
 		InteractEvent:Fire(promptObject.Parent, player)
 	else
 		if InteractEvent:IsA("BindableEvent") then
-			print("Firing event " .. tostring(InteractEvent))
 			InteractEvent:Fire(promptObject)
 		elseif InteractEvent:IsA("RemoteEvent") then
 			local AssociatedObject = promptObject.AssociatedObject.Value
