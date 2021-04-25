@@ -805,7 +805,6 @@ function ManageTiles(Stat, Menu, Value, Type, AcquiredLocation)
 		
 		--Make new tile
 		if found == false and (typeof(Value) == "table" or Value > 0) then
-			print("Making a new tile: " .. tostring(Stat))
 			local tile = OriginalMaterialSlot:Clone()
 			local PreviousTile = Page:FindFirstChild("Slot" .. tostring(SlotCount))
 			local SlotNumber = SlotCount + 1
@@ -867,7 +866,7 @@ local function InsertNewMaterialPopUp(ItemPopUp, AcquiredLocation, Item, AmountA
 		--Handling currency, or possibly fire UpdateInventory through PurchaseHandler
 		RealObject = game.ReplicatedStorage.Currencies:FindFirstChild(Item)
 		--just shows player the amount of cash they lost/gained (skipped tile management since no inventory tile)
-		--possibly give money exclusive popup color or shape?
+		--possibly give money exclusive popup color or shape? (yellow)
 	else
 		RealObject = game.ReplicatedStorage.ItemLocations:FindFirstChild(AcquiredLocation):FindFirstChild(tostring(Item))
 	end
@@ -1342,6 +1341,10 @@ end)
 
 local UpdateItemCount = EventsFolder.GUI:WaitForChild("UpdateItemCount")
 UpdateItemCount.OnClientEvent:Connect(function(ItemTypeCount, BagCapacity, BagType, DepositedInventory)
+	if ItemTypeCount < 0 then
+		ItemTypeCount = 0
+	end
+	
 	if not DepositedInventory then
 		if #BagPopUpGui:GetChildren() ~= 0 then --Menu already present
 			if BagPopUpGui.BagPopUp.NamePlate.Text == BagType then
@@ -1367,7 +1370,6 @@ UpdateItemCount.OnClientEvent:Connect(function(ItemTypeCount, BagCapacity, BagTy
 		
 		--Update bag counts in inventory
 		local InventoryMenu = DataMenu.InventoryMenu:FindFirstChild(ItemType .. "Menu")
-		
 		InventoryMenu:SetAttribute("ItemCount", ItemTypeCount)
 		InventoryMenu:SetAttribute("BagCapacity", BagCapacity)
 
