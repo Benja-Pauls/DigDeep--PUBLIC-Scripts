@@ -220,12 +220,12 @@ local function MeetResearchCost(player, ResearchData, CostName, Paying)
 						PlayerStatManager:ChangeStat(player, tostring(cost[1]), 0, Paying, ItemType)
 					else
 						local ItemType = string.gsub(cost[1].Bag.Value, "Bag", "") .. "s"
-						PlayerStatManager:ChangeStat(player, tostring(cost[1]), -cost[2], Paying, ItemType)
-						
-						local AmountRemaining = PlayerStatManager:getStat(player, tostring(cost[1]))
+						local AmountRemaining = PlayerStatManager:getStat(player, tostring(cost[1])) - cost[2]
 						if AmountRemaining < 0 then
 							PlayerStatManager:ChangeStat(player, "TycoonStorage" .. tostring(cost[1]), AmountRemaining, "TycoonStorage", true)
-							PlayerStatManager:ChangeStat(player, tostring(cost[1]), AmountRemaining, Paying, true, "Zero")
+							PlayerStatManager:ChangeStat(player, tostring(cost[1]), -cost[2], Paying, true, "Zero", AmountRemaining)
+						else
+							PlayerStatManager:ChangeStat(player, tostring(cost[1]), -cost[2], Paying, ItemType)
 						end
 					end
 				end
@@ -241,54 +241,147 @@ local PurchaseResearch = EventsFolder.Utility:WaitForChild("PurchaseResearch")
 local UpdateResearch = EventsFolder.GUI:WaitForChild("UpdateResearch")
 
 PurchaseResearch.OnServerEvent:Connect(function(player, ResearchName, ResearchType)
-	local PurchaseHistory = PlayerStatManager:getStat(player, ResearchName .. "Purchased")
-	local CompletionHistory = PlayerStatManager:getStat(player, ResearchName)
+	local ResearchersAvailable = PlayerStatManager:getStat(player, "ResearchersAvailable")
+	local UsedResearchSlots = PlayerStatManager:getStat(player, "ResearchersUsed")
 	
-	if PurchaseHistory == false and CompletionHistory == false then
-		for i,rType in pairs (AllResearchData["Research"]) do
-			if rType["Research Type Name"] == ResearchType then
-				for i,r in pairs (rType) do
-					if rType[i]["Research Name"] == ResearchName then
-						local ResearchData = rType[i]
-						
-						local ExpMet = MeetResearchCost(player, ResearchData, "Experience Cost")
-						local MatMet = MeetResearchCost(player, ResearchData, "Material Cost")
-						
-						if ExpMet and MatMet then
-							local ClonedTable = Utility:CloneTable(ResearchData)
+	if ResearchersAvailable >= UsedResearchSlots + 1 then 
+		print("Slot available for research",UsedResearchSlots)
+	
+		local PurchaseHistory = PlayerStatManager:getStat(player, ResearchName .. "Purchased")
+		local CompletionHistory = PlayerStatManager:getStat(player, ResearchName)
+		
+		if PurchaseHistory == false and CompletionHistory == false then
+			for key,rType in pairs (AllResearchData["Research"]) do
+				if rType["Research Type Name"] == ResearchType then
+					for i,r in pairs (rType) do
+						if rType[i]["Research Name"] == ResearchName then
+							local ResearchData = rType[i]
 							
-							MeetResearchCost(player, ResearchData, "Material Cost", "Inventory")
-							MeetResearchCost(player, ResearchData, "Experience Cost", "Experience")
+							local ExpMet = MeetResearchCost(player, ResearchData, "Experience Cost")
+							local MatMet = MeetResearchCost(player, ResearchData, "Material Cost")
 							
-							local FinishTime = os.time() + ResearchData["Research Length"]
-							PlayerStatManager:ChangeStat(player, ResearchData["Research Name"] .. "FinishTime", FinishTime, "Research", ResearchData["Research Name"])
-							PlayerStatManager:ChangeStat(player, ResearchData["Research Name"] .. "Purchased", true, "Research", ResearchData["Research Name"])
-							
-							UpdateResearch:FireClient(player, ClonedTable, ResearchType, false, true, FinishTime)
-							PurchaseResearch:FireClient(player, ClonedTable)
-						else
-							PurchaseResearch:FireClient(player)
+							if ExpMet and MatMet then
+								local ClonedTable = Utility:CloneTable(ResearchData)
+								
+								MeetResearchCost(player, ResearchData, "Material Cost", "Inventory")
+								MeetResearchCost(player, ResearchData, "Experience Cost", "Experience")
+								
+								local FinishTime = os.time() + ResearchData["Research Length"]
+								PlayerStatManager:ChangeStat(player, ResearchData["Research Name"] .. "FinishTime", FinishTime, "Research", ResearchData["Research Name"])
+								PlayerStatManager:ChangeStat(player, ResearchData["Research Name"] .. "Purchased", true, "Research", ResearchData["Research Name"])
+								
+								UpdateResearch:FireClient(player, ClonedTable, ResearchType, false, true, FinishTime)
+								PurchaseResearch:FireClient(player, ClonedTable)
+							else
+								PurchaseResearch:FireClient(player)
+							end
+						end
+					end
+				end
+				
+			end
+		else
+			warn("Research (" .. ResearchName .. ") has already been purchased or completed")
+		end
+	else
+		warn("No slots available for research")
+	end
+end)
+
+local function CheckResearchUnlocks(player, CompletedResearch)
+	local UnlockedResearch = {}
+	
+	for i,rType in pairs (AllResearchData["Research"]) do
+		local ResearchType = rType["Research Type Name"]
+		for i,r in pairs (rType) do
+			local Research = rType[i]
+			
+			if Research["Dependencies"] then
+				if Research["Dependencies"][CompletedResearch] then
+					local AllDependencies = #Research["Dependencies"]
+					if AllDependencies == 1 then
+						table.insert(UnlockedResearch, ResearchType)
+						table.insert(UnlockedResearch, Research)
+					else
+						local DependenciesMet = 0
+						for d = 1,AllDependencies,1 do
+							if PlayerStatManager:getStat(player, Research["Dependencies"][d]) then
+								DependenciesMet += 1
+							end
+						end
+						if DependenciesMet == AllDependencies then
+							table.insert(UnlockedResearch, ResearchType)
+							table.insert(UnlockedResearch, Research)
 						end
 					end
 				end
 			end
-			
 		end
-	else
-		warn("Research (" .. ResearchName .. ") has already been purchased or completed")
 	end
+	return UnlockedResearch
+end
+
+local CompleteResearch = EventsFolder.Utility:WaitForChild("CompleteResearch")
+CompleteResearch.OnServerEvent:Connect(function(player, ResearchName, ResearchType)
+	local PurchaseHistory = PlayerStatManager:getStat(player, ResearchName .. "Purchased")
+	local CompletionHistory = PlayerStatManager:getStat(player, ResearchName)
+	local FinishTime = PlayerStatManager:getStat(player, ResearchName .. "FinishTime")
 	
-	
+	if PurchaseHistory and os.time() >= FinishTime then
+		if not CompletionHistory then
+			local TypeTableName = string.gsub(ResearchType, "Research", "") .. "Improvements"
+			local ResearchTypeTable = AllResearchData["Research"][TypeTableName]
+			
+			local ResearchData
+			for research = 1,#ResearchTypeTable,1 do
+				if ResearchTypeTable[research]["Research Name"] == ResearchName and ResearchData == nil then
+					ResearchData = Utility:CloneTable(ResearchTypeTable[research])
+				end
+			end
+			
+			if ResearchData then
+				local UsedResearchSlots = PlayerStatManager:getStat(player, "ResearchersUsed")
+				PlayerStatManager:ChangeStat(player, "ResearchersUsed", UsedResearchSlots - 1, "Research")
+				PlayerStatManager:ChangeStat(player, ResearchName, true, "Research")
+				
+				local PlayerDataFile = PlayerData:FindFirstChild(tostring(player.UserId))
+				if ResearchType == "Tycoon Research" then
+					local OwnedTycoon = PlayerDataFile:FindFirstChild("OwnsTycoon").Value
+					
+					if OwnedTycoon then
+						local ResearchReference = Instance.new("StringValue", OwnedTycoon.CompletedResearch)
+						ResearchReference.Name = ResearchName
+						--Otherwise, when player loads tycoon, research will be inserted
+					end
+					
+					CompleteResearch:FireClient(player, ResearchData)
+					UpdateResearch:FireClient(player, ResearchData, ResearchType, true, true)
+					
+					--Insert new research that is now available because this research has been completed
+					local NewResearchUnlocks = CheckResearchUnlocks(player, ResearchName)
+					print(#NewResearchUnlocks) --getting 0 as return from completing 'more efficient fuel cells'
+					if #NewResearchUnlocks > 0 then
+						for r = 1,#NewResearchUnlocks,1 do
+							if r%2 then --even
+								local ResearchData = NewResearchUnlocks[r]
+								local ResearchType = NewResearchUnlocks[r-1]
+								
+								print("New research unlocked: " .. ResearchData["Research Name"])
+								UpdateResearch:FireClient(player, ResearchData, ResearchType, false, false)
+							end
+						end
+					end
+				else
+					print("Different type of reserach than tycoon")
+					print("Where should other research type dependencies be checked?")
+				end
+			end
+		else
+			warn(ResearchName .. " has already been completed")
+		end
+	end
 end)
 
---Possibly only have this as a PlayerStatManager:ChangeStat()
---CompleteResearch.OnServerEvent:Connect(function()
---Add to TycoonResearch group to player's tycoon
---done after player has "checked off" on their research, officially completing it and firing this remote event
-
---also should update the player's stats
-
---end)
 
 -------------------------------<|StoreFront Purchase Functions|>---------------------------------------------------------------------------------------------------------
 
