@@ -2,6 +2,7 @@
 --Responsible for autosaving (at bottom, will probably be moved), and purchase management (called buttons)
 ----------------------------------------------------------------------------------------------------------------------------------------
 local PlayerStatManager = require(game.ServerScriptService:WaitForChild("PlayerStatManager"))
+local AllResearchData = require(game.ServerStorage:WaitForChild("ResearchData"))
 
 local TycoonsFolder = game.Workspace:WaitForChild("Tycoons")
 local Tycoons = TycoonsFolder:GetChildren() --All teams in the game
@@ -98,12 +99,25 @@ local function PrepareTycoon(Tycoon)
 					if OwnsTycoon ~= nil and OwnsTycoon.Value == tycoon then
 						PlayerClaimHead.Transparency = 1
 						TycoonPurchased = true
-						if player ~= nil and PlayerClaimHead ~= nil then --Load previously purchased objects
+						
+						if player ~= nil and PlayerClaimHead ~= nil then
 							local Data = PlayerStatManager:getPlayerData(player)
-							local Buttons = Tycoon.Buttons:GetChildren()
 							
-							for key, object in pairs (TycoonAssetsHandler) do
-								if Data[key] == true then --Looking through sessionData table in Playerstat manager for dropper name
+							for key,rType in pairs (AllResearchData["Research"]) do --Load previously completed research
+								for i,r in pairs (rType) do
+									if rType[i] then
+										local Research = rType[i]
+										if PlayerStatManager:getStat(player, Research["Research Name"]) == true then
+											local ResearchReference = Instance.new("Model", Tycoon.CompletedResearch)
+											ResearchReference.Name = Research["Research Name"]
+										end
+									end
+								end
+							end
+							
+							local Buttons = Tycoon.Buttons:GetChildren()
+							for key, object in pairs (TycoonAssetsHandler) do --Load previously purchased objects
+								if Data[key] == true then --Looking through sessionData if object bought
 									local ObjectName = key
 									for i,v in pairs(Buttons) do
 										if v.Object.Value == ObjectName then
