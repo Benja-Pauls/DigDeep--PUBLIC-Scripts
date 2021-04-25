@@ -25,7 +25,7 @@ local HandleDropMaterialsEvent = EventsFolder.Tycoon:WaitForChild("HandleDropMat
 
 -------------------------<|Set Up Game|>--------------------------------------------------------------------------------------------------------------------------------------
 local DataStoreService = game:GetService("DataStoreService") 
-local PlayerSave = DataStoreService:GetDataStore("Tycoon Test207") --Changing this will change the datastore info is taken from
+local PlayerSave = DataStoreService:GetDataStore("Tycoon Test209") --Changing this will change the datastore info is taken from
 
 --When player joins
 game.Players.PlayerAdded:Connect(function(JoinedPlayer)
@@ -166,7 +166,7 @@ end
 
 ---------------------<|High-Traffic Functions|>--------------------------------------------------------------------------------------------------------------------------------------
 
-local function UpdateGUIForFile(DataTabName, PlayerDataFile, player, playerUserId, statName, value)
+local function UpdateGUIForFile(DataTabName, PlayerDataFile, player, playerUserId, statName, value, overFlow)
 	local DataTab = PlayerDataFile:FindFirstChild(DataTabName) --Example: (UserId).Experience
 	for i,file in pairs (DataTab:GetChildren()) do
 		if file:FindFirstChild(tostring(statName)) then --DataTab:FindFirstChild(file):FindFirstChild(statName)?
@@ -182,8 +182,14 @@ local function UpdateGUIForFile(DataTabName, PlayerDataFile, player, playerUserI
 					local TypeAmount = PlayerStatManager:getItemTypeCount(player, tostring(file))
 					local MaxItemAmount = PlayerStatManager:getEquippedData(player, LocationOfAcquirement:FindFirstChild(statName).Bag.Value .. "s", "Bags") --Bag capacity
 					if MaxItemAmount then
-						if value ~= 0 then
-							UpdateItemCount:FireClient(player, TypeAmount+1, MaxItemAmount.Value, tostring(file))
+						if value ~= 0 and not overFlow then
+							UpdateItemCount:FireClient(player, TypeAmount+value, MaxItemAmount.Value, tostring(file))
+						elseif overFlow then
+							--put up popup showing how much has been payed
+							local expense = math.abs(value - overFlow)
+							UpdateItemCount:FireClient(player, TypeAmount-expense, MaxItemAmount.Value, tostring(file))
+							--remove tile from inventory
+							
 						else
 							UpdateItemCount:FireClient(player, 0, MaxItemAmount.Value, tostring(file), true)
 						end
@@ -210,47 +216,50 @@ local function UpdateGUIForFile(DataTabName, PlayerDataFile, player, playerUserI
 				--if Global currency
 				Utility:UpdateMoneyDisplay(player, Utility:ConvertShort(total))
 				UpdateInventory:FireClient(player, statName, tostring(DataTab), nil, amountAdded, "Inventory", RScurrency.Value)
-				--(put inventory for parameter so popup shows up; otherwise, leave nil.)
+				--(put inventory for parameter so popup shows up; otherwise, leave nil)
 			end
+			
+			file:FindFirstChild(statName).Value = sessionData[playerUserId][statName]
 		end
 	end
 end
 
 --Change saved stat to new value
-function PlayerStatManager:ChangeStat(player, statName, value, Folder, ItemType, special)
+function PlayerStatManager:ChangeStat(player, statName, value, Folder, ItemType, special, overFlow)
 	local playerUserId = game.Players:FindFirstChild(tostring(player)).UserId
-	local PlayerDataFile = PlayerData:FindFirstChild(tostring(playerUserId))
+	local PlayerDataFile = PlayerData:WaitForChild(tostring(playerUserId))
 	
 	--print(typeof(sessionData[playerUserId][statName]),typeof(value),statName,sessionData[playerUserId][statName])	
 	assert(typeof(sessionData[playerUserId][statName]) == typeof(value), tostring(player) .. "'s saved value types don't match")
-	if typeof(sessionData[playerUserId][statName]) == "number" then
+	if typeof(sessionData[playerUserId][statName]) == "number" and Folder ~= "Research" then
 		if sessionData[playerUserId][statName] ~= sessionData[playerUserId][statName] + value or special then --if changed	
 			
 			if special == "Zero" then
 				sessionData[playerUserId][statName] = 0
 			else
-				sessionData[playerUserId][statName] = sessionData[playerUserId][statName] + value
+				sessionData[playerUserId][statName] += value
 			end
 	
-			if Folder and Folder ~= "Research" then 
-				UpdateGUIForFile(tostring(Folder), PlayerDataFile, player, playerUserId, statName, value)
+			if Folder then 
+				if PlayerDataFile:FindFirstChild(Folder):FindFirstChild(statName) then
+					PlayerDataFile:FindFirstChild(Folder):FindFirstChild(statName).Value = sessionData[playerUserId][statName] 
+				else
+					UpdateGUIForFile(tostring(Folder), PlayerDataFile, player, playerUserId, statName, value, overFlow)
+				end
 			end
 			
-			--Client script data management so exploiters cant handle sensitive data
-			if ItemType then
-				if Folder == "Research" then
-					sessionData[playerUserId][statName] = value
-				end
-			else
-				for i,file in pairs (PlayerDataFile:FindFirstChild(Folder):GetChildren()) do
-					if file:FindFirstChild(statName) then
-						file:FindFirstChild(statName).Value = sessionData[playerUserId][statName]
-					end
-				end
-			end
+			--**Possibly update the UpdateGUIForFile for all types of data and merge it for non stattype items
+			
+			
 		end
 	else --bool and string values
 		sessionData[playerUserId][statName] = value 
+		
+		if Folder == "Research" then
+			if PlayerDataFile:FindFirstChild(Folder):FindFirstChild(statName) then
+				PlayerDataFile:FindFirstChild(Folder):FindFirstChild(statName).Value = sessionData[playerUserId][statName] 
+			end
+		end
 
 		if typeof(sessionData[playerUserId][statName]) == "boolean" then
 			if Folder then
@@ -264,7 +273,7 @@ function PlayerStatManager:ChangeStat(player, statName, value, Folder, ItemType,
 					UpdateTycoonStorage:FireClient(player, tostring(Folder), statName, value, nil, LocationOfAcquirement)
 				end
 			end
-		else
+		elseif typeof(sessionData[playerUserId][statName]) == "string" then
 			local ItemType = string.gsub(statName, "Equipped", "")
 			local EquippedItem = PlayerDataFile.Player.CurrentlyEquipped:FindFirstChild("Equipped" .. Folder):FindFirstChild("Equipped" .. ItemType)
 			EquippedItem.Value = value
@@ -342,6 +351,13 @@ function LoadPlayerData(PlayerDataFile, data, JoinedPlayer)
 	local ResearchersAvailable = CreateSaveReference(PlayerResearch, "ResearchersAvailable", "NumberValue")
 	local SavedResearchers = CheckSaveData(data["ResearchersAvailable"])
 	ImportSaveData(data, SavedResearchers, PlayerResearch, ResearchersAvailable)
+	sessionData[playerUserId]["ResearchersAvailable"] = 5 --for testing right now
+	--UpdateResearch:FireClient(JoinedPlayer, nil, nil, nil, nil, 5) --put Researchers in front to prevent heavy nils
+	
+	local ResearchersUsed = CreateSaveReference(PlayerResearch, "ResearchersUsed", "NumberValue")
+	local SavedResearcherUsage = CheckSaveData(data["ResearchersUsed"])
+	ImportSaveData(data, SavedResearcherUsage, PlayerResearch, ResearchersUsed)
+	local UsedCount = 0
 	
 	local ResearchTable = RealResearch["Research"]
 	for i,researchType in pairs (ResearchTable) do
@@ -372,11 +388,15 @@ function LoadPlayerData(PlayerDataFile, data, JoinedPlayer)
 				local PurchasedValue = data[ResearchName .. "Purchased"]
 				local FinishTimeValue = data[ResearchName .. "FinishTime"]
 				
-				--wait(.5)
 				UpdateResearch:FireClient(JoinedPlayer, ClonedResearchData, ResearchTypeName, CompletionValue, PurchasedValue, FinishTimeValue)
+				
+				if PurchasedValue and not CompletionValue then
+					UsedCount += 1
+				end
 			end
 		end
 	end
+	PlayerStatManager:ChangeStat(JoinedPlayer, "ResearchersUsed", UsedCount, "Research")
 	
 	--Once new experience folder is available, make for all experience folders (Skills and Reputation)
 	local RealSkills = game.ReplicatedStorage:WaitForChild("Skills")
