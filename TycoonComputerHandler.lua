@@ -956,12 +956,12 @@ function ManageResearchTile(Menu, ResearchData, ResearchType, FinishTime, StatTa
 				AvailableResearch.Visible = true
 				CostList.Visible = false
 				InfoMenu.Visible = false
+				print("TruePosition:",AvailTile.TruePosition.Value)
 				ManageTileTruePosition(AvailableResearch, AvailPage, AvailTile, AvailTile.TruePosition.Value, 5, -1)
 			end
 			
 			local ProgressBar = NewTile.ResearchTile.TimerBar.ProgressBar
 			ProgressBar.CompleteResearch.Activated:Connect(function()
-				print("complete research activated")
 				CompleteResearch:FireServer(ResearchData["Research Name"], ResearchType)
 			end)
 			
@@ -995,12 +995,17 @@ local function GetTileTruePosition(Page, SlotCount, MaxTileAmount)
 	return TruePosition
 end
 
-local function GetTileSlotCount(Page, TileTruePosition)
+local function GetTileSlotCount(Page, TileTruePosition, AffectingTile, Change)
+	--Count other slots on page
 	local SlotCount = 0
 	for i,slot in pairs (Page:GetChildren()) do
 		if slot:IsA("TextButton") and string.find(slot.Name, "Slot") then
 			if slot.TruePosition.Value < TileTruePosition then
-				SlotCount += 1
+				if Change == -1 and slot == AffectingTile then
+					SlotCount = SlotCount --When moving down, don't count tile yet to be removed from list
+				else
+					SlotCount += 1
+				end
 			end
 		end
 	end
@@ -1021,9 +1026,18 @@ function ManageTileTruePosition(Menu, Page, AffectingTile, TruePosition, MaxTile
 							local SlotCount = 0
 							local Page
 							
+							if Change == -1 then
+								print(tile,"is above the affected tile")
+							end
+							
 							if tile ~= AffectingTile then
 								tile.TruePosition.Value = tile.TruePosition.Value + Change
-								SlotCount = GetTileSlotCount(page, tile.TruePosition.Value)
+								SlotCount = GetTileSlotCount(page, tile.TruePosition.Value, AffectingTile, Change)
+								
+								if Change == -1 then
+									print(tile.TruePosition.Value,SlotCount)
+								end
+								
 								if SlotCount >= MaxTileAmount then
 									if Menu:FindFirstChild("Page" .. tostring(tonumber(CurrentPageNumber) + 1)) then
 										Page = Menu:FindFirstChild("Page" .. tostring(tonumber(CurrentPageNumber) + 1))
