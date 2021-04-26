@@ -297,21 +297,26 @@ local function CheckResearchUnlocks(player, CompletedResearch)
 			local Research = rType[i]
 			
 			if Research["Dependencies"] then
-				if Research["Dependencies"][CompletedResearch] then
-					local AllDependencies = #Research["Dependencies"]
-					if AllDependencies == 1 then
-						table.insert(UnlockedResearch, ResearchType)
-						table.insert(UnlockedResearch, Research)
-					else
-						local DependenciesMet = 0
-						for d = 1,AllDependencies,1 do
-							if PlayerStatManager:getStat(player, Research["Dependencies"][d]) then
-								DependenciesMet += 1
-							end
-						end
-						if DependenciesMet == AllDependencies then
+				local DependencyFound = false
+				
+				--Dependencies where new research is depend of possibly new unlock
+				for d = 1,#Research["Dependencies"] do
+					if Research["Dependencies"][d] == CompletedResearch then
+						print("Research just researched is a dependency of ", Research) --may need to look through dependency table
+						if #Research["Dependencies"] == 1 then
 							table.insert(UnlockedResearch, ResearchType)
 							table.insert(UnlockedResearch, Research)
+						else
+							local DependenciesMet = 0
+							for d = 1,#Research["Dependencies"] do
+								if PlayerStatManager:getStat(player, Research["Dependencies"][d]) then
+									DependenciesMet += 1
+								end
+							end
+							if DependenciesMet == #Research["Dependencies"] then
+								table.insert(UnlockedResearch, ResearchType)
+								table.insert(UnlockedResearch, Research)
+							end
 						end
 					end
 				end
@@ -357,16 +362,13 @@ CompleteResearch.OnServerEvent:Connect(function(player, ResearchName, ResearchTy
 					CompleteResearch:FireClient(player, ResearchData)
 					UpdateResearch:FireClient(player, ResearchData, ResearchType, true, true)
 					
-					--Insert new research that is now available because this research has been completed
 					local NewResearchUnlocks = CheckResearchUnlocks(player, ResearchName)
-					print(#NewResearchUnlocks) --getting 0 as return from completing 'more efficient fuel cells'
-					if #NewResearchUnlocks > 0 then
+					if #NewResearchUnlocks > 0 then --Unlock now unlocked research
 						for r = 1,#NewResearchUnlocks,1 do
-							if r%2 then --even
+							if r%2 == 0 then --even
 								local ResearchData = NewResearchUnlocks[r]
 								local ResearchType = NewResearchUnlocks[r-1]
-								
-								print("New research unlocked: " .. ResearchData["Research Name"])
+
 								UpdateResearch:FireClient(player, ResearchData, ResearchType, false, false)
 							end
 						end
