@@ -132,7 +132,14 @@ end
 
 local function SeeIfObjectIsDependency(Dependencies, Object)
 	for i,dependency in pairs (Dependencies) do
+		
+		--tostring(Object) = Value and type(tostring(Object)) does not output anything
+		--***********
+		
+		print("Dependency value =",dependency.Value,Object,tostring(Object))
+		print(type(dependency.Value, type(tostring(Object))))
 		if dependency.Value == tostring(Object) then
+			print("***")
 			return true
 		end
 	end
@@ -170,10 +177,13 @@ local function SetUpDependencyChecks(Button, ButtonParts, CompletedOfType, Depen
 	local TypeDependencies = DependencyType:GetChildren()
 
 	CompletedOfType.ChildAdded:Connect(function(newObject)
-		if not CompletedOfType:FindFirstChild(tostring(Object)) then
+		print("New child for ",CompletedOfType)
+		if not CompletedOfType:FindFirstChild(tostring(Object)) then --not already bought
+			print("1",TypeDependencies,newObject)
 			if SeeIfObjectIsDependency(TypeDependencies, newObject) then
+				print("2")
 				local FulfilledDependencies = CountDependencies(TypeDependencies, CompletedOfType)
-
+				print(FulfilledDependencies, #TypeDependencies)
 				if FulfilledDependencies == #TypeDependencies then
 					DependencyType.Value = true
 					ReviewDependencies(Button, ButtonParts)
