@@ -10,8 +10,7 @@ local CancelClaimTycoon = ReplicatedStorage.Events.Tycoon.CancelClaimTycoon
 local LocalLoadTycoon = ReplicatedStorage.Events.Tycoon.LocalLoadTycoon
 local LoadTycoon = ReplicatedStorage.Events.Tycoon.LoadTycoon
 
-local debounce 
-debounce = false
+local debounce = false
 --Player Touches entrance to tycoon
 script.Parent.Head.Touched:connect(function(hit)
 	local tycoon = script.Parent.Parent.Parent
@@ -58,6 +57,7 @@ script.Parent.Head.Touched:connect(function(hit)
 						debounce = false
 					else
 						wait()
+						debounce = false
 					end
 				end
 			end
