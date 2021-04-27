@@ -1452,11 +1452,25 @@ PurchaseResearch.OnClientEvent:Connect(function(ResearchData) --Error with purch
 end)
 
 CompleteResearch.OnClientEvent:Connect(function(ResearchData)
+	local RemovedSlotCount
 	for i,tile in pairs (CurrentResearch:GetChildren()) do
 		if tile:FindFirstChild("ResearchSlot") then
-			if tile.ResearchSlot.ResearchTile.ResearchName.Text == ResearchData["Research Name"] then
+			if tile.ResearchSlot.ResearchTile.ResearchName.Text == ResearchData["Research Name"] and RemovedSlotCount == nil then
 				tile.ResearchSlot:Destroy()
-				--PurchaseHandler created previous research tile
+				RemovedSlotCount = string.gsub(tile.Name, "ResearchOutline", "")
+				--PurchaseHandler created tile for previous research menu
+			end
+		end
+	end
+	
+	if RemovedSlotCount then
+		for i,tile in pairs (CurrentResearch:GetChildren()) do
+			if tile:FindFirstChild("ResearchSlot") then
+				local SlotCount = string.gsub(tile.Name, "ResearchOutline", "")
+				local NewSlotCount = tonumber(SlotCount) - 1
+				if NewSlotCount >= tonumber(RemovedSlotCount) then
+					tile.ResearchSlot.Parent = CurrentResearch:FindFirstChild("ResearchOutline" .. tostring(NewSlotCount))
+				end
 			end
 		end
 	end
