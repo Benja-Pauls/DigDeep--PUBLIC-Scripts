@@ -533,7 +533,12 @@ end
 
 function PlayerStatManager:getStat(player, statName) --Stat Check
 	local playerUserId = game.Players:FindFirstChild(tostring(player)).UserId
-	return sessionData[playerUserId][statName]
+	
+	if sessionData[playerUserId] then
+		return sessionData[playerUserId][statName]
+	else
+		warn(player," does not have save data!") --possibly kick player from game and tell to try again
+	end
 end 
 
 function PlayerStatManager:getItemTypeCount(player, Type) --For Amount in Bag Checking
