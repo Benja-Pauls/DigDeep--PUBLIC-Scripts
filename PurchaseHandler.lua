@@ -354,8 +354,9 @@ CompleteResearch.OnServerEvent:Connect(function(player, ResearchName, ResearchTy
 					local OwnedTycoon = PlayerDataFile:FindFirstChild("OwnsTycoon").Value
 					
 					if OwnedTycoon then
-						local ResearchReference = Instance.new("StringValue", OwnedTycoon.CompletedResearch)
+						local ResearchReference = Instance.new("Model")
 						ResearchReference.Name = ResearchName
+						ResearchReference.Parent = OwnedTycoon.CompletedResearch
 						--Otherwise, when player loads tycoon, research will be inserted
 					end
 					
