@@ -2,10 +2,8 @@
 --"Droppers" are responsible for building passive wealth (they "drop" something that is collected, usually at the end of a conveyor belt like
 --a factory)
 ----------------------------------------------------------------------------------------------------------------------------------------------
-
 wait(2)
 script.Parent.Parent.Parent:WaitForChild("TycoonDropStorage")
-print("Found tycoon drop storage")
 
 local dropperName = script.Parent.Name
 local startValue = script.Parent:WaitForChild("StartValue")
@@ -49,3 +47,4 @@ while true do --Change to Levels.Changed or something, needs to be here for drop
 	end
 
 end
+
