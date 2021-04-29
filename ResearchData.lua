@@ -32,8 +32,9 @@ local ResearchData = {
 			
 			[1] = {
 				["Research Name"] = "Room Temperature Superconductors",
-				["Research Image"] = "",
+				["Research Image"] = "rbxassetid://6708071453",
 				["Rarity"] = "Legendary",
+				["Description"] = "After extensive testing, our researchers believe they can create a superconductor that can operate at room temperature. It will take some time, but the results will be worth it.",
 				["Research Length"] = 60,
 				["Material Cost"] = {
 					{RS.ItemLocations.Mineshaft.Stone, 5},
