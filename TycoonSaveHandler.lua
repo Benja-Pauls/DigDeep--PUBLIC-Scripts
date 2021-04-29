@@ -44,7 +44,7 @@ local function HideButton(Name, Buttons)
 			end
 			Item.Visible.Value = false
 		else
-			print("Button (" .. tostring(Item) .. ") doesn't have an affiliated object")
+			warn("Button (" .. tostring(Item) .. ") doesn't have an affiliated object")
 		end
 	end
 end
@@ -128,9 +128,9 @@ local function PrepareTycoon(Tycoon)
 										end
 									end
 									HideButton(ObjectName, Buttons)
-									print(key, " has been bought in a previous game session because data = " .. tostring(Data[key]))
+									--print(key, " has been bought in a previous game session because data = " .. tostring(Data[key]))
 								else
-									print(tostring(object).." hasn't been bought for " .. tostring(tycoon) .. " because data = " .. tostring(Data[key]))
+									--print(tostring(object).." hasn't been bought for " .. tostring(tycoon) .. " because data = " .. tostring(Data[key]))
 								end
 							end
 							
@@ -138,10 +138,10 @@ local function PrepareTycoon(Tycoon)
 							print(tostring(player) .. " is now the owner of " .. tostring(tycoon))
 						end
 					else
-						print(tostring(player) .. " already owns a tycoon! (" .. tostring(tycoon) .. ")")
+						warn(tostring(player) .. " already owns a tycoon! (" .. tostring(tycoon) .. ")")
 					end
 				else
-					print("Player == nil or " .. tostring(tycoon) .. " has already been purchased")
+					warn("Player == nil or " .. tostring(tycoon) .. " has already been purchased")
 				end
 			end
 			print("TYCOON DATA LOADED FOR: " .. tostring(Owner.Value))
@@ -156,7 +156,7 @@ local function PrepareTycoon(Tycoon)
 			if player ~= nil then
 				local bought = PlayerStatManager:getStat(player, instance.Name)
 				if bought == false then --if not already bought
-					print("Button (" .. tostring(instance) .. ") will be saved")
+					--print("Button (" .. tostring(instance) .. ") will be saved")
 					PlayerStatManager:ChangeStat(player, instance.Name, true)
 				end
 			end
@@ -167,7 +167,7 @@ local function PrepareTycoon(Tycoon)
 end
 
 for i,tycoon in pairs (Tycoons) do
-	print("Preparing",tycoon)
+	--print("Preparing",tycoon)
 	PrepareTycoon(tycoon)
 end
 
