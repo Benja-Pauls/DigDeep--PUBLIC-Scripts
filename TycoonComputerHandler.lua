@@ -240,7 +240,7 @@ local function UpdateSelectionInfo(RarityMenu, tile)
 		end)
 	else
 		SelectionMenu.DisplayName.Text = "[Locked]"
-		SelectionMenu.Picture.Image = "rbxgameasset://Images/lock2"
+		SelectionMenu.Picture.Image = "rbxassetid://6741669069"
 		SelectionMenu.Hint.Text = "Hint: " .. tostring(ItemInformation["GUI Info"])
 	end
 end
@@ -284,7 +284,7 @@ function ReadyItemTypeMenu(Menu)
 						end
 					else
 						SelectionMenu.DisplayName.Text = "[Locked]"
-						SelectionMenu.Picture.Image = "rbxgameasset://Images/lock2"
+						SelectionMenu.Picture.Image = "rbxassetid://6741669069" --lock icon
 						SelectionMenu.Hint.Text = "Hint: " .. tostring(ItemInformation["GUI Info"])
 					end
 				end
@@ -892,7 +892,8 @@ local function InsertTileInfo(Tile, ResearchData, ResearchType, FinishTime, Stat
 
 		if not Discovered then
 			CostTile.StatName.Text = "[UNKNOWN]" 
-			CostTile.DisplayImage.Image = "rbxgameasset://Images/lock2"
+			CostTile.DisplayImage.Image = "rbxassetid://6741669069"
+			CostTile.DisplayImage.BackgroundColor3 = Color3.fromRGB(5, 16, 29)
 		else
 			CostTile.StatName.Text = string.gsub(tostring(StatInfo), "Skill", "")
 			CostTile.DisplayImage.Image = StatInfo["GUI Info"].StatImage.Value
@@ -927,9 +928,11 @@ function ManageResearchTile(Menu, ResearchData, ResearchType, FinishTime, StatTa
 	if Menu == CurrentResearch and FinishTime then --Guaranteed to only be one page
 		local ParentTile
 		for i,outlineTile in pairs (CurrentResearch:GetChildren()) do
-			if outlineTile:IsA("Frame") or outlineTile:IsA("ImageLabel") then
-				if not outlineTile:FindFirstChild("ResearchSlot") and ParentTile == nil then
-					ParentTile = outlineTile
+			if outlineTile:IsA("ImageLabel") then
+				if string.find(tostring(outlineTile), "ResearchOutline") then
+					if not outlineTile:FindFirstChild("ResearchSlot") and ParentTile == nil then
+						ParentTile = outlineTile
+					end
 				end
 			end
 		end
@@ -1282,7 +1285,7 @@ function FindMenuPage(Menu, MaxTileAmount, ResearchData, StatTable)
 		SlotCount = 0
 		TruePosition = 0
 	end
-	print("Final slot identifier values for " .. RarityName .. " are: PTS -->",Page,TruePosition,SlotCount)
+	--print("Final slot identifier values for " .. RarityName .. " are: PTS -->",Page,TruePosition,SlotCount)
 
 	local NewTile = game.ReplicatedStorage.GuiElements.ResearchSlot:Clone()
 	NewTile.Name = "Slot" .. tostring(SlotCount + 1)
