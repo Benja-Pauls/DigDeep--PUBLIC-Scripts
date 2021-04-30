@@ -857,6 +857,43 @@ local function InsertTileInfo(Tile, ResearchData, ResearchType, FinishTime, Stat
 				PreviousResearch.Visible = false
 				ResearchersList.ChangeResearchView.Visible = false
 				
+				local NameCharacterCount = string.len(ResearchData["Research Name"])
+				if NameCharacterCount > 20 then
+					local ShortResearchName = string.sub(ResearchData["Research Name"], 1, 20) .. "..."
+					InfoMenu.ResearchName.Text = ShortResearchName
+				else
+					InfoMenu.ResearchName.Text = ResearchData["Research Name"]
+				end
+				
+				InfoMenu.DisplayImage.Image = ResearchData["Research Image"]
+				InfoMenu.ResearchType.Text = ResearchType
+				InfoMenu.ResearchTime.Text = toDHMS(ResearchData["Research Length"], true)
+				
+				--change size of description box based on character count
+				local NameCharacterCount = string.len(ResearchData["Description"])
+				local NewYScale = math.ceil(NameCharacterCount/37)*.069
+				InfoMenu.Description.Size = UDim2.new(InfoMenu.Description.Size.X.Scale, 0, NewYScale, 0)
+				InfoMenu.Description.Text = ResearchData["Description"]
+				
+				InfoMenu.Rarity.Text = ResearchData["Rarity"]
+				local RarityInfo = game.ReplicatedStorage.GuiElements.RarityColors:FindFirstChild(ResearchData["Rarity"])
+				InfoMenu.RarityFrame.BackgroundColor3 = RarityInfo.TileColor.Value
+				InfoMenu.RarityFrame.BorderColor3 = RarityInfo.Value
+				InfoMenu.DisplayImage.BackgroundColor3 = RarityInfo.TileColor.Value
+				InfoMenu.DisplayImage.BorderColor3 = RarityInfo.Value
+				
+				if InfoMenu.RarityFrame:FindFirstChild("RarityGradient") then
+					InfoMenu.RarityFrame.RarityGradient:Destroy()
+				end
+				local RarityFrameGradient = RarityInfo.RarityGradient:Clone()
+				RarityFrameGradient.Parent = InfoMenu.RarityFrame
+				RarityFrameGradient.Rotation = -90
+				
+				if InfoMenu.Rarity:FindFirstChild("RarityGradient") then
+					InfoMenu.Rarity.RarityGradient:Destroy()
+				end
+				RarityInfo.RarityGradient:Clone().Parent = InfoMenu.Rarity
+				
 				TileDebounce = false
 			end
 		end)
