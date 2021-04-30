@@ -35,6 +35,7 @@ local ResearchData = {
 				["Research Image"] = "rbxassetid://6708071453",
 				["Rarity"] = "Legendary",
 				["Description"] = "After extensive testing, our researchers believe they can create a superconductor that can operate at room temperature. It will take some time, but the results will be worth it.",
+				
 				["Research Length"] = 60,
 				["Material Cost"] = {
 					{RS.ItemLocations.Mineshaft.Stone, 5},
@@ -49,6 +50,8 @@ local ResearchData = {
 				["Research Name"] = "More Efficient Fuel Cells",
 				["Research Image"] = "",
 				["Rarity"] = "Uncommon",
+				["Description"] = "",
+				
 				["Research Length"] = 15,
 				["Material Cost"] = {
 					{RS.ItemLocations.Mineshaft.Stone, 1},
@@ -64,6 +67,8 @@ local ResearchData = {
 				["Research Name"] = "Fuel Cells",
 				["Research Image"] = "",
 				["Rarity"] = "Common",
+				["Description"] = "",
+				
 				["Research Length"] = 108000,
 				["Material Cost"] = {
 					{RS.ItemLocations.Mineshaft.Stone, 5},
@@ -79,6 +84,8 @@ local ResearchData = {
 				["Research Name"] = "Fuel Cells2",
 				["Research Image"] = "",
 				["Rarity"] = "Rare",
+				["Description"] = "",
+				
 				["Research Length"] = 4500,
 				["Material Cost"] = {
 					{RS.ItemLocations.Mineshaft.Stone, 5}
@@ -93,6 +100,8 @@ local ResearchData = {
 				["Research Name"] = "Fuel Cells3",
 				["Research Image"] = "",
 				["Rarity"] = "Common",
+				["Description"] = "",
+				
 				["Research Length"] = 30,
 				["Material Cost"] = {
 					{RS.ItemLocations.Mineshaft.Stone, 5}
@@ -107,6 +116,8 @@ local ResearchData = {
 				["Research Name"] = "Fuel Cells4",
 				["Research Image"] = "",
 				["Rarity"] = "Common",
+				["Description"] = "",
+				
 				["Research Length"] = 60,
 				["Material Cost"] = {
 					{RS.ItemLocations.Mineshaft.Stone, 5}
@@ -121,6 +132,8 @@ local ResearchData = {
 				["Research Name"] = "Fuel Cells5",
 				["Research Image"] = "",
 				["Rarity"] = "Common",
+				["Description"] = "",
+				
 				["Research Length"] = 120,
 				["Material Cost"] = {
 					{RS.ItemLocations.Mineshaft.Stone, 5}
@@ -135,6 +148,8 @@ local ResearchData = {
 				["Research Name"] = "Fuel Cells6",
 				["Research Image"] = "",
 				["Rarity"] = "Uncommon",
+				["Description"] = "",
+				
 				["Research Length"] = 300,
 				["Material Cost"] = {
 					{RS.ItemLocations.Mineshaft.Stone, 5}
@@ -149,6 +164,8 @@ local ResearchData = {
 				["Research Name"] = "Fuel Cells7",
 				["Research Image"] = "",
 				["Rarity"] = "Legendary",
+				["Description"] = "",
+				
 				["Research Length"] = 300,
 				["Material Cost"] = {
 					{RS.ItemLocations.Mineshaft.Stone, 5}
@@ -163,6 +180,8 @@ local ResearchData = {
 				["Research Name"] = "Fuel Cells8",
 				["Research Image"] = "",
 				["Rarity"] = "Rare",
+				["Description"] = "",
+				
 				["Research Length"] = 300,
 				["Material Cost"] = {
 					{RS.ItemLocations.Mineshaft.Stone, 5}
@@ -177,6 +196,8 @@ local ResearchData = {
 				["Research Name"] = "Fuel Cells9",
 				["Research Image"] = "",
 				["Rarity"] = "Uncommon",
+				["Description"] = "",
+				
 				["Research Length"] = 300,
 				["Material Cost"] = {
 					{RS.ItemLocations.Mineshaft.Stone, 5}
