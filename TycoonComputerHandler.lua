@@ -1006,7 +1006,27 @@ function ManageResearchTile(Menu, ResearchData, ResearchType, FinishTime, StatTa
 			end)
 			
 			ProgressBar.SkipTime.Activated:Connect(function()
-				print("skip research activated")
+				--Current based off CoC gem calculations
+				--<1h = 16.296x
+				--1<x<24 = 8.491x + 7.8053
+				--24<x<inf = 4.189x + 111.0432
+				
+				--Move this robux calculation to a server script so value is guaranteed safe
+				--(use, in local script, everytime player progress updates to update visual; however, when this button
+				--is activated, the final robux purchase will be conducted by a server script)
+				local SecondsLeft = FinishTime - os.time()
+				local h = math.floor(SecondsLeft%(24 * 3600) / 3600) --HoursLeft
+				
+				local RobuxCost
+				if h < 1 then
+					RobuxCost = math.ceil(16.296*h)
+				elseif 1 <= h <= 24 then
+					RobuxCost = math.ceil(8.491*h + 7.8053)
+				elseif 24 < h then
+					RobuxCost = math.ceil(4.189*h + 111.0432)
+				end
+				
+				
 				--robux amount will be updated in ManageTileTimer
 				--this will bring up robux charge popup for player to pay robux
 			end)
