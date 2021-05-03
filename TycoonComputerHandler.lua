@@ -198,6 +198,7 @@ for i,button in pairs (DataTabSelect:GetChildren()) do
 		button.Activated:Connect(function()
 			if DataTabSelect.Visible == true and SelectionMenu.Visible == false then
 				BeepSound:Play()
+				StorageMenu.TopTab.Visible = true
 				OpenAffiliatedItemPreview(button)
 				DataTabSelect.Visible = false
 			end
@@ -212,6 +213,7 @@ MenuSelect.StorageMenuButton.Activated:Connect(function()
 	SelectionMenu.Visible = false
 	ItemsPreview.Visible = false
 	MenuSelect.Visible = false
+	StorageMenu.TopTab.Visible = false
 	BeepSound:Play()
 end)
 
@@ -260,31 +262,80 @@ local function UpdateSelectionInfo(RarityMenu, tile)
 	
 	SelectionMenu.Amount.Visible = Discovered
 	SelectionMenu.UnitPrice.Visible = Discovered
-	SelectionMenu.SelectItem.Visible = Discovered
 	SelectionMenu.Hint.Visible = not Discovered
+	
+	--Rarity Coloring
+	if SelectionMenu.RarityDisplay.CurrentRarity.Text ~= tostring(RarityMenu) then
+		SelectionMenu.RarityDisplay.CurrentRarity.Text = tostring(RarityMenu)
+		local RarityInfo = game.ReplicatedStorage.GuiElements.RarityColors:FindFirstChild(tostring(RarityMenu))
+
+		local NewGradient1 = RarityInfo.RarityGradient:Clone()
+		if SelectionMenu.RarityDisplay.CurrentRarity:FindFirstChild("RarityGradient") then
+			SelectionMenu.RarityDisplay.CurrentRarity.RarityGradient:Destroy()
+		end
+		NewGradient1.Parent = SelectionMenu.RarityDisplay.CurrentRarity
+
+		local NewGradient2 = RarityInfo.RarityGradient:Clone()
+		if SelectionMenu.RarityFrame:FindFirstChild("RarityGradient") then
+			SelectionMenu.RarityFrame.RarityGradient:Destroy()
+		end
+		NewGradient2.Parent = SelectionMenu.RarityFrame
+
+		SelectionMenu.Picture.BorderColor3 = RarityInfo.Value
+		SelectionMenu.Picture.BackgroundColor3 = RarityInfo.TileColor.Value
+		SelectionMenu.RarityFrame.BorderColor3 = RarityInfo.Value
+		SelectionMenu.RarityFrame.BackgroundColor3 = RarityInfo.TileColor.Value
+	end
 	
 	if Discovered == true then
 		SelectionMenu.Picture.Image = ItemInformation["GUI Info"].StatImage.Value
+		SelectionMenu.Picture.BackgroundColor3 = SelectionMenu.RarityFrame.BackgroundColor3
 		SelectionMenu.DisplayName.Text = tostring(tile)
 		SelectionMenu.Amount.Text = tostring(tile.AmountInStorage.Value)
 		SelectionMenu.UnitPrice.Text = tostring(ItemInformation.CurrencyValue.Value)
+		--SelectionMenu.Description.Text = 
+		
+		--Live Button
+		if SelectionMenu.SelectItem.Image ~= "rbxassetid://6760390045" then
+			SelectionMenu.SelectItem.Active = true
+			SelectionMenu.SelectItem.Image = "rbxassetid://6760390045"
+			SelectionMenu.SelectItem.HoverImage = "rbxassetid://6760391957"
+			SelectionMenu.SelectItem.PressedImage = "rbxassetid://6760411821"
+		end
+		
 		tile.AmountInStorage.Changed:Connect(function()
 			if tostring(tile) == SelectionMenu.CurrentSelection.Value then
 				SelectionMenu.Amount.Text = tostring(tile.AmountInStorage.Value)
 			end
 		end)
 	else
-		SelectionMenu.DisplayName.Text = "[Locked]"
 		SelectionMenu.Picture.Image = "rbxassetid://6741669069"
+		SelectionMenu.Picture.BackgroundColor3 = Color3.fromRGB(5, 16, 29)
+		SelectionMenu.DisplayName.Text = "[UnDiscovered]"
+		SelectionMenu.Amount.Text = "?"
+		SelectionMenu.UnitPrice.Text = "?"
 		SelectionMenu.Hint.Text = "Hint: " .. tostring(ItemInformation["GUI Info"])
+		
+		--Disabled Button
+		if SelectionMenu.SelectItem.Image ~= "rbxassetid://6760430013" then
+			SelectionMenu.SelectItem.Active = false
+			SelectionMenu.SelectItem.Image = "rbxassetid://6760430013"
+			SelectionMenu.SelectItem.HoverImage = "rbxassetid://6760430013"
+			SelectionMenu.SelectItem.PressedImage = "rbxassetid://6760430013"
+		end
 	end
 end
 
-local function UpdateTileLock(tile, StatValue)
+local function UpdateTileLock(tile, StatValue, RarityName)
 	if StatValue == true then
 		tile.LockImage.Visible = false
+		tile.Picture.Visible = true
+		local RarityInfo = game.ReplicatedStorage.GuiElements.RarityColors:FindFirstChild(RarityName)
+		tile.BackgroundColor3 = RarityInfo.TileColor.Value
 	else
 		tile.LockImage.Visible = true
+		tile.Picture.Visible = false
+		tile.BackgroundColor3 = Color3.fromRGB(5, 16, 29)
 	end
 end
 
@@ -300,28 +351,15 @@ function ReadyItemTypeMenu(Menu)
 				local Discovered = item.Discovered.Value
 				local ItemInformation = FindItemInfo(tostring(item), tostring(Menu))
 				
-				item.BorderSizePixel = 4
-				item.BorderColor3 = Color3.fromRGB(0, 170, 255)
+				item.BorderSizePixel = 2
+				item.BorderColor3 = Color3.fromRGB(255, 255, 255)
 				SelectionMenu.CurrentSelection.Value = tostring(item)
 				SelectionMenu.CurrentRarity.Value = "Common"
 				SelectionMenu.UnitPrice.Visible = Discovered
 				SelectionMenu.Hint.Visible = not Discovered
 				
 				if ItemInformation then
-					if Discovered then
-						SelectionMenu.DisplayName.Text = tostring(item)
-						SelectionMenu.Picture.Image = ItemInformation["GUI Info"].StatImage.Value
-						SelectionMenu.UnitPrice.Text = tostring(ItemInformation.CurrencyValue.Value)
-						
-						while SelectionMenu.CurrentSelection.Value == tostring(item) do
-							SelectionMenu.Amount.Text = tostring(item.AmountInStorage.Value)
-							wait()
-						end
-					else
-						SelectionMenu.DisplayName.Text = "[Locked]"
-						SelectionMenu.Picture.Image = "rbxassetid://6741669069" --lock icon
-						SelectionMenu.Hint.Text = "Hint: " .. tostring(ItemInformation["GUI Info"])
-					end
+					UpdateSelectionInfo(Menu.Common, item)
 				end
 			end
 		end
@@ -387,6 +425,8 @@ SelectionMenu.SelectItem.Activated:Connect(function()
 				SellMenu.EmptyNotifier.Text = string.gsub(SellMenu.EmptyNotifier.Text, ItemName, "ITEM")
 			end
 		end
+		
+		wait(.8)
 		SelectionMenu.SelectItem.Active = true
 	end
 end)
@@ -411,10 +451,10 @@ local function ChangeToTileInMenu(Menu, CurrentSelection, SeekedSlotValue)
 	for i,tile in pairs (Menu:GetChildren()) do
 		if tile:IsA("Frame") then
 			if tile.SlotNumber.Value == SeekedSlotValue then
-				CurrentSelection.BorderSizePixel = 2 --Change Previous tile to
+				CurrentSelection.BorderSizePixel = 1 --Change Previous tile to
 				CurrentSelection.BorderColor3 = Color3.fromRGB(27, 42, 53)
-				tile.BorderSizePixel = 4 --Change now selected tile to
-				tile.BorderColor3 = Color3.fromRGB(0, 170, 255)
+				tile.BorderSizePixel = 2 --Change now selected tile to
+				tile.BorderColor3 = Color3.fromRGB(255, 255, 255)
 				SelectionMenu.CurrentRarity.Value = tostring(Menu)
 				SelectionMenu.CurrentSelection.Value = tostring(tile)
 				UpdateSelectionInfo(Menu, tile)
@@ -619,16 +659,16 @@ function SetupTycoonStorageTiles(button)
 							end
 						end
 					end
+					local RarityInfo = game.ReplicatedStorage.GuiElements.RarityColors:FindFirstChild(ItemRarity)
 					
 					local NewTile = TycoonStorageTile:Clone()
 					NewTile.SlotNumber.Value = RarityChildCount + 1
 					NewTile.Name = tostring(item)
-					--NewTile.BorderColor3 = Color3.fromRGB(RarityMenu.TextStrokeColor3)
-					
+					NewTile.BackgroundColor3 = RarityInfo.TileColor.Value
+					NewTile.BorderColor3 = RarityInfo.Value
 					NewTile.Picture.Image = item["GUI Info"].StatImage.Value --Put in check for discovered remotefunction for image/lock
 					
 					NewTile.Parent = RarityMenu
-					--print(RarityChildCount, RarityChildCount/AmountPerRow, math.floor(RarityChildCount/AmountPerRow))
 					
 					if RarityChildCount == 0 then
 						NewTile.Position = UDim2.new(0.05, 0, 1, 0)
@@ -637,7 +677,7 @@ function SetupTycoonStorageTiles(button)
 					elseif (RarityChildCount)/AmountPerRow ~= math.floor(RarityChildCount/AmountPerRow) then
 						NewTile.Position = UDim2.new(PrevTile.Position.X.Scale + .3, 0, PrevTile.Position.Y.Scale, 0)
 						
-					elseif (RarityChildCount)/AmountPerRow == math.floor(RarityChildCount/AmountPerRow) then
+					elseif RarityChildCount/AmountPerRow == math.floor(RarityChildCount/AmountPerRow) then
 						--Starting a new row
 						local RowStarterTile
 						for i,tile in pairs (RarityMenu:GetChildren()) do
@@ -660,13 +700,13 @@ end
 
 local UpdateTycoonStorage = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateTycoonStorage")
 UpdateTycoonStorage.OnClientEvent:Connect(function(File, Stat, StatValue, AmountAdded, AcquiredLocation)
+	local RarityName
 	if typeof(StatValue) == "string" then
 		File = string.gsub(File, "TycoonStorage", "")
 		Stat = string.gsub(Stat, "TycoonStorage", "")
 	else --Bool for Discovered
 		Stat = string.gsub(Stat, "Discovered", "")
-		--print(AcquiredLocation, game.ReplicatedStorage.ItemLocations:FindFirstChild(tostring(AcquiredLocation)))
-		local RarityName = game.ReplicatedStorage.ItemLocations:FindFirstChild(tostring(AcquiredLocation)):FindFirstChild(tostring(Stat)):FindFirstChild("GUI Info").RarityName.Value
+		RarityName = game.ReplicatedStorage.ItemLocations:FindFirstChild(tostring(AcquiredLocation)):FindFirstChild(tostring(Stat)):FindFirstChild("GUI Info").RarityName.Value
 		ItemsPreview:FindFirstChild(tostring(File)):FindFirstChild(RarityName):WaitForChild(tostring(Stat)).Discovered.Value = StatValue
 	end
 
@@ -676,7 +716,7 @@ UpdateTycoonStorage.OnClientEvent:Connect(function(File, Stat, StatValue, Amount
 			if rarity:FindFirstChild(Stat) then
 				if typeof(StatValue) == "boolean" then
 					rarity:FindFirstChild(Stat).Discovered.Value = StatValue
-					UpdateTileLock(rarity:FindFirstChild(Stat),StatValue)
+					UpdateTileLock(rarity:FindFirstChild(Stat), StatValue, RarityName)
 				else
 					rarity:FindFirstChild(Stat).AmountInStorage.Value = StatValue
 				end
