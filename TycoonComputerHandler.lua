@@ -452,7 +452,7 @@ local function ChangeToTileInMenu(Menu, CurrentSelection, SeekedSlotValue)
 		if tile:IsA("Frame") then
 			if tile.SlotNumber.Value == SeekedSlotValue then
 				CurrentSelection.BorderSizePixel = 1 --Change Previous tile to
-				CurrentSelection.BorderColor3 = Color3.fromRGB(27, 42, 53)
+				CurrentSelection.BorderColor3 = CurrentSelection.Parent.TextColor3
 				tile.BorderSizePixel = 2 --Change now selected tile to
 				tile.BorderColor3 = Color3.fromRGB(255, 255, 255)
 				SelectionMenu.CurrentRarity.Value = tostring(Menu)
