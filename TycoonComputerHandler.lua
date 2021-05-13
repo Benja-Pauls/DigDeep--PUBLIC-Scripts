@@ -255,6 +255,7 @@ end
 
 ------------------------<|Current Selection Info|>-------------------------------------
 
+local CurrentTile
 local function UpdateSelectionInfo(RarityMenu, tile)
 	local Menu = RarityMenu.Parent
 	local ItemInformation = FindItemInfo(tostring(tile), tostring(Menu))
@@ -263,6 +264,16 @@ local function UpdateSelectionInfo(RarityMenu, tile)
 	SelectionMenu.Amount.Visible = Discovered
 	SelectionMenu.UnitPrice.Visible = Discovered
 	SelectionMenu.Hint.Visible = not Discovered
+	
+	if CurrentTile ~= nil then
+		CurrentTile.BorderSizePixel = 1 --Change Previous tile to
+		CurrentTile.BorderColor3 = CurrentTile.Parent.TextColor3
+	end
+	tile.BorderSizePixel = 2 --Change now selected tile to
+	tile.BorderColor3 = Color3.fromRGB(255, 255, 255)
+	SelectionMenu.CurrentRarity.Value = tostring(RarityMenu)
+	SelectionMenu.CurrentSelection.Value = tostring(tile)
+	CurrentTile = tile
 	
 	--Rarity Coloring
 	if SelectionMenu.RarityDisplay.CurrentRarity.Text ~= tostring(RarityMenu) then
@@ -345,19 +356,27 @@ local CurrentMenu
 function ReadyItemTypeMenu(Menu)
 	CurrentMenu = Menu
 	
+	for i,rarity in pairs (Menu:GetChildren()) do
+		if rarity:IsA("Frame") then
+			for i,tile in pairs (rarity:GetChildren()) do
+				if tile:IsA("TextButton") then
+					tile.BorderSizePixel = 1
+				end
+			end
+		end
+	end
+	
 	for i,item in pairs (Menu.Common:GetChildren()) do
-		if item:IsA("Frame") then
+		if item:IsA("TextButton") then
 			if item.SlotNumber.Value == 1 then --Select first common item (for first menu open, tiles never switched yet)
 				local Discovered = item.Discovered.Value
 				local ItemInformation = FindItemInfo(tostring(item), tostring(Menu))
-				
-				item.BorderSizePixel = 2
-				item.BorderColor3 = Color3.fromRGB(255, 255, 255)
+
 				SelectionMenu.CurrentSelection.Value = tostring(item)
 				SelectionMenu.CurrentRarity.Value = "Common"
 				SelectionMenu.UnitPrice.Visible = Discovered
 				SelectionMenu.Hint.Visible = not Discovered
-				
+
 				if ItemInformation then
 					UpdateSelectionInfo(Menu.Common, item)
 				end
@@ -438,7 +457,7 @@ local function ChangeToTileInMenu(Menu, CurrentSelection, SeekedSlotValue)
 			if rarity:IsA("TextLabel") then
 				if rarity.DisplayOrder.Value == CurrentMenuOrderValue then
 					for i,item in pairs (rarity:GetChildren()) do
-						if item:IsA("Frame") then
+						if item:IsA("TextButton") then
 							if item.SlotNumber.Value > SeekedSlotValue then
 								SeekedSlotValue = item.SlotNumber.Value
 							end
@@ -449,14 +468,15 @@ local function ChangeToTileInMenu(Menu, CurrentSelection, SeekedSlotValue)
 		end
 	end
 	for i,tile in pairs (Menu:GetChildren()) do
-		if tile:IsA("Frame") then
+		if tile:IsA("TextButton") then
 			if tile.SlotNumber.Value == SeekedSlotValue then
-				CurrentSelection.BorderSizePixel = 1 --Change Previous tile to
-				CurrentSelection.BorderColor3 = CurrentSelection.Parent.TextColor3
-				tile.BorderSizePixel = 2 --Change now selected tile to
-				tile.BorderColor3 = Color3.fromRGB(255, 255, 255)
-				SelectionMenu.CurrentRarity.Value = tostring(Menu)
-				SelectionMenu.CurrentSelection.Value = tostring(tile)
+				--CurrentSelection.BorderSizePixel = 1 --Change Previous tile to
+				--CurrentSelection.BorderColor3 = CurrentSelection.Parent.TextColor3
+				--tile.BorderSizePixel = 2 --Change now selected tile to
+				--tile.BorderColor3 = Color3.fromRGB(255, 255, 255)
+				--SelectionMenu.CurrentRarity.Value = tostring(Menu)
+				--SelectionMenu.CurrentSelection.Value = tostring(tile)
+				--CurrentTile = tile
 				UpdateSelectionInfo(Menu, tile)
 			end
 		end
@@ -472,7 +492,7 @@ function MoveToTile(Menu, amount, RaritySkip)
 		
 		local AmountOfSlots = 0
 		for i,item in pairs (CurrentRarityMenu:GetChildren()) do
-			if item:IsA("Frame") then
+			if item:IsA("TextButton") then
 				AmountOfSlots = AmountOfSlots + 1
 			end
 		end
@@ -501,7 +521,7 @@ function MoveToTile(Menu, amount, RaritySkip)
 		
 		local HighestTileOfHighRarity = 0
 		for i,tile in pairs (HighestRarityMenu:GetChildren()) do
-			if tile:IsA("Frame") then
+			if tile:IsA("TextButton") then
 				if tile.SlotNumber.Value > HighestTileOfHighRarity then
 					HighestTileOfHighRarity = tile.SlotNumber.Value
 				end
@@ -652,7 +672,7 @@ function SetupTycoonStorageTiles(button)
 					local RarityChildCount = 0
 					local PrevTile
 					for i,tile in pairs (RarityMenu:GetChildren()) do
-						if tile:IsA("Frame") then
+						if tile:IsA("TextButton") then
 							if tile.SlotNumber.Value > RarityChildCount then
 								RarityChildCount = tile.SlotNumber.Value
 								PrevTile = tile
@@ -681,7 +701,7 @@ function SetupTycoonStorageTiles(button)
 						--Starting a new row
 						local RowStarterTile
 						for i,tile in pairs (RarityMenu:GetChildren()) do
-							if tile:IsA("Frame") then
+							if tile:IsA("TextButton") then
 								if tile.SlotNumber.Value == NewTile.SlotNumber.Value - AmountPerRow then
 									RowStarterTile = tile
 								end
@@ -690,6 +710,10 @@ function SetupTycoonStorageTiles(button)
 						NewTile.Position = UDim2.new(RowStarterTile.Position.X.Scale, 0, RowStarterTile.Position.Y.Scale + 1.67, 0)
 						MoveOtherRaritiesDown(RarityMenu)
 					end
+					
+					NewTile.Activated:Connect(function()
+						UpdateSelectionInfo(RarityMenu, NewTile)
+					end)
 				end	
 			end
 		end
