@@ -1,6 +1,8 @@
 --(LocalScript)
 --Inventory graphical menu handler
 -------------------------------------------------------------------------------------------------------------------------------------------------
+local TweenService = game:GetService("TweenService")
+
 local Player = game.Players.LocalPlayer
 local PlayerUserId = Player.UserId
 local OpenDataMenuButton = script.Parent.OpenDataMenuButton
@@ -19,9 +21,59 @@ end
 OpenDataMenuButton.Active = false --re-enable when script is ready
 
 for i,v in pairs (DataMenu:GetChildren()) do
-	if v:IsA("Frame") and tostring(v) ~= "TopTabBar" then
+	if v:IsA("Frame") and tostring(v) ~= "TopTabBar" and tostring(v) ~= "MenuBorder" then
 		v.Visible = false
 	end
+end
+
+local MenuTabs = {
+	DataMenu.PlayerMenuButton, 
+	DataMenu.InventoryMenuButton, 
+	DataMenu.ExperienceMenuButton,
+	DataMenu.JournalMenuButton
+}
+
+local tabSelection = DataMenu.TopTabBar.TabSelection
+local tsWidth = tabSelection.Size.X.Scale
+local previousTween
+for i,v in pairs (MenuTabs) do
+	local tabWidth = v.Size.X.Scale
+	local newSelectPos = math.abs(tabWidth - tsWidth)/2 + v.Position.X.Scale
+	
+	if v.Name == "PlayerMenuButton" then
+		tabSelection.Position = UDim2.new(newSelectPos, 0, 0.888, 0)
+	end
+	v.Active = true
+	
+	local tweenInfo = TweenInfo.new(0.4,Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+	local tween = TweenService:Create(tabSelection, tweenInfo, {Position = UDim2.new(newSelectPos, 0, 0.888, 0)})
+	local selectedImage = v.SelectedImage.Value
+	local staticImage = v.StaticImage.Value
+	v.Activated:Connect(function()
+		if v.Image ~= selectedImage then
+			if previousTween then
+				previousTween:Pause()
+			end
+			tween:Play()
+			previousTween = tween
+			v.Image = selectedImage
+			v.Active = false
+			
+			for i,tab in pairs (MenuTabs) do
+				if tab ~= v then --other tabs
+					tab.Active = false
+						
+					if tab.Image == tab.SelectedImage.Value then
+						tab.Image = tab.StaticImage.Value
+					end
+				end
+			end
+			
+			for i,tab in pairs (MenuTabs) do
+				tab.Active = true
+			end
+		end
+	end)
 end
 
 local InventoryOpens = 0
@@ -30,6 +82,7 @@ OpenDataMenuButton.Activated:Connect(function()
 		DataMenu.Position = UDim2.new(0.126, 0, -.8, 0)
 		DataMenu.Visible = true
 		DataMenu.PlayerMenu.Visible = true
+		DataMenu.TopTabBar.CloseMenu.Active = true
 		OpenDataMenuButton.Active = false
 		
 		CheckForNewItems()
@@ -64,8 +117,22 @@ OpenDataMenuButton.Activated:Connect(function()
 		PageManager.Visible = false
 		DataMenu.ItemViewer.Visible = false
 		
+		DataMenu.TopTabBar.CloseMenu.Active = false
 		OpenDataMenuButton.Active = true
 	end
+end)
+
+DataMenu.TopTabBar.CloseMenu.Activated:Connect(function()
+	DataMenu.TopTabBar.CloseMenu.Active = false
+	OpenDataMenuButton.Active = false
+	DataMenu:TweenPosition(UDim2.new(0.126, 0, -0.8, 0), "Out", "Quint", .5)
+	wait(.5)
+	DataMenu.Visible = false
+	DataMenu.Position = UDim2.new(0.126, 0, 0.141, 0)
+	PageManager.Visible = false
+	DataMenu.ItemViewer.Visible = false
+
+	OpenDataMenuButton.Active = true
 end)
 
 MoveAllBaseScreenUI.Event:Connect(function(ChangeTo)
@@ -112,7 +179,7 @@ function ReadyMenuButtons(Menu)
 					
 					for i,v in pairs (ButtonMenu.Parent:GetChildren()) do
 						if v:IsA("Frame") and not v:FindFirstChild("Menu") then
-							if tostring(v) ~= "TopTabBar" then
+							if tostring(v) ~= "TopTabBar" and tostring(v) ~= "MenuBorder" then
 								v.Visible = false
 							end
 						end
