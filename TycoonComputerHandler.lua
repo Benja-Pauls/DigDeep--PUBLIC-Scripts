@@ -214,6 +214,7 @@ MenuSelect.StorageMenuButton.Activated:Connect(function()
 	ItemsPreview.Visible = false
 	MenuSelect.Visible = false
 	StorageMenu.TopTab.Visible = false
+	ManageSellMenu(false)
 	BeepSound:Play()
 end)
 
@@ -231,13 +232,34 @@ local function MoveOtherRaritiesDown(RarityMenu)
 	end
 end
 
+local SellMenu = StorageMenu.SellMenu
+function ManageSellMenu(bool)
+	SellMenu.Visible = bool
+	StorageMenu.CloseSellMenu.Visible = bool
+	StorageMenu.CloseSellMenu.Active = bool
+	StorageMenu.SellButton.Visible = bool
+	StorageMenu.SellButton.Active = bool
+	StorageMenu.BackgroundFade.Visible = bool
+	
+	SelectionMenu.SelectItem.Active = bool
+	SelectionMenu.NextItem.Active = bool
+	SelectionMenu.PreviousItem.Active = bool
+	SelectionMenu.NextRarity.Active = bool
+	SelectionMenu.PrevRarity.Active = bool
+end
+
 function OpenAffiliatedItemPreview(button)
 	local MenuName = button.Name
 	
 	if StorageMenu.ItemsPreview:FindFirstChild(MenuName) then
 		SelectionMenu.Visible = true
-		SelectionMenu.SellMenu.Visible = false
 		ItemsPreview.Visible = true
+		
+		SelectionMenu.SelectItem.Active = true
+		SelectionMenu.NextItem.Active = true
+		SelectionMenu.PreviousItem.Active = true
+		SelectionMenu.NextRarity.Active = true
+		SelectionMenu.PrevRarity.Active = true
 		
 		for i,menu in pairs (ItemsPreview:GetChildren()) do
 			if menu:IsA("Frame") then
@@ -401,7 +423,6 @@ SelectionMenu.PrevRarity.Activated:Connect(function()
 	MoveToTile(CurrentMenu, nil, "Previous")
 end)
 
-local SellMenu = SelectionMenu.SellMenu
 local SellItem = game.ReplicatedStorage.Events.Utility:WaitForChild("SellItem")
 
 local function DisplaySellMenuElements(bool, bool2, ItemName)
@@ -417,6 +438,7 @@ local function DisplaySellMenuElements(bool, bool2, ItemName)
 			end
 		end
 	end
+	SellMenu.TotalAmount.Text = tostring(SellMenu.MaxAmount.Value)
 end
 
 SelectionMenu.SelectItem.Activated:Connect(function()
@@ -429,7 +451,8 @@ SelectionMenu.SelectItem.Activated:Connect(function()
 		local ItemInfo = FindItemInfo(ItemName, tostring(CurrentMenu))
 		if ItemInfo then
 			SellMenu.SelectedItem.Value = ItemInfo
-			SellMenu.Visible = true	
+			ManageSellMenu(true)
+			
 			
 			if ItemAmount > 0 then
 				SellMenu.SnapAmount.Value = math.ceil(SellMenu.SliderBar.AbsoluteSize.X/(ItemAmount)) --+1 for 0th
@@ -440,7 +463,7 @@ SelectionMenu.SelectItem.Activated:Connect(function()
 			else
 				DisplaySellMenuElements(false, true, ItemName)
 				wait(2)
-				SellMenu.Visible = false
+				ManageSellMenu(false)
 				SellMenu.EmptyNotifier.Text = string.gsub(SellMenu.EmptyNotifier.Text, ItemName, "ITEM")
 			end
 		end
@@ -470,13 +493,6 @@ local function ChangeToTileInMenu(Menu, CurrentSelection, SeekedSlotValue)
 	for i,tile in pairs (Menu:GetChildren()) do
 		if tile:IsA("TextButton") then
 			if tile.SlotNumber.Value == SeekedSlotValue then
-				--CurrentSelection.BorderSizePixel = 1 --Change Previous tile to
-				--CurrentSelection.BorderColor3 = CurrentSelection.Parent.TextColor3
-				--tile.BorderSizePixel = 2 --Change now selected tile to
-				--tile.BorderColor3 = Color3.fromRGB(255, 255, 255)
-				--SelectionMenu.CurrentRarity.Value = tostring(Menu)
-				--SelectionMenu.CurrentSelection.Value = tostring(tile)
-				--CurrentTile = tile
 				UpdateSelectionInfo(Menu, tile)
 			end
 		end
@@ -592,35 +608,52 @@ if SelectionMenu.Visible == true then
 			CalculateSliderPosition()
 		end
 	end)
+	
+	SellMenu.SelectedAmount.FocusLost:Connect(function(enterPressed, otherInput)
+		if tonumber(SellMenu.SelectedAmount.Text) > SellMenu.MaxAmount.Value then
+			SellMenu.SelectedAmount.Text = tostring(SellMenu.MaxAmount.Value)
+		elseif tonumber(SellMenu.SelectedAmount.Text) < 0 then
+			SellMenu.SelectedAmount.Text = "0"
+		end
+		print(SellMenu.MaxAmount.Value)
+		print(SellMenu.SelectedAmount.Text)
+		CalculateSliderPosition(tonumber(SellMenu.SelectedAmount.Text)) 
+	end)
 end
+
 
 local snapAmount
 local amountToSellPercent
-function CalculateSliderPosition(bool)
-	snapAmount = SellMenu.SnapAmount.Value
-	local xOffset = math.floor((Mouse.X - sliderBar.AbsolutePosition.X) / snapAmount) * snapAmount
-	local xOffsetClamped = math.clamp(xOffset, 0, sliderBar.AbsoluteSize.X - slider.AbsoluteSize.X) --pos, min, max
+function CalculateSliderPosition(amount)
+	local Percentage
+	if amount == nil then
+		local xOffsetClamped
+		snapAmount = SellMenu.SnapAmount.Value
+		local xOffset = math.floor((Mouse.X - sliderBar.AbsolutePosition.X) / snapAmount) * snapAmount
+		xOffsetClamped = math.clamp(xOffset, 0, sliderBar.AbsoluteSize.X - slider.AbsoluteSize.X) --pos, min, max
 
-	local sliderPosNew = UDim2.new(0, xOffsetClamped, slider.Position.Y.Scale, 0) --Snap slider bar in place
-	slider.Position = sliderPosNew
-
-	local roundedAbsSize = math.ceil(sliderBar.AbsoluteSize.X / snapAmount) * snapAmount or 0
-	local roundedOffsetClamped = (xOffsetClamped / snapAmount) * snapAmount --highest amount slider can achieve
-	local Percentage = roundedOffsetClamped / roundedAbsSize
+		local sliderPosNew = UDim2.new(0, xOffsetClamped, slider.Position.Y.Scale, 0) --Snap slider bar in place
+		slider.Position = sliderPosNew
+		
+		local roundedAbsSize = math.ceil(sliderBar.AbsoluteSize.X / snapAmount) * snapAmount or 0
+		local roundedOffsetClamped = (xOffsetClamped / snapAmount) * snapAmount --highest amount slider can achieve
+		Percentage = roundedOffsetClamped / roundedAbsSize
+	else
+		Percentage = amount/SellMenu.MaxAmount.Value
+		slider.Position = UDim2.new(Percentage - slider.Size.X.Scale/2, 0, slider.Position.Y.Scale, 0)
+	end
 	
 	amountToSellPercent = Percentage
 	local GUIamountToSell = math.ceil(Percentage*SellMenu.MaxAmount.Value)
 
 	SellMenu.SelectedAmount.Text = tostring(GUIamountToSell)
-	SellMenu.ItemName.Text = tostring(SellMenu.SelectedItem.Value)
-	
 	SellMenu.CashValue.Text = "$" .. tostring(SellMenu.SelectedItem.Value.CurrencyValue.Value*GUIamountToSell)
 end
 
-SellMenu.SellItem.Activated:Connect(function()
+SellMenu.Parent.SellButton.Activated:Connect(function()
 	local ItemInfo = tostring(SellMenu.SelectedItem.Value) --Keep as string to prevent RS exploiting
 	SellItem:FireServer(CurrentMenu, ItemInfo, amountToSellPercent)
-	SellMenu.Visible = false
+	ManageSellMenu(false)
 	
 	--Possibly do a statValue vs MaxAmount check to see if certain player is exploiting
 	--maybe have a saved stat in each player that is amount of exploiter warnings. If exploiter warnings count is too high, they
@@ -629,16 +662,16 @@ SellMenu.SellItem.Activated:Connect(function()
 	--Sell GUI animation
 end)
 
-SellMenu.SellAll.Activated:Connect(function()
-	local ItemInfo = SellMenu.SelectedItem.Value
-	SellItem:FireServer(CurrentMenu, ItemInfo, 1)
-	SellMenu.Visible = false
+--SellMenu.SellAll.Activated:Connect(function()
+	--local ItemInfo = SellMenu.SelectedItem.Value
+	--SellItem:FireServer(CurrentMenu, ItemInfo, 1)
+	--ManageSellMenu(false)
 	
 	--Sell GUI animation
-end)
+--end)
 
-SellMenu.ExitButton.Activated:Connect(function()
-	SellMenu.Visible = false
+StorageMenu.CloseSellMenu.Activated:Connect(function()
+	ManageSellMenu(false)
 end)
 
 ---------------------------<|Storage Menu Tile Management|>-------------------------------------------
@@ -729,11 +762,12 @@ UpdateTycoonStorage.OnClientEvent:Connect(function(File, Stat, StatValue, Amount
 		File = string.gsub(File, "TycoonStorage", "")
 		Stat = string.gsub(Stat, "TycoonStorage", "")
 	else --Bool for Discovered
+		wait(1)
 		Stat = string.gsub(Stat, "Discovered", "")
 		RarityName = game.ReplicatedStorage.ItemLocations:FindFirstChild(tostring(AcquiredLocation)):FindFirstChild(tostring(Stat)):FindFirstChild("GUI Info").RarityName.Value
 		ItemsPreview:FindFirstChild(tostring(File)):FindFirstChild(RarityName):WaitForChild(tostring(Stat)).Discovered.Value = StatValue
 	end
-
+ 
 	wait() --Allow ItemPreview tiles to be made
 	for i,rarity in pairs (ItemsPreview:FindFirstChild(File):GetChildren()) do
 		if rarity:IsA("TextLabel") then
