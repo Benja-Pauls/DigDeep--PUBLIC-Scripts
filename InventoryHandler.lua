@@ -217,7 +217,6 @@ function ReadyMenuButtons(Menu)
 								FinalizePageChange(ButtonMenu.Page1)
 							end
 						else --Player has no items of this type
-							print("Menu has no pages!")
 							ButtonMenu.Parent.EmptyNotifier.Visible = true
 							
 							--if button:IsDescendantOf(DataMenu.PlayerMenu) then
@@ -1251,7 +1250,6 @@ PlayerInfo.PlayerThumbnail.Image = PlayerProfilePicture
 PlayerInfo.PlayerName.Text = tostring(Player)
 
 local RealBags = game.ReplicatedStorage.Equippable.Bags
-local BagInfo = PlayerMenu["Default Menu"].BagInfo
 
 local EquipButton = DataMenu.ItemViewer.EquipButton
 EquipButton.Activated:Connect(function()
