@@ -42,10 +42,10 @@ local NPCData = {
 		},
 		
 		["Items"] = { --Sort by type (Rarity = ItemType)
-			{RS.Equippable.Bags.OreBags["Beginner Ore Bag"], 4},
-			{RS.Equippable.Bags.OreBags["Advanced Ore Bag"], 10},
-			{RS.Equippable.Bags.PlantBags["Beginner Plant Bag"], 4},
-			{RS.Equippable.Bags.PlantBags["Advanced Plant Bag"], 10},
+			{RS.Equippable.Bags.MaterialBags["Beginner Bag"], 4},
+			{RS.Equippable.Bags.MaterialBags["Advanced Bag"], 10},
+			--{RS.Equippable.Bags.PlantBags["Beginner Plant Bag"], 4},
+			--{RS.Equippable.Bags.PlantBags["Advanced Plant Bag"], 10},
 			{RS.Equippable.Tools.Pickaxes.Pickaxe, 5},
 			{RS.Equippable.Tools.Pickaxes["Orange Pickaxe"], 15}
 			
