@@ -10,7 +10,7 @@ function Utility:UpdateMoneyDisplay(Player, NewPlayerCash)
 	MoneyDisplay.Display.Frame.Money.Text = "$" .. tostring(NewPlayerCash)
 	
 	--Also updates wherever money is displayed GUI menus
-	PlayerGui.DataMenu.DataMenu.PlayerMenu["Default Menu"].PlayerInfo.PlayerCash.Text = tostring(NewPlayerCash)
+	PlayerGui.DataMenu.DataMenu.PlayerMenu.PlayerInfo.PlayerCash.Text = tostring(NewPlayerCash)
 	PlayerGui.StoreFrontGui.StoreFrontMenu.PlayerCashDisplay.PlayerCash.Text = "$" .. tostring(NewPlayerCash)
 end
 
