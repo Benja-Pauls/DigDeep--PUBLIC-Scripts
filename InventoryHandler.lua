@@ -2,6 +2,7 @@
 --Inventory graphical menu handler
 -------------------------------------------------------------------------------------------------------------------------------------------------
 local TweenService = game:GetService("TweenService")
+local Camera = game.Workspace.CurrentCamera
 
 local Player = game.Players.LocalPlayer
 local PlayerUserId = Player.UserId
@@ -50,6 +51,14 @@ for i,v in pairs (MenuTabs) do
 	local selectedImage = v.SelectedImage.Value
 	local staticImage = v.StaticImage.Value
 	v.Activated:Connect(function()
+		if v == DataMenu.PlayerMenuButton then
+			DataMenu.BackgroundTransparency = 1
+			DataMenu.PlayerMenu.BackgroundTransparency = 1
+		else
+			DataMenu.BackgroundTransparency = 0
+			DataMenu.PlayerMenu.BackgroundTransparency = 0
+		end
+		
 		if v.Image ~= selectedImage then
 			if previousTween then
 				previousTween:Pause()
@@ -79,16 +88,16 @@ end
 local InventoryOpens = 0
 OpenDataMenuButton.Activated:Connect(function()
 	if DataMenu.Visible == false then
-		DataMenu.Position = UDim2.new(0.126, 0, -.8, 0)
+		DataMenu.Position = UDim2.new(0.159, 0, -.8, 0)
 		DataMenu.Visible = true
 		DataMenu.PlayerMenu.Visible = true
 		DataMenu.TopTabBar.CloseMenu.Active = true
 		OpenDataMenuButton.Active = false
 		
-		CheckForNewItems()
+		--CheckForNewItems()
 		
 		DataMenu.PlayerMenu.Visible = true
-		DataMenu:TweenPosition(UDim2.new(0.126, 0, 0.141, 0), "Out", "Quint", .5)
+		DataMenu:TweenPosition(UDim2.new(0.159, 0, 0.173, 0), "Out", "Quint", .5)
 		wait(.5)
 		
 		--Manage Tabs
@@ -102,18 +111,18 @@ OpenDataMenuButton.Activated:Connect(function()
 		end
 		
 		DataMenu.PlayerMenu.Visible = true
-		for i,menu in pairs (DataMenu.PlayerMenu["Default Menu"]:GetChildren()) do
-			menu.Visible = true
-		end
+		DataMenu.BackgroundTransparency = 1
+		DataMenu.PlayerMenu.BackgroundTransparency = 1
+		Display3DModels(true)
 		
 		OpenDataMenuButton.Active = true
 		
 	elseif DataMenu.Visible == true then
 		OpenDataMenuButton.Active = false
-		DataMenu:TweenPosition(UDim2.new(0.126, 0, -0.8, 0), "Out", "Quint", .5)
+		DataMenu:TweenPosition(UDim2.new(0.159, 0, -0.8, 0), "Out", "Quint", .5)
 		wait(.5)
 		DataMenu.Visible = false
-		DataMenu.Position = UDim2.new(0.126, 0, 0.141, 0)
+		DataMenu.Position = UDim2.new(0.159, 0, 0.141, 0)
 		PageManager.Visible = false
 		DataMenu.ItemViewer.Visible = false
 		
@@ -125,10 +134,10 @@ end)
 DataMenu.TopTabBar.CloseMenu.Activated:Connect(function()
 	DataMenu.TopTabBar.CloseMenu.Active = false
 	OpenDataMenuButton.Active = false
-	DataMenu:TweenPosition(UDim2.new(0.126, 0, -0.8, 0), "Out", "Quint", .5)
+	DataMenu:TweenPosition(UDim2.new(0.159, 0, -0.8, 0), "Out", "Quint", .5)
 	wait(.5)
 	DataMenu.Visible = false
-	DataMenu.Position = UDim2.new(0.126, 0, 0.141, 0)
+	DataMenu.Position = UDim2.new(0.159, 0, 0.141, 0)
 	PageManager.Visible = false
 	DataMenu.ItemViewer.Visible = false
 
@@ -249,6 +258,20 @@ function ReadyMenuButtons(Menu)
 	end
 end
 
+function Display3DModels(bool)
+	local PlayerModel = game.Workspace.Players:WaitForChild(tostring(Player)):Clone()
+	--getting error trying to reference this clone. Probably studio error for now
+	if bool == true then
+		PlayerModel.Parent = Camera
+		local idleAnimation = PlayerModel.Humanoid:LoadAnimation(PlayerModel.Animate.idle.Animation1)
+		idleAnimation:Play()
+		
+	else
+		
+		
+	end
+end
+
 function CleanupMenuTabs(Menu)
 	
 	--Prep Default Menu
@@ -315,11 +338,14 @@ function CheckForNewItems()
 		end
 	end
 	
-	coroutine.resume(coroutine.create(function()
-		for button = 1,#NewItemButtons,1 do
-			AnimateShine(NewItemButtons[button])
-		end
-	end))
+	--Put something in the corner of the tile to alert there is something new (only in equipment)
+	--openning the menu alone is enough to show that it has been "seen": player does not need to click on the item
+	
+	--coroutine.resume(coroutine.create(function()
+		--for button = 1,#NewItemButtons,1 do
+			--AnimateShine(NewItemButtons[button])
+		--end
+	--end))
 end
 
 local function GetStatImage(StatInfo)
@@ -1211,7 +1237,7 @@ local function InsertNewBagPopUp(BagPopUp, BagPopUpGui, ItemTypeCount, BagCapaci
 		local NamePlate = OldBagPopUp.NamePlate
 		NamePlate:TweenPosition(UDim2.new(0.076,0,0,0), "Out", "Quint", .15)
 		wait(.15)
-		OldBagPopUp:TweenPosition(UDim2.new(0.126,0,1,0), "Out", "Quint", .2)
+		OldBagPopUp:TweenPosition(UDim2.new(0.159,0,1,0), "Out", "Quint", .2)
 		wait(.2)
 		OldBagPopUp:Destroy()
 	end
@@ -1220,7 +1246,7 @@ local function InsertNewBagPopUp(BagPopUp, BagPopUpGui, ItemTypeCount, BagCapaci
 	NewBagPopUp.Parent = BagPopUpGui
 	NewBagPopUp.Amounts.Text = tostring(ItemTypeCount) .. "/" .. tostring(BagCapacity)
 	
-	NewBagPopUp:TweenPosition(UDim2.new(0.126,0,0.918,0), "Out", "Quint", .5)
+	NewBagPopUp:TweenPosition(UDim2.new(0.159,0,0.918,0), "Out", "Quint", .5)
 	wait(.5)
 	local NamePlate = NewBagPopUp:FindFirstChild("NamePlate")
 	NamePlate.Text = BagType
@@ -1240,7 +1266,7 @@ end
 -------------------------------------<|PlayerMenu Functions|>------------------------------------------------------------------------------------------------------------
 
 local PlayerMenu = DataMenu:FindFirstChild("PlayerMenu")
-local PlayerInfo = PlayerMenu["Default Menu"].PlayerInfo
+local PlayerInfo = PlayerMenu.PlayerInfo
 local thumbType = Enum.ThumbnailType.HeadShot
 local thumbSize = Enum.ThumbnailSize.Size420x420
 local PlayerProfilePicture = game.Players:GetUserThumbnailAsync(PlayerUserId, thumbType, thumbSize)
