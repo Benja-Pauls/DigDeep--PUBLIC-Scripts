@@ -177,11 +177,6 @@ function SetUpCredentials()
 	
 	ComputerScreen.CredentialsScreen.Visible = false
 	ComputerScreen.CredentialsScreen.Position = UDim2.new(0,0,0,0)
-	
-	--Data tab buttons are not dynamic, but research tiles will be...
-	--To be efficient, use different functions to update: UpdateResearchers, UpdateCurrentResearch, UpdateAvailableResearch
-	--and UpdatePreviousResearch
-	--Call ^these^ on first load and every time player gets something new in each category
 end
 
 
@@ -190,9 +185,10 @@ end
 local StorageMenu = ComputerScreen.StorageMenu
 local SelectionMenu = StorageMenu.SelectionMenu
 local ItemsPreview = StorageMenu.ItemsPreview
-local DataTabSelect = StorageMenu.DataTabSelect
+--local DataTabSelect = StorageMenu.DataTabSelect
 
 --Prepare Storage DataTab Buttons
+--[[
 for i,button in pairs (DataTabSelect:GetChildren()) do
 	if button:IsA("ImageButton") then
 		button.Activated:Connect(function()
@@ -205,17 +201,20 @@ for i,button in pairs (DataTabSelect:GetChildren()) do
 		end)
 	end
 end
+]]
 
 --Menu Selection
 MenuSelect.StorageMenuButton.Activated:Connect(function()
 	StorageMenu.Visible = true
-	DataTabSelect.Visible = true
 	SelectionMenu.Visible = false
 	ItemsPreview.Visible = false
 	MenuSelect.Visible = false
 	StorageMenu.TopTab.Visible = false
 	ManageSellMenu(false)
 	BeepSound:Play()
+	
+	StorageMenu.TopTab.Visible = true
+	OpenAffiliatedItemPreview("Materials")
 end)
 
 ------------------------<|Storage Utility|>------------------------------------------------
@@ -248,9 +247,7 @@ function ManageSellMenu(bool)
 	SelectionMenu.PrevRarity.Active = bool
 end
 
-function OpenAffiliatedItemPreview(button)
-	local MenuName = button.Name
-	
+function OpenAffiliatedItemPreview(MenuName)
 	if StorageMenu.ItemsPreview:FindFirstChild(MenuName) then
 		SelectionMenu.Visible = true
 		ItemsPreview.Visible = true
@@ -677,9 +674,8 @@ end)
 ---------------------------<|Storage Menu Tile Management|>-------------------------------------------
 
 local AmountPerRow = 10
-function SetupTycoonStorageTiles(button)
+function SetupTycoonStorageTiles(MenuName)
 	ItemsPreview.Visible = false
-	local MenuName = button.Name
 	if ItemsPreview:FindFirstChild(MenuName) then
 		local AffiliatedItemsPreview = ItemsPreview:FindFirstChild(MenuName)
 		
@@ -699,7 +695,7 @@ function SetupTycoonStorageTiles(button)
 		if ItemDataFolder then
 			for i,item in pairs (ItemDataFolder:GetChildren()) do
 				local ItemType = string.gsub(item.Bag.Value, "Bag", "") .. "s"
-				if ItemType == button.Name then
+				if ItemType == MenuName then
 					local ItemRarity = item["GUI Info"].RarityName.Value
 					local RarityMenu = AffiliatedItemsPreview:FindFirstChild(ItemRarity)
 					local RarityChildCount = 0
@@ -1851,9 +1847,5 @@ function ShutDownCutscene()
 	Character.Humanoid.JumpPower = DefaultJumpPower
 end
 
-for i,button in pairs (StorageMenu.DataTabSelect:GetChildren()) do
-	if button:IsA("ImageButton") then
-		SetupTycoonStorageTiles(button)
-	end
-end
+SetupTycoonStorageTiles("Materials")
 
