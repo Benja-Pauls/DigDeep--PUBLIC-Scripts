@@ -51,14 +51,6 @@ for i,v in pairs (MenuTabs) do
 	local selectedImage = v.SelectedImage.Value
 	local staticImage = v.StaticImage.Value
 	v.Activated:Connect(function()
-		if v == DataMenu.PlayerMenuButton then
-			DataMenu.BackgroundTransparency = 1
-			DataMenu.PlayerMenu.BackgroundTransparency = 1
-		else
-			DataMenu.BackgroundTransparency = 0
-			DataMenu.PlayerMenu.BackgroundTransparency = 0
-		end
-		
 		if v.Image ~= selectedImage then
 			if previousTween then
 				previousTween:Pause()
@@ -111,8 +103,6 @@ OpenDataMenuButton.Activated:Connect(function()
 		end
 		
 		DataMenu.PlayerMenu.Visible = true
-		DataMenu.BackgroundTransparency = 1
-		DataMenu.PlayerMenu.BackgroundTransparency = 1
 		Display3DModels(true)
 		
 		OpenDataMenuButton.Active = true
@@ -258,16 +248,46 @@ function ReadyMenuButtons(Menu)
 	end
 end
 
+local PlayerViewport = DataMenu.PlayerMenu.PlayerInfo.PlayerView
+local invBackground = PlayerViewport.Inventory3DBackground
 function Display3DModels(bool)
+	--possibly get rid of bool cause that used to associat with background transparency. Possibly load viewport on
+	--first open and then never again? (leave viewport running in the background)
+	
+	
 	local PlayerModel = game.Workspace.Players:WaitForChild(tostring(Player)):Clone()
-	--getting error trying to reference this clone. Probably studio error for now
+	--get rid of point light
+	--get rid of shield effect
 	if bool == true then
-		PlayerModel.Parent = Camera
+		PlayerModel.Parent = PlayerViewport
+		
+		local vpCamera = Instance.new("Camera",PlayerViewport)
+		invBackground.CFrame = vpCamera.CFrame
+		invBackground.CFrame += vpCamera.CFrame.lookVector * 25
+		--vpCamera.CFrame = invBackground.CFrame
+		--vpCamera.CFrame += vpCamera.CFrame.lookVector * 10
+		--vpCamera.CFrame = vpCamera.CFrame*CFrame.Angles(0,math.pi/4,0)
+		
+		local HRP = PlayerModel.HumanoidRootPart
+		HRP.CFrame = invBackground.CFrame
+		HRP.CFrame += HRP.CFrame.lookVector * 7 --Move in front of camera
+		PlayerModel.Humanoid.DisplayName = ""
+		
+		PlayerViewport.CurrentCamera = vpCamera
+		
 		local idleAnimation = PlayerModel.Humanoid:LoadAnimation(PlayerModel.Animate.idle.Animation1)
 		idleAnimation:Play()
+		--every once and a while do animation2 to make character more lively
+		
+		--Player is not appearing, possibly use look vector from camera to show player.
+		--In order for the animation to play, the player must also not be anchored, so the ground should be positioned
+		--below as well
+		
+		
+		
 		
 	else
-		
+		--delete camera from viewport
 		
 	end
 end
@@ -1471,6 +1491,8 @@ UpdateItemCount.OnClientEvent:Connect(function(ItemTypeCount, BagCapacity, BagTy
 		end
 	end
 end)
+
+game.Workspace.Players:WaitForChild(tostring(Player)).Archivable = true
 
 wait(5)
 script.Parent.OpenDataMenuButton.Active = true
