@@ -249,48 +249,67 @@ function ReadyMenuButtons(Menu)
 end
 
 local PlayerViewport = DataMenu.PlayerMenu.PlayerInfo.PlayerView
-local invBackground = PlayerViewport.Inventory3DBackground
 function Display3DModels(bool)
-	--possibly get rid of bool cause that used to associat with background transparency. Possibly load viewport on
+	--possibly get rid of bool cause that used to associate with background transparency. Possibly load viewport on
 	--first open and then never again? (leave viewport running in the background)
 	
-	
-	local PlayerModel = game.Workspace.Players:WaitForChild(tostring(Player)):Clone()
+
 	--get rid of point light
 	--get rid of shield effect
 	if bool == true then
-		PlayerModel.Parent = PlayerViewport
-		
-		local vpCamera = Instance.new("Camera",PlayerViewport)
-		invBackground.CFrame = vpCamera.CFrame
-		invBackground.CFrame += vpCamera.CFrame.lookVector * 25
-		--vpCamera.CFrame = invBackground.CFrame
-		--vpCamera.CFrame += vpCamera.CFrame.lookVector * 10
-		--vpCamera.CFrame = vpCamera.CFrame*CFrame.Angles(0,math.pi/4,0)
-		
+		local PlayerModel = game.Workspace.Players:WaitForChild(tostring(Player)):Clone()
 		local HRP = PlayerModel.HumanoidRootPart
-		HRP.CFrame = invBackground.CFrame
-		HRP.CFrame += HRP.CFrame.lookVector * 7 --Move in front of camera
-		PlayerModel.Humanoid.DisplayName = ""
+		local vpCamera = Instance.new("Camera",PlayerViewport)
 		
+		PlayerModel.Parent = PlayerViewport.Physics
+		HRP.Anchored = true
 		PlayerViewport.CurrentCamera = vpCamera
+		
+		print(PlayerModel.Parent)
+		
+		
+		--Move Camera Around Player & Auto FOV
+		local currentAngle = 0
+		local modelCenter, modelSize = PlayerModel:GetBoundingBox()	
+
+		local rotInv = (modelCenter - modelCenter.p):inverse()
+		modelCenter = modelCenter * rotInv
+		modelSize = rotInv * modelSize
+		modelSize = Vector3.new(math.abs(modelSize.x), math.abs(modelSize.y), math.abs(modelSize.z))
+
+		local diagonal = 0
+		local maxExtent = math.max(modelSize.x, modelSize.y, modelSize.z)
+		local tan = math.tan(math.rad(vpCamera.FieldOfView/2))
+
+		if (maxExtent == modelSize.x) then
+			diagonal = math.sqrt(modelSize.y*modelSize.y + modelSize.z*modelSize.z)/2
+		elseif (maxExtent == modelSize.y) then
+			diagonal = math.sqrt(modelSize.x*modelSize.x + modelSize.z*modelSize.z)/2
+		else
+			diagonal = math.sqrt(modelSize.x*modelSize.x + modelSize.y*modelSize.y)/2
+		end
 		
 		local idleAnimation = PlayerModel.Humanoid:LoadAnimation(PlayerModel.Animate.idle.Animation1)
 		idleAnimation:Play()
-		--every once and a while do animation2 to make character more lively
 		
-		--Player is not appearing, possibly use look vector from camera to show player.
-		--In order for the animation to play, the player must also not be anchored, so the ground should be positioned
-		--below as well
-		
-		
-		
-		
+		local minDist = (maxExtent/3.75)/tan + diagonal
+		game:GetService("RunService").RenderStepped:Connect(function(dt)
+			currentAngle = currentAngle + (1*dt*60)/3
+			vpCamera.CFrame = modelCenter * CFrame.fromEulerAnglesYXZ(0, math.rad(currentAngle), 0) * CFrame.new(0, 0, minDist + 3)
+		end)
 	else
-		--delete camera from viewport
-		
+		for i,view in pairs (PlayerViewport.Physics:GetChildren()) do
+			view:Destroy()
+		end
 	end
 end
+
+PlayerViewport.InputBegan:Connect(function(input)
+	if (input.UserInputType == Enum.UserInputType.MouseButton1) then
+		Display3DModels(false)
+		Display3DModels(true)
+	end
+end)
 
 function CleanupMenuTabs(Menu)
 	
