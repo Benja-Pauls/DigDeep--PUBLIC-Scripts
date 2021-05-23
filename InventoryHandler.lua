@@ -43,6 +43,7 @@ for i,v in pairs (MenuTabs) do
 	
 	if v.Name == "PlayerMenuButton" then
 		tabSelection.Position = UDim2.new(newSelectPos, 0, 0.888, 0)
+		v.Image = v.SelectedImage.Value
 	end
 	v.Active = true
 	
@@ -103,6 +104,7 @@ OpenDataMenuButton.Activated:Connect(function()
 		end
 		
 		DataMenu.PlayerMenu.Visible = true
+		Display3DModels(false)
 		Display3DModels(true)
 		
 		OpenDataMenuButton.Active = true
@@ -172,6 +174,7 @@ function ReadyMenuButtons(Menu)
 					DataMenu.InventoryMenu.EmptyNotifier.Visible = false
 					DataMenu.PlayerMenu.EmptyNotifier.Visible = false
 					
+					--Reset new item notifiers
 					if button:FindFirstChild("NewItem") then
 						button.NewItem.Value = false
 					end
@@ -183,50 +186,43 @@ function ReadyMenuButtons(Menu)
 							end
 						end
 					end
-
 					ButtonMenu.Visible = true
-					if Menu.Name == "InventoryMenu" then --Display Bag Info
-						local BagCapacity = ButtonMenu:GetAttribute("BagCapacity")
-						local ItemCount = ButtonMenu:GetAttribute("ItemCount")
-						Menu.SelectedBagInfo.Text = tostring(ItemCount) .. "/" .. tostring(BagCapacity)
-						Menu.SelectedBagInfo.BagType.Text = string.gsub(tostring(ButtonMenu), "Menu", "")
-						Menu.SelectedBagInfo.Visible = true
-					elseif Menu.Name == "PlayerMenu" then
-						for i,gui in pairs (Menu:GetChildren()) do
-							if gui:IsA("ImageButton") and string.find(tostring(gui), "Bag") then
-								gui.Visible = false	
-							end
-						end
-					end
-
-					if tostring(ButtonMenu) == "PlayerMenu" then
-						for i,gui in pairs (ButtonMenu:GetChildren()) do
-							if gui:IsA("ImageButton") and string.find(tostring(gui), "Bag") then
-								gui.Visible = true
-							end
-						end
-					end
-
-					if Menu.Parent == DataMenu then --Menu of button
-						PageManager.Menu.Value = ButtonMenu
+					
+					print(button,ButtonMenu,Menu)
+					
+					--Possibly make this ~= "PlayerMenu" since the PlayerMenu is the only menu that has a "main menu"
+					--that doesn't auto select a menu to look at immediately like the inventory, exp, and journal
+					if tostring(ButtonMenu) == "InventoryMenu" then
+						local MaterialsMenu = ButtonMenu.MaterialsMenu
+						local BagCapacity = MaterialsMenu:GetAttribute("BagCapacity")
+						local ItemCount = MaterialsMenu:GetAttribute("ItemCount")
+						ButtonMenu.SelectedBagInfo.Text = tostring(ItemCount) .. "/" .. tostring(BagCapacity)
+						ButtonMenu.SelectedBagInfo.BagType.Text = string.gsub(tostring(ButtonMenu), "Menu", "")
+						ButtonMenu.SelectedBagInfo.Visible = true
+						
+						PageManager.Menu.Value = MaterialsMenu
 						local PageCount = CountPages()
 						if PageCount > 0 then
 							PageManager.Visible = true
-							if ButtonMenu:FindFirstChild("Page1") then
-								FinalizePageChange(ButtonMenu.Page1)
+							PageManager.FullBottomDisplay.Visible = true
+							PageManager.PartialBottomDisplay.Visible = false
+							if MaterialsMenu:FindFirstChild("Page1") then
+								CommitPageChange(MaterialsMenu.Page1)
 							end
-						else --Player has no items of this type
-							ButtonMenu.Parent.EmptyNotifier.Visible = true
-							
-							--if button:IsDescendantOf(DataMenu.PlayerMenu) then
-								--Empty notifier specific for PlayerMenu
-							--else
-							--	DataMenu.InventoryMenu.EmptyNotifier.Visible = true
-							--end
+						else
+							ButtonMenu.EmptyNotifier.Visible = true
+						end
+					end
+					
+					if tostring(Menu) == "PlayerMenu" then
+						PageManager.Visible = true
+						PageManager.FullBottomDisplay.Visible = false
+						PageManager.PartialBottomDipslay.Visible = true
+						if ButtonMenu:FindFirstChild("Page1") then
+							CommitPageChange(ButtonMenu.Page1)
 						end
 					else
-						--PageManager.Menu.Value = nil
-						PageManager.Visible = false
+						DataMenu.PlayerMenu.EmptyNotifier.Visible = true
 					end
 
 					DataMenu.ItemViewer.Visible = false
@@ -265,9 +261,6 @@ function Display3DModels(bool)
 		HRP.Anchored = true
 		PlayerViewport.CurrentCamera = vpCamera
 		
-		print(PlayerModel.Parent)
-		
-		
 		--Move Camera Around Player & Auto FOV
 		local currentAngle = 0
 		local modelCenter, modelSize = PlayerModel:GetBoundingBox()	
@@ -298,12 +291,14 @@ function Display3DModels(bool)
 			vpCamera.CFrame = modelCenter * CFrame.fromEulerAnglesYXZ(0, math.rad(currentAngle), 0) * CFrame.new(0, 0, minDist + 3)
 		end)
 	else
+		PlayerViewport.CurrentCamera = nil
 		for i,view in pairs (PlayerViewport.Physics:GetChildren()) do
 			view:Destroy()
 		end
 	end
 end
 
+--Reset camera view in viewport
 PlayerViewport.InputBegan:Connect(function(input)
 	if (input.UserInputType == Enum.UserInputType.MouseButton1) then
 		Display3DModels(false)
@@ -380,6 +375,7 @@ function CheckForNewItems()
 	--Put something in the corner of the tile to alert there is something new (only in equipment)
 	--openning the menu alone is enough to show that it has been "seen": player does not need to click on the item
 	
+	--Show that tile has something new
 	--coroutine.resume(coroutine.create(function()
 		--for button = 1,#NewItemButtons,1 do
 			--AnimateShine(NewItemButtons[button])
@@ -441,35 +437,36 @@ function CountPages()
 	return HighPage
 end
 
-function FinalizePageChange(Page)
+function CommitPageChange(Page)
 	PageDebounce = true
 	local RarityName = Page.Rarity.Value
 	if GuiElements.RarityColors:FindFirstChild(RarityName) then
 		local Rarity = GuiElements.RarityColors:FindFirstChild(RarityName)
-		PageManager.PageRarityDisplay.Text = RarityName .. " " .. string.gsub(PageManager.Menu.Value.Name, "Menu", "")
-		PageManager.PageRarityDisplay.TextColor3 = Rarity.Value
-		PageManager.PageRarityDisplay.TextStrokeColor3 = Rarity.TileColor.Value
+		--PageManager.PageRarityDisplay.Text = RarityName .. " " .. string.gsub(PageManager.Menu.Value.Name, "Menu", "")
+		--PageManager.PageRarityDisplay.TextColor3 = Rarity.Value
+		--PageManager.PageRarityDisplay.TextStrokeColor3 = Rarity.TileColor.Value
 		for i,tile in pairs (Page:GetChildren()) do
 			if tile:IsA("TextButton") or tile:IsA("ImageButton") then
-				tile.BackgroundColor3 = Rarity.TileColor.Value
+				tile.Image = Rarity.ItemTileImage.Value
+				--tile.BackgroundColor3 = Rarity.TileColor.Value
 			end
 		end
 		local ButtonWidth = 0.33
-		if PageManager.PageRarityDisplay.Visible == false then
-			PageManager.Previous.Size = UDim2.new(ButtonWidth,0,1,0)
-			PageManager.Next.Position = UDim2.new(ButtonWidth + 0.005,0,0,0)
-			PageManager.Next.Size = UDim2.new(ButtonWidth,0,1,0)
-			PageManager.PageRarityDisplay.Visible = true
-		end
+		--if PageManager.PageRarityDisplay.Visible == false then
+			--PageManager.Previous.Size = UDim2.new(ButtonWidth,0,1,0)
+			--PageManager.Next.Position = UDim2.new(ButtonWidth + 0.005,0,0,0)
+			--PageManager.Next.Size = UDim2.new(ButtonWidth,0,1,0)
+			--PageManager.PageRarityDisplay.Visible = true
+		--end
 	else
 		--For tiles without rarity distinguishability (no page names)
 		local ButtonWidth = 0.502
-		if PageManager.PageRarityDisplay.Visible == true then
-			PageManager.Previous.Size = UDim2.new(ButtonWidth,0,1,0)
-			PageManager.Next.Position = UDim2.new(ButtonWidth + 0.005,0,0,0)
-			PageManager.Next.Size = UDim2.new(ButtonWidth,0,1,0)
-			PageManager.PageRarityDisplay.Visible = false
-		end
+		--if PageManager.PageRarityDisplay.Visible == true then
+			--PageManager.Previous.Size = UDim2.new(ButtonWidth,0,1,0)
+			--PageManager.Next.Position = UDim2.new(ButtonWidth + 0.005,0,0,0)
+			--PageManager.Next.Size = UDim2.new(ButtonWidth,0,1,0)
+			--PageManager.PageRarityDisplay.Visible = false
+		--end
 	end
 	Page.ZIndex += 1
 	Page.Visible = true
@@ -478,59 +475,61 @@ function FinalizePageChange(Page)
 	ManagePageInvis(Page)
 end
 
-PageManager.Previous.Activated:Connect(function()
+local function StartPageChange(pageChange)
 	if PageDebounce == false then
 		local HighPage = CountPages()
 		local Menu = PageManager.Menu.Value
-		if HighPage ~= 1 then --only one page
+		
+		if HighPage ~= 1 then --not only one page
+			local pageCheck = false
+			local overPage
+			if pageChange == -1 then
+				if PageManager.CurrentPage.Value - 1 == 0 then
+					pageCheck = true
+					overPage = HighPage
+				end
+			elseif pageChange == 1 then
+				if PageManager.CurrentPage.Value + 1 > HighPage then
+					pageCheck = true
+					overPage = 1
+				end
+			end
+
 			local NewPage
-			if PageManager.CurrentPage.Value - 1 == 0 then
+			if PageManager.CurrentPage.Value + pageChange == 0 then
 				NewPage = Menu:FindFirstChild("Page" .. tostring(HighPage))
 				PageManager.CurrentPage.Value = HighPage
 			else
-				NewPage = Menu:FindFirstChild("Page" .. tostring(PageManager.CurrentPage.Value-1))
-				PageManager.CurrentPage.Value = PageManager.CurrentPage.Value-1
+				NewPage = Menu:FindFirstChild("Page" .. tostring(PageManager.CurrentPage.Value + pageChange))
+				PageManager.CurrentPage.Value = PageManager.CurrentPage.Value + pageChange
 			end
 			
-			NewPage.Position = UDim2.new(-1,0,0,0)
-			FinalizePageChange(NewPage)
-		else --Bounce effect
+			NewPage.Position = UDim2.new(pageChange,0,0,0)
+			CommitPageChange(NewPage)
+		else --Bounce Effect (no other pages)
 			PageDebounce = true
-			Menu:FindFirstChild("Page1"):TweenPosition(UDim2.new(-.03,0,0,0), "Out", "Quint", .1)
+			Menu:FindFirstChild("Page1"):TweenPosition(UDim2.new(.03*pageChange,0,0,0), "Out", "Quint", .1)
 			wait(.1)
 			Menu:FindFirstChild("Page1"):TweenPosition(UDim2.new(0,0,0,0), "Out" , "Bounce", .25)
 			wait(.25)
 			PageDebounce = false
 		end
 	end
-end)
+end
 
-PageManager.Next.Activated:Connect(function()
-	if PageDebounce == false then
-		local HighPage = CountPages()
-		local Menu = PageManager.Menu.Value
-		if HighPage ~= 1 then --only one page
-			local NewPage
-			if PageManager.CurrentPage.Value + 1 > HighPage then
-				NewPage = Menu:FindFirstChild("Page1")
-				PageManager.CurrentPage.Value = 1
-			else
-				NewPage = Menu:FindFirstChild("Page" .. tostring(PageManager.CurrentPage.Value+1))
-				PageManager.CurrentPage.Value = PageManager.CurrentPage.Value+1
-			end
-			
-			NewPage.Position = UDim2.new(1,0,0,0)
-			FinalizePageChange(NewPage)
-		else --Bounce effect
-			PageDebounce = true
-			Menu:FindFirstChild("Page1"):TweenPosition(UDim2.new(.03,0,0,0), "Out", "Quint", .1)
-			wait(.1)
-			Menu:FindFirstChild("Page1"):TweenPosition(UDim2.new(0,0,0,0), "Out" , "Bounce", .25)
-			wait(.25)
-			PageDebounce = false
-		end
+for i,pageDisplay in pairs (PageManager:GetChildren()) do
+	if pageDisplay:FindFirstChild("Next") then
+		pageDisplay.Next.Activated:Connect(function()
+			StartPageChange(1)
+		end)
 	end
-end)
+	
+	if pageDisplay:FindFirstChild("Previous") then
+		pageDisplay.Previous.Activated:Connect(function()
+			StartPageChange(-1)
+		end)
+	end
+end
 
 DataMenu.ItemViewer.BackButton.Activated:Connect(function()
 	if DataMenu.ItemViewer.Visible == true then
@@ -754,8 +753,16 @@ end
 local function InsertTileInfo(Type, tile, Stat, Value, found, AcquiredLocation)
 	tile.StatName.Value = tostring(Stat)
 	
+	--With new sorting, change equipment tiles to be normal tile sized like inventory (so sort by inventory type)
+	--instead of only bags doing that type of sorting since there is now only one item type
+	
+	
 	local StatInfo
-	if Type == "Inventory" or Type == "Bags" then
+	if Type == "Inventory" or Type == "Bags" or Type == "Tools" then
+		
+		--Need to look at how the equippable type can come across to be used frequently, without jeaporadizing other
+		--function parameters
+		
 		
 		if Type == "Inventory" then
 			StatInfo = game.ReplicatedStorage.ItemLocations:FindFirstChild(tostring(AcquiredLocation)):FindFirstChild(tostring(Stat))
@@ -766,6 +773,12 @@ local function InsertTileInfo(Type, tile, Stat, Value, found, AcquiredLocation)
 		tile.Amount.Text = tostring(Value)
 		local ImageId = GetStatImage(StatInfo)
 		tile.Picture.Image = ImageId
+		
+		local RarityName = StatInfo["GUI Info"].RarityName.Value
+		local Rarity = GuiElements.RarityColors:FindFirstChild(RarityName)
+		tile.Image = Rarity.ItemTileImage.Value
+		--tile.HoverImage = 
+		--tile.PressedImage = 
 		
 		if tostring(Stat) == DataMenu.ItemViewer.ItemName.Text then
 			DataMenu.ItemViewer.ItemAmount.Text = "You Have: " .. tostring(Value)
@@ -803,7 +816,15 @@ local function InsertTileInfo(Type, tile, Stat, Value, found, AcquiredLocation)
 		ProgressBar.Progress.Size = UDim2.new(Percentage, 0, 1, 0)
 		found = true
 		
+		
+		
+		--Remove this section of code to merge equipment tiles with inventory type tiles since there tiles are visually
+		--the same. The only thing that will change is the formatting of their menus since there will a quick-view menu
+		--when an equipment-type tile is selected to quickly compare stats of equipment to one another
+		--**(Possibly use some of this code for the stat-bar formatting in the quick-view menu)**
+		
 	else --Non-Bag, Equippable PlayerItems (Stat Table Referencing)
+		--[[
 		local RSTypeFile = game.ReplicatedStorage.Equippable:FindFirstChild(tostring(Type))
 		StatInfo = RSTypeFile:FindFirstChild(tostring(AcquiredLocation)):FindFirstChild(tostring(Stat))
 		
@@ -850,6 +871,7 @@ local function InsertTileInfo(Type, tile, Stat, Value, found, AcquiredLocation)
 		end
 		
 		HideRemainingStatDisplays(tile)
+		]]
 	end
 	
 	--ItemViewerMenu GUI Management
@@ -881,21 +903,40 @@ function ManageTiles(Stat, Menu, Value, Type, AcquiredLocation)
 	local SlotCount
 	local OriginalMaterialSlot
 	
+	--While changing the way inventory and equipment is sorted (not on a page-rarity business), also look at making
+	--this funciton more readable and the overall functions used in the tile positioning process
+	--(Like with this function, there is probably a more readable way to mix together all the different menu-type checks)
+	--(Also, put "Tools" and "Bags" as one type of menu: "Equipment")
+	
+	
 	--To get rid of types check here, assign number, bool, and slotname as function parameters
 	if Type == "Inventory" then
 		OriginalMaterialSlot = GuiElements.InventoryMaterialSlot
-		Rarity,Page,SlotCount = FindStatPage(Stat, Menu, 15, true, AcquiredLocation)
-	elseif Type == "Bags" then
+		Rarity,Page,SlotCount = FindStatPage(Stat, Menu, 18, true, AcquiredLocation)
+	--elseif Type == "Bags" then
+		--OriginalMaterialSlot = GuiElements.InventoryMaterialSlot
+		--Rarity,Page,SlotCount = FindStatPage(Stat, Menu, 15, false, AcquiredLocation)
+	--elseif Type == "Tools" then
+		--OriginalMaterialSlot = GuiElements.PlayerItemSlot
+		--Rarity,Page,SlotCount = FindStatPage(Stat, Menu, 6, false, AcquiredLocation)
+	elseif Type == "Tools" or Type == "Bags" then
 		OriginalMaterialSlot = GuiElements.InventoryMaterialSlot
-		Rarity,Page,SlotCount = FindStatPage(Stat, Menu, 15, false, AcquiredLocation)
-	elseif Type == "Tools" then
-		OriginalMaterialSlot = GuiElements.PlayerItemSlot
-		Rarity,Page,SlotCount = FindStatPage(Stat, Menu, 6, false, AcquiredLocation)
+		Rarity,Page,SlotCount = FindStatPage(Stat, Menu, 12, false, AcquiredLocation)
 	else
 		OriginalMaterialSlot = GuiElements.ExperienceSlot
 		Rarity,Page,SlotCount = FindStatPage(Stat, Menu, 4, false, AcquiredLocation) --no rarity sort
 	end
-		
+	
+	--**************************
+	--This is where the start of the more advanced sorting will be
+	--Now that the page is known, the script will have to look for the last tile of this new tile's rarity, ensure it
+	--exists, then append this tile to it while moving all others down and possibly onto new pages, along with the
+	--possibility of this tile being deleted and moving the rest of the tiles after this one up
+	
+	--(THEREFORE, look at how the research script was done a lot; however, it will be harder since this is incorporating
+	--another dimension with multiple columns, multiple menu types, and multiple item types with possibly no rarity)
+	--**************************
+	
 	if SlotCount > 0 then --If tile already present
 		local found = false
 		
@@ -917,13 +958,17 @@ function ManageTiles(Stat, Menu, Value, Type, AcquiredLocation)
 									if Type == "Inventory" or Type == "Bags" then
 										tile.Row.Value = tile.Row.Value - 1
 										tile.Column.Value = tile.Column.Value - 1
-										tile.Position = UDim2.new(0.017+0.196*tile.Column.Value, 0, 0.02+0.298*tile.Row.Value, 0)
+										tile.Position = UDim2.new(0.018+0.164*tile.Column.Value, 0, 0.028+0.29*tile.Row.Value)
 									else
 										tile.Position = UDim2.new(0.028,0,0.037+((i-1)*0.24),0) --change to do with Column and Row
 									end
 								end
 							end
 						end
+						
+						--Do other page checks here once rarity sorting is fixed to not sort pages by rarity 
+						--(Do like how research tiles are handled)
+						
 						
 						if SlotCount == 1 then --if tile is last on page
 							Page:Destroy()
@@ -941,17 +986,19 @@ function ManageTiles(Stat, Menu, Value, Type, AcquiredLocation)
 			local SlotNumber = SlotCount + 1
 			tile.Name = "Slot" .. tostring(SlotNumber)
 			
-			if Type == "Inventory" or Type == "Bags" then
-				ManageTileAdvancedInsertion(tile, SlotNumber, PreviousTile, 5)
+			if Type == "Inventory" then
+				ManageTileAdvancedInsertion(tile, SlotNumber, PreviousTile, 6)
 				
 				tile.Rarity.Value = Rarity
-				tile.Position = UDim2.new(0.017+0.196*tile.Column.Value, 0, 0.02+0.298*tile.Row.Value, 0)
+				tile.Position = UDim2.new(0.018+0.164*tile.Column.Value, 0, 0.028+0.29*tile.Row.Value, 0)
+				tile.Size = UDim2.new(0.142, 0, 0.259, 0)
 			elseif Type == "Experience" then
 				tile.Position = UDim2.new(0.028,0,0.037+((SlotCount)*0.24),0)
-			else --Non-Bag Player Item
-				ManageTileAdvancedInsertion(tile, SlotNumber, PreviousTile, 2)
+			elseif Type == "Tools" or Type == "Bags" then
+				ManageTileAdvancedInsertion(tile, SlotNumber, PreviousTile, 4)
 				
-				tile.Position = UDim2.new(0.017+.492*tile.Column.Value, 0, 0.02+0.298*tile.Row.Value, 0)
+				tile.Position = UDim2.new(0.043+.239*tile.Column.Value, 0, 0.028+0.29*tile.Row.Value, 0)
+				tile.Size = UDim2.new(0.208, 0, 0.258, 0)
 			end
 			
 			tile.Parent = Page
@@ -968,7 +1015,14 @@ function ManageTiles(Stat, Menu, Value, Type, AcquiredLocation)
 				FirstSlot.Row.Value = 0
 				FirstSlot.Column.Value = 0
 				FirstSlot.Rarity.Value = Rarity
-				FirstSlot.Position = UDim2.new(0.017, 0, 0.02, 0)
+				
+				if Type == "Inventory" then
+					FirstSlot.Position = UDim2.new(0.018, 0, 0.028, 0)
+					FirstSlot.Size = UDim2.new(0.142, 0, 0.259, 0)
+				elseif  Type == "Bags" or Type == "Tools" then
+					FirstSlot.Position = UDim2.new(0.043, 0, 0.028, 0)
+					FirstSlot.Size = UDim2.new(0.208, 0, 0.258, 0)
+				end
 			end
 			
 			FirstSlot.Parent = Page
