@@ -107,7 +107,7 @@ local function DisplayButtonMaterials(Button)
 	MoneySlot.Picture.BorderColor3 = game.ReplicatedStorage.GuiElements.RarityColors.Uncommon.Value
 	MoneySlot.BorderColor3 = game.ReplicatedStorage.GuiElements.ItemTypeColors.Cash.Value
 
-	local PlayerCurrency = Player.PlayerGui.DataMenu.DataMenu.PlayerMenu["Default Menu"].PlayerInfo.PlayerCash.Text
+	local PlayerCurrency = Player.PlayerGui.DataMenu.DataMenu.PlayerMenu.PlayerInfo.PlayerCash.Text
 	MoneySlot.PlayerSumAmount.Text = PlayerCurrency
 
 	ManageCostTextColor(Button.Price.Value, tonumber(PlayerCurrency), MoneySlot)
