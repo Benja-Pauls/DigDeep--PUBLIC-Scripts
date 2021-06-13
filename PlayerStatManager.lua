@@ -594,6 +594,14 @@ function UpdateToolbar(Player, ItemType, NewlyEquippedItem)
 			item:Destroy()
 		end
 	end
+	--check if holding item of same type
+	for i,item in pairs (workspace.Players:FindFirstChild(tostring(Player)):GetChildren()) do
+		if item:IsA("Tool") then
+			if ItemTypeFolder:FindFirstChild(tostring(item)) then
+				item:Destroy()
+			end
+		end
+	end
 	
 	if NewlyEquippedItem and NewlyEquippedItem ~= "" then
 		local Tool = ItemTypeFolder:FindFirstChild(NewlyEquippedItem):Clone()
@@ -697,11 +705,6 @@ end
 
 --Fires when player equips new item (must be saved for when they join back)
 UpdateEquippedItem.OnServerEvent:Connect(function(Player, EquipType, ItemType, NewlyEquippedItem)
-	
-	--Ensure Item Type for bag is 0 if under else statement; otherwise, exploiter changed values
-	
-	print(Player, EquipType, ItemType, NewlyEquippedItem)
-	
 	local playerUserId = Player.UserId
 	local PlayerDataFile = PlayerData:FindFirstChild(tostring(playerUserId))
 	local EquipValue = PlayerDataFile.Player.CurrentlyEquipped:FindFirstChild("Equipped" .. EquipType):FindFirstChild("Equipped" .. ItemType)
