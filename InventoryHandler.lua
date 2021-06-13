@@ -47,7 +47,7 @@ for i,v in pairs (MenuTabs) do
 	end
 	v.Active = true
 	
-	local tweenInfo = TweenInfo.new(0.4,Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+	local tweenInfo = TweenInfo.new(0.4, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
 	local tween = TweenService:Create(tabSelection, tweenInfo, {Position = UDim2.new(newSelectPos, 0, 0.888, 0)})
 	local selectedImage = v.SelectedImage.Value
 	local staticImage = v.StaticImage.Value
@@ -79,6 +79,8 @@ for i,v in pairs (MenuTabs) do
 end
 
 local InventoryOpens = 0
+local PlayerViewport = DataMenu.PlayerMenu.PlayerInfo.PlayerView
+local PlayerModel = game.Workspace.Players:WaitForChild(tostring(Player))
 OpenDataMenuButton.Activated:Connect(function()
 	if DataMenu.Visible == false then
 		DataMenu.Position = UDim2.new(0.159, 0, -.8, 0)
@@ -104,8 +106,8 @@ OpenDataMenuButton.Activated:Connect(function()
 		end
 		
 		DataMenu.PlayerMenu.Visible = true
-		Display3DModels(false)
-		Display3DModels(true)
+		Display3DModels(PlayerViewport, PlayerModel:Clone(), false)
+		Display3DModels(PlayerViewport, PlayerModel:Clone(), true)
 		
 		OpenDataMenuButton.Active = true
 		
@@ -153,6 +155,7 @@ local ButtonPresses = {}
 
 local MenuAcceptance = true
 function ReadyMenuButtons(Menu)
+	
 	if MenuAcceptance == true then
 		MenuAcceptance = false
 		for i,button in pairs(Menu:GetChildren()) do
@@ -161,7 +164,7 @@ function ReadyMenuButtons(Menu)
 				local AssociatedMenuName = button:FindFirstChild("Menu").Value
 				local ButtonMenu = Menu:FindFirstChild(AssociatedMenuName)
 				
-				--Prep Default Menu 
+				--First Time Default Menu Setup
 				if ButtonMenu.Name ~= "PlayerMenu" then
 					ButtonMenu.Visible = false
 				else
@@ -171,9 +174,10 @@ function ReadyMenuButtons(Menu)
 					--UpdateBagDisplays(Menu, ButtonMenu)		
 				end
 				
+				--print(button,ButtonMenu,Menu)
+				
 				button.Activated:Connect(function()
-					DataMenu.InventoryMenu.EmptyNotifier.Visible = false
-					DataMenu.PlayerMenu.EmptyNotifier.Visible = false
+					print(button,ButtonMenu, " has been activated")
 					
 					--Reset new item notifiers
 					if button:FindFirstChild("NewItem") then
@@ -189,11 +193,11 @@ function ReadyMenuButtons(Menu)
 					end
 					ButtonMenu.Visible = true
 					
-					print(button,ButtonMenu,Menu)
-					
 					--Possibly make this ~= "PlayerMenu" since the PlayerMenu is the only menu that has a "main menu"
 					--that doesn't auto select a menu to look at immediately like the inventory, exp, and journal
 					if tostring(ButtonMenu) == "InventoryMenu" then
+						ButtonMenu.EmptyNotifier.Visible = false
+						
 						local MaterialsMenu = ButtonMenu.MaterialsMenu
 						local BagCapacity = MaterialsMenu:GetAttribute("BagCapacity")
 						local ItemCount = MaterialsMenu:GetAttribute("ItemCount")
@@ -213,9 +217,15 @@ function ReadyMenuButtons(Menu)
 						else
 							ButtonMenu.EmptyNotifier.Visible = true
 						end
+					elseif tostring(ButtonMenu) == "PlayerMenu" then
+						ButtonMenu.EmptyNotifier.Visible = false
+						
+						ButtonMenu.QuickViewMenu.Visible = false
+						ButtonMenu.PlayerInfo.Visible = true
 					end
 					
 					if tostring(Menu) == "PlayerMenu" then
+						print("The menu of this menu is the PlayerMenu")
 						Menu.QuickViewMenu.Visible = true
 						Menu.QuickViewMenu.QuickViewMenu.Visible = false
 						Menu.QuickViewMenu.QuickViewPreview.Visible = true
@@ -253,33 +263,72 @@ function ReadyMenuButtons(Menu)
 	end
 end
 
-local function PressGUIButton(button, newPosition, newSize)
+local CurrentTweens = {}
+local function PressGUIButton(button, newPosition, newSize, movetype)
 	if button.Visible == true then
-		button:TweenPosition(newPosition, "Out", "Quint", 0.2)
-		button:TweenSize(newSize, "Out", "Quint", 0,2)
+		if button.Position ~= newPosition and button.Size ~= newSize then
+			
+			if CurrentTweens[tostring(button.Parent) .. tostring(button) .. movetype] then
+				local tween = CurrentTweens[tostring(button.Parent) .. tostring(button) .. movetype]
+				tween:Pause()
+				tween:Play()
+			else
+				local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+				local tween = TweenService:Create(button, tweenInfo, {Position = newPosition, Size = newSize})
+				
+				tween:Play()
+				CurrentTweens[tostring(button.Parent) .. tostring(button) .. movetype] = tween
+			end
+		end
 	end
+	--if button.Visible == true then
+		--button:TweenPosition(newPosition, "Out", "Quint", 0.2)
+		--button:TweenSize(newSize, "Out", "Quint", 0,2)
+	--end
 end
 
-local PlayerViewport = DataMenu.PlayerMenu.PlayerInfo.PlayerView
-function Display3DModels(bool)
-	--possibly get rid of bool cause that used to associate with background transparency. Possibly load viewport on
-	--first open and then never again? (leave viewport running in the background)
+local function SetUpPressableButton(button, scaleChange)
+	local neutralPosition = button.Position
+	local neutralSize = button.Size
+	local pressPosition = UDim2.new(neutralPosition.X.Scale, 0, neutralPosition.Y.Scale + (scaleChange + scaleChange*.2), 0)
+	local pressSize = UDim2.new(neutralSize.X.Scale, 0, neutralSize.Y.Scale - scaleChange, 0)
 	
+	button.MouseButton1Down:Connect(function()
+		PressGUIButton(button, pressPosition, pressSize, "press")
+	end)
+	button.Activated:Connect(function()
+		PressGUIButton(button, neutralPosition, neutralSize, "neutral")
+	end)
+	button.MouseLeave:Connect(function()
+		PressGUIButton(button, neutralPosition, neutralSize, "neutral")
+	end)
+	button.MouseButton1Up:Connect(function()
+		PressGUIButton(button, neutralPosition, neutralSize, "neutral")
+	end)
+end
 
-	--get rid of point light
-	--get rid of shield effect
+function Display3DModels(viewport, displayModel, bool)
+	--possibly clear all viewports once menu is closed? (or once viewport is not visible?)
+	
 	if bool == true then
-		local PlayerModel = game.Workspace.Players:WaitForChild(tostring(Player)):Clone()
-		local HRP = PlayerModel.HumanoidRootPart
-		local vpCamera = Instance.new("Camera",PlayerViewport)
+		local rootPart
+		if displayModel.Name == tostring(Player) then
+			displayModel.Parent = viewport.Physics
+			rootPart = displayModel.HumanoidRootPart
+		else
+			local ParentModel = Instance.new("Model", viewport.Physics)
+			displayModel.Parent = ParentModel
+			displayModel = ParentModel
+			rootPart = displayModel.Handle
+		end
+		local vpCamera = Instance.new("Camera",viewport)
 		
-		PlayerModel.Parent = PlayerViewport.Physics
-		HRP.Anchored = true
-		PlayerViewport.CurrentCamera = vpCamera
+		rootPart.Anchored = true
+		viewport.CurrentCamera = vpCamera
 		
-		--Move Camera Around Player & Auto FOV
+		--Move Camera Around Object & Auto FOV
 		local currentAngle = 0
-		local modelCenter, modelSize = PlayerModel:GetBoundingBox()	
+		local modelCenter, modelSize = displayModel:GetBoundingBox()	
 
 		local rotInv = (modelCenter - modelCenter.p):inverse()
 		modelCenter = modelCenter * rotInv
@@ -298,17 +347,19 @@ function Display3DModels(bool)
 			diagonal = math.sqrt(modelSize.x*modelSize.x + modelSize.y*modelSize.y)/2
 		end
 		
-		local idleAnimation = PlayerModel.Humanoid:LoadAnimation(PlayerModel.Animate.idle.Animation1)
-		idleAnimation:Play()
+		if tostring(rootPart) == "HumanoidRootPart" then
+			local idleAnimation = displayModel.Humanoid:LoadAnimation(displayModel.Animate.idle.Animation1)
+			idleAnimation:Play()
+		end
 		
-		local minDist = (maxExtent/3.75)/tan + diagonal
+		local minDist = (maxExtent/4)/tan + diagonal
 		game:GetService("RunService").RenderStepped:Connect(function(dt)
 			currentAngle = currentAngle + (1*dt*60)/3
 			vpCamera.CFrame = modelCenter * CFrame.fromEulerAnglesYXZ(0, math.rad(currentAngle), 0) * CFrame.new(0, 0, minDist + 3)
 		end)
 	else
-		PlayerViewport.CurrentCamera = nil
-		for i,view in pairs (PlayerViewport.Physics:GetChildren()) do
+		viewport.CurrentCamera = nil
+		for i,view in pairs (viewport.Physics:GetChildren()) do
 			view:Destroy()
 		end
 	end
@@ -317,8 +368,8 @@ end
 --Reset camera view in viewport
 PlayerViewport.InputBegan:Connect(function(input)
 	if (input.UserInputType == Enum.UserInputType.MouseButton1) then
-		Display3DModels(false)
-		Display3DModels(true)
+		Display3DModels(PlayerViewport, PlayerModel:Clone(), false)
+		Display3DModels(PlayerViewport, PlayerModel:Clone(), true)
 	end
 end)
 
@@ -534,14 +585,17 @@ local function StartPageChange(pageChange)
 	end
 end
 
+local pageBtnScaleChange = 0.045
 for i,pageDisplay in pairs (PageManager:GetChildren()) do
 	if pageDisplay:FindFirstChild("Next") then
+		SetUpPressableButton(pageDisplay.Next, pageBtnScaleChange)
 		pageDisplay.Next.Activated:Connect(function()
 			StartPageChange(1)
 		end)
 	end
 	
 	if pageDisplay:FindFirstChild("Previous") then
+		SetUpPressableButton(pageDisplay.Previous, pageBtnScaleChange)
 		pageDisplay.Previous.Activated:Connect(function()
 			StartPageChange(-1)
 		end)
@@ -683,8 +737,8 @@ local function ManageEquipButton(CurrentlyEquipped, Stat, Equip)
 	if Equip == true or (Stat and CurrentlyEquipped == tostring(Stat)) then
 		--"Unequip"
 		EquipButton.Image = "rbxassetid://6892832163"
-		EquipButton.HoverImage = "rbxassetid://6893534695"
-		EquipButton.PressedImage = "rbxassetid://6893271094"
+		EquipButton.HoverImage = "rbxassetid://6933979593"
+		EquipButton.PressedImage = "rbxassetid://6913278639"
 		EquipButton.EquipStatus.Value = true
 	else
 		--"Equip"
@@ -697,15 +751,6 @@ local function ManageEquipButton(CurrentlyEquipped, Stat, Equip)
 	EquipButton.Visible = true
 end
 
---May have to use this in item viewer too, so keep as function
-local function HideRemainingStatDisplays(tile)
-	for i,statDisplay in pairs (tile:GetChildren()) do
-		if statDisplay:FindFirstChild("Utilized") then
-			statDisplay.Visible = statDisplay.Utilized.Value
-		end
-	end
-end
-
 local function InsertItemViewerInfo(StatMenu, Type, Stat, StatInfo, Value, AcquiredLocation)
 
 	if Type == "Inventory" then
@@ -714,6 +759,7 @@ local function InsertItemViewerInfo(StatMenu, Type, Stat, StatInfo, Value, Acqui
 		
 		StatMenu.ItemImage.BorderColor3 = Rarity.Value
 		StatMenu.ItemImage.BackgroundColor3 = Rarity.TileColor.Value
+		StatMenu.ItemImage.Image = StatInfo["GUI Info"].StatImage.Value
 		StatMenu.ItemRarity.Text = RarityName
 		StatMenu.ItemRarity.TextColor3 = Rarity.Value
 		StatMenu.ItemRarity.TextStrokeColor3 = Rarity.TileColor.Value
@@ -739,24 +785,25 @@ local function InsertItemViewerInfo(StatMenu, Type, Stat, StatInfo, Value, Acqui
 	elseif Type == "Experience" then
 		StatMenu.ItemRarity.Text = ""
 		StatMenu.ItemAmount.Text = "Total EXP: " .. tostring(Value)
+		StatMenu.ItemImage.Image = StatInfo["GUI Info"].StatImage.Value
 		
 		StatMenu.ItemWorth.Visible = true
 		StatMenu.EquipButton.Visible = false
 	else --Equipment
-		--local ItemStats = Value
-		--local ShownStatName = string.gsub(tostring(ItemStats["Stats"][1][1]), AcquiredLocation, "") .. ": "
-		
 		StatMenu.EquipType.Value = Type
 		StatMenu.ItemType.Value = AcquiredLocation
 		
-		StatMenu.EquipButton.Visible = true
-		--ManageStatBars
+		StatMenu.EquipButton.Visible = false
+		ManageStatBars(Value)
 		ManageEquipButton(DataMenu.PlayerMenu:FindFirstChild(AcquiredLocation).CurrentlyEquipped.Value, Stat)
+		StatMenu.EquipButton.Visible = true
+			
+		local ItemModel = game.ReplicatedStorage.Equippable:FindFirstChild(Type):FindFirstChild(AcquiredLocation):FindFirstChild(Stat)
+		Display3DModels(StatMenu.ItemImage, ItemModel.Handle:Clone(), false)
+		Display3DModels(StatMenu.ItemImage, ItemModel.Handle:Clone(), true)
 	end
-
-	StatMenu.ItemImage.Image = StatInfo["GUI Info"].StatImage.Value
+	
 	StatMenu.ItemName.Text = tostring(Stat)
-
 	StatMenu.Visible = true 
 end
 
@@ -832,49 +879,6 @@ local function InsertTileInfo(Type, tile, Stat, Value, found, AcquiredLocation)
 		
 		--tile.DisplayName.Text = tostring(Stat)
 		--tile.Picture.Image = StatInfo["GUI Info"].StatImage.Value
-		
-		--[[
-		local ItemStats = Value
-		for stat = 1,#ItemStats["Stats"],1 do
-			local StatName = ItemStats["Stats"][stat][1]
-			local StatValue = ItemStats["Stats"][stat][2]
-
-			if ItemStats["Images"][StatName .. "Image"] then --Displayed on a GUI
-				if ItemStats["Images"][StatName .. "Image"][2] then
-					local ImageId = ItemStats["Images"][StatName .. "Image"][1]
-					local ImageType = ItemStats["Images"][StatName .. "Image"][2]
-					
-					local FoundStatDisplay = false
-					for i,statDisplay in pairs (tile:GetChildren()) do
-						if FoundStatDisplay == false then
-							if string.find(tostring(statDisplay), ImageType) and statDisplay:FindFirstChild("Utilized") then
-								if statDisplay.Utilized.Value ~= true then
-									statDisplay.Utilized.Value = true
-									FoundStatDisplay = true
-									
-									statDisplay.Image = ImageId
-									
-									if math.abs(StatValue) < 1 then --Remove 0 before decimal
-										local RemovedZero = string.gsub(tostring(StatValue), "0." , "")
-										statDisplay.StatValue.Text = "." .. RemovedZero
-									else
-										statDisplay.StatValue.Text = StatValue
-									end
-									
-									if ImageType == "StatBar" then
-										local MaxStatValue = game.ReplicatedStorage.GuiElements.MaxStatValues:FindFirstChild(StatName).Value
-										statDisplay.ProgressBar.Progress.Size = UDim2.new(StatValue/MaxStatValue, 0, 1, 0)
-									end
-								end
-							end
-						end	
-					end
-				end	
-			end
-		end
-		
-		HideRemainingStatDisplays(tile)
-		]]
 	end
 	
 	--ItemViewerMenu GUI Management
@@ -882,6 +886,9 @@ local function InsertTileInfo(Type, tile, Stat, Value, found, AcquiredLocation)
 		if ItemViewerOpen == false then
 			ItemViewerOpen = true
 			InsertItemViewerInfo(StatMenu, Type, Stat, StatInfo, Value, AcquiredLocation)
+		elseif Type ~= "Inventory" and Type ~= "Experience" then
+			InsertItemViewerInfo(StatMenu, Type, Stat, StatInfo, Value, AcquiredLocation)
+			
 		end
 	end)
 	
@@ -1354,29 +1361,16 @@ local PlayerInfo = PlayerMenu.PlayerInfo
 local thumbType = Enum.ThumbnailType.HeadShot
 local thumbSize = Enum.ThumbnailSize.Size420x420
 local PlayerProfilePicture = game.Players:GetUserThumbnailAsync(PlayerUserId, thumbType, thumbSize)
-local UpdateEquippedItem = EventsFolder.GUI:WaitForChild("UpdateEquippedItem")
+local UpdateEquippedItem = EventsFolder.GUI.UpdateEquippedItem
 
 PlayerInfo.PlayerThumbnail.Image = PlayerProfilePicture
 PlayerInfo.PlayerName.Text = tostring(Player)
 
-local RealBags = game.ReplicatedStorage.Equippable.Bags
-
 local EquipButton = QuickViewMenu.EquipButton
-local equipButtonXP = EquipButton.Position.X.Scale
-local equipButtonXS = EquipButton.Size.X.Scale
-EquipButton.MouseButton1Down:Connect(function()
-	PressGUIButton(EquipButton, UDim2.new(equipButtonXP, 0, 0.859, 0), UDim2.new(equipButtonXS, 0, .114, 0))
-end)
-EquipButton.MouseLeave:Connect(function()
-	PressGUIButton(EquipButton, UDim2.new(equipButtonXP, 0, 0.851, 0), UDim2.new(equipButtonXS, 0, .121, 0))
-end)
-EquipButton.MouseButton1Up:Connect(function()
-	PressGUIButton(EquipButton, UDim2.new(equipButtonXP, 0, 0.851, 0), UDim2.new(equipButtonXS, 0, .121, 0))
-end)
+local equipBtnScaleChange = 0.008
+SetUpPressableButton(EquipButton, equipBtnScaleChange)
 
 EquipButton.Activated:Connect(function()
-	PressGUIButton(EquipButton, UDim2.new(equipButtonXP, 0, 0.851, 0), UDim2.new(equipButtonXS, 0, .121, 0))
-	
 	if EquipButton.Visible == true then
 		EquipButton.Active = false
 		
@@ -1410,6 +1404,69 @@ EquipButton.Activated:Connect(function()
 		EquipButton.Active = true
 	end
 end)
+
+--May have to use this in item viewer too, so keep as function (not only equipment)
+local function HideRemainingStatDisplays()
+	for i,statDisplay in pairs (QuickViewMenu.StatDisplays:GetChildren()) do
+		if statDisplay:FindFirstChild("Utilized") then
+			statDisplay.Visible = statDisplay.Utilized.Value
+		end
+	end
+end
+
+function ManageStatBars(ItemStats)
+	print("manage stat bars for ", ItemStats)
+	for i,statDisplay in pairs (QuickViewMenu.StatDisplays:GetChildren()) do
+		if statDisplay:FindFirstChild("Utilized") then
+			statDisplay.Utilized.Value = false
+		end
+	end
+	
+	for stat = 1,#ItemStats["Stats"],1 do
+		local StatName = ItemStats["Stats"][stat][1]
+		local StatValue = ItemStats["Stats"][stat][2]
+		
+		if ItemStats["Images"][StatName .. "Image"] then --Displayed on a GUI
+			if ItemStats["Images"][StatName .. "Image"][2] then --Associated ImageType
+				local ImageId = ItemStats["Images"][StatName .. "Image"][1]
+				local ImageType = ItemStats["Images"][StatName .. "Image"][2]
+				
+				local FoundStatDisplay = false
+				for i,statDisplay in pairs (QuickViewMenu.StatDisplays:GetChildren()) do
+					if FoundStatDisplay == false then
+						if string.find(tostring(statDisplay), ImageType) and statDisplay:FindFirstChild("Utilized") then
+							if statDisplay.Utilized.Value ~= true then
+								statDisplay.Utilized.Value = true
+								FoundStatDisplay = true
+								
+								if type(StatValue) == "number" then
+									if math.abs(StatValue) < 1 then --Remove 0 before decimal
+										local RemovedZero = string.gsub(tostring(StatValue), "0." , "")
+										statDisplay.StatValue.Text = "." .. RemovedZero
+									else
+										statDisplay.StatValue.Text = StatValue
+									end
+								end
+								
+								if ImageType == "StatBar" then
+									local MaxStatValue = game.ReplicatedStorage.GuiElements.MaxStatValues:FindFirstChild(StatName).Value
+									statDisplay.ProgressBar.Progress.Size = UDim2.new(StatValue/MaxStatValue, 0, 1, 0)
+									statDisplay.StatImageBorder.StatImage.Image = ImageId
+								else --Badge
+									statDisplay.Image = ImageId
+								end
+							end
+						end
+					end	
+				end
+			else
+				--possibly display in info menu? (non-statbars images and non-badge image)
+			end	
+		end
+	end
+		
+	HideRemainingStatDisplays()
+end
 
 local function UpdateBagButtonBar(Button, RelatedInvMenu)
 	local BagCapacity = RelatedInvMenu:GetAttribute("BagCapacity")
