@@ -59,7 +59,13 @@ local function CheckSelectedItem()
 					ItemInteractionGui.SelectedOre.SurfaceColor3 = Color3.new(0.7 - (Progress * 0.7),1,1 - (Progress * 0.6))
 
 					ProgressBarClone.ProgressBar.TimeLeft.Size = UDim2.new(Progress,0,1,0)
-					--ProgressBar.Parent.Enabled = true
+					
+					--local hit = 
+					--if hit.Value == true then
+						--Change this so it creates a particle along with the animation that is played
+						--Probably have a bool value in the tool called "hit" that is true when particles should
+						--fly off of the mined block (drill would be constant, but pic wouldn't)
+					--end
 				elseif Target.Reflectance == 0 then
 					wait() --Here to allow for check reflection at 0
 					ItemInteractionGui.SelectedOre.Color3 = OriginalSelectOreColor
