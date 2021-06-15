@@ -950,7 +950,7 @@ local function ColorTileRarity(Tile, RarityInfo)
 end
 
 local function InsertTileInfo(Menu, Tile, ResearchData, ResearchType, FinishTime, StatTable)
-	if StatTable == nil then
+	if StatTable == nil then --Available and Previous Research
 		Tile.ResearchTile.Visible = true
 		Tile.CostTile.Visible = false
 		local ResearchTile = Tile.ResearchTile
@@ -1512,6 +1512,7 @@ function FindMenuPage(Menu, MaxTileAmount, ResearchData, StatTable)
 	NewTile.TruePosition.Value = TruePosition
 	NewTile.Parent = Page
 	
+	--Position Tile
 	ManageTileTruePosition(Menu, Page, NewTile, TruePosition, MaxTileAmount, 1)
 	
 	return NewTile
