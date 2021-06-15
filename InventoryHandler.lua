@@ -515,7 +515,7 @@ function CommitPageChange(Page)
 		--PageManager.PageRarityDisplay.TextStrokeColor3 = Rarity.TileColor.Value
 		for i,tile in pairs (Page:GetChildren()) do
 			if tile:IsA("TextButton") or tile:IsA("ImageButton") then
-				tile.Image = Rarity.ItemTileImage.Value
+				tile.Image = Rarity.TileImages.StaticRarityTile.Value
 				--tile.BackgroundColor3 = Rarity.TileColor.Value
 			end
 		end
@@ -627,8 +627,13 @@ local function FindStatPage(Stat, Menu, MaxTileAmount, RaritySort, AcquiredLocat
 	for i,page in pairs (Pages) do	
 		if page:IsA("Frame") then
 			if page.Rarity.Value == StatRarity then
-				--print("Found existing page for " .. tostring(StatRarity))
-
+				
+				--with new rarity sorting, the pages will not be identified by anything but their page number:
+				--something used to calculate the true position of all the different types of tiles.
+				
+				--Basically, the position of tiles is already created, they just now have to be inserted into the 
+				--right pages and given the right true postiion values to reference for their position
+				
 				for i,slot in pairs (page:GetChildren()) do
 					if slot:IsA("TextButton") or slot:IsA("ImageButton") then
 						SlotCount += 1
@@ -807,6 +812,7 @@ local function InsertItemViewerInfo(StatMenu, Type, Stat, StatInfo, Value, Acqui
 	StatMenu.Visible = true 
 end
 
+local previousEquipmentTile
 local function InsertTileInfo(Type, tile, Stat, Value, found, AcquiredLocation)
 	tile.StatName.Value = tostring(Stat)
 
@@ -825,7 +831,7 @@ local function InsertTileInfo(Type, tile, Stat, Value, found, AcquiredLocation)
 		--**Make rarity tile imaging a function
 		local RarityName = StatInfo["GUI Info"].RarityName.Value
 		local Rarity = GuiElements.RarityColors:FindFirstChild(RarityName)
-		tile.Image = Rarity.ItemTileImage.Value
+		tile.Image = Rarity.TileImages.StaticRarityTile.Value
 		--tile.HoverImage = 
 		--tile.PressedImage = 
 
@@ -873,7 +879,7 @@ local function InsertTileInfo(Type, tile, Stat, Value, found, AcquiredLocation)
 		tile.Amount.Visible = false
 		local RarityName = StatInfo["GUI Info"].RarityName.Value
 		local Rarity = GuiElements.RarityColors:FindFirstChild(RarityName)
-		tile.Image = Rarity.ItemTileImage.Value
+		tile.Image = Rarity.TileImages.StaticRarityTile.Value
 		--tile.HoverImage = 
 		--tile.PressedImage = 
 		
@@ -889,6 +895,18 @@ local function InsertTileInfo(Type, tile, Stat, Value, found, AcquiredLocation)
 		elseif Type ~= "Inventory" and Type ~= "Experience" then
 			InsertItemViewerInfo(StatMenu, Type, Stat, StatInfo, Value, AcquiredLocation)
 			
+			if previousEquipmentTile then --deselect previous tile
+				local prevTileRarity = previousEquipmentTile.Rarity.Value
+				local prevRarityInfo = game.ReplicatedStorage.GuiElements.RarityColors:FindFirstChild(prevTileRarity)
+				previousEquipmentTile.Image = prevRarityInfo.TileImages.StaticRarityTile.Value
+				--previousEquipmentTile.HoverImage = prevRarityInfo.TileImages.HoverRarityTile.Value
+				--previousEquipmentTile.PressedImage = prevRarityInfo.TileImages.PressedRarityTile.Value
+			end
+			
+			local tileRarity = tile.Rarity.Value
+			local rarityInfo = game.ReplicatedStorage.GuiElements.RarityColors:FindFirstChild(tileRarity)
+			tile.Image = rarityInfo.TileImages.SelectedRarityTile.Value
+			previousEquipmentTile = tile
 		end
 	end)
 	
@@ -1452,6 +1470,7 @@ function ManageStatBars(ItemStats)
 									local MaxStatValue = game.ReplicatedStorage.GuiElements.MaxStatValues:FindFirstChild(StatName).Value
 									statDisplay.ProgressBar.Progress.Size = UDim2.new(StatValue/MaxStatValue, 0, 1, 0)
 									statDisplay.StatImageBorder.StatImage.Image = ImageId
+									statDisplay.StatName.Text = StatName
 								else --Badge
 									statDisplay.Image = ImageId
 								end
