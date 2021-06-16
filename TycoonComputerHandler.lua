@@ -1011,6 +1011,10 @@ local function InsertTileInfo(Menu, Tile, ResearchData, ResearchType, FinishTime
 					CurrentResearch.Visible = false
 					PreviousResearch.Visible = false
 					
+					if CostList:FindFirstChild("Page1") then
+						CostList.Page1.Visible = true
+					end
+					
 					Taskbar.CurrentResearchButton.Visible = false
 					Taskbar.CurrentResearchButton.Active = false
 					Taskbar.PreviousResearchButton.Visible = false
@@ -1123,6 +1127,8 @@ local function FindPrevAvailableTile(ResearchData)
 	return Page,Tile
 end
 
+local ManageTilePlacementFunction = game.ReplicatedStorage.Events.GUI:FindFirstChild("ManageTilePlacement")
+
 function ManageResearchTile(Menu, ResearchData, ResearchType, FinishTime, StatTable)
 	if Menu == CurrentResearch and FinishTime then --Guaranteed to only be one page
 		local ParentTile
@@ -1194,15 +1200,31 @@ function ManageResearchTile(Menu, ResearchData, ResearchType, FinishTime, StatTa
 				end
 				
 				
-				
-				--robux amount will be updated in ManageTileTimer
-				--this will bring up robux charge popup for player to pay robux
+				--player will pay to skip time with premium currency that is bought in the
+				--premium currency shop. This is because you cannot code in a robux charge,
+				--you must pre set it up
 			end)
 		else
 			warn("No tile available for a current research!",ResearchData)
 		end
 	else --Previous and Available Research
-		local NewTile = FindMenuPage(Menu, 5, ResearchData, StatTable)
+		--local NewTile = ManageTilePlacement(Menu, 5, ResearchData, StatTable)
+		
+		local RarityName
+		if StatTable == nil then
+			local StatInfo = ResearchData
+			RarityName = StatInfo["Rarity"]
+		else
+			local StatInfo = StatTable[1]
+			if StatInfo["GUI Info"]:FindFirstChild("RarityName") then
+				RarityName = StatInfo["GUI Info"].RarityName.Value
+			else
+				RarityName = "DisplayFirst"
+			end
+		end
+		local RarityInfo = game.ReplicatedStorage.GuiElements.RarityColors:FindFirstChild(RarityName)
+		
+		local NewTile = ManageTilePlacementFunction:Invoke(Menu, "Research", RarityInfo)
 		NewTile.Active = true
 		NewTile.Selectable = true
 		InsertTileInfo(Menu, NewTile, ResearchData, ResearchType, nil, StatTable)
@@ -1237,10 +1259,12 @@ local function GetTileSlotCount(Page, TileTruePosition, AffectingTile, Change)
 			end
 		end
 	end
+	
 	return SlotCount
 end
 
 function ManageTileTruePosition(Menu, Page, AffectingTile, TruePosition, MaxTileAmount, Change)
+	--Change is how higher TruePosition tiles should move (up 1 or down 1)
 	local PageNumber = string.gsub(Page.Name, "Page", "")
 	
 	for i,page in pairs (Menu:GetChildren()) do
@@ -1255,17 +1279,18 @@ function ManageTileTruePosition(Menu, Page, AffectingTile, TruePosition, MaxTile
 							local Page
 							
 							if tile ~= AffectingTile then
-								tile.TruePosition.Value = tile.TruePosition.Value + Change
+								tile.TruePosition.Value += Change
 								SlotCount = GetTileSlotCount(page, tile.TruePosition.Value, AffectingTile, Change)
 								
 								if SlotCount >= MaxTileAmount then
 									if Menu:FindFirstChild("Page" .. tostring(tonumber(CurrentPageNumber) + 1)) then
 										Page = Menu:FindFirstChild("Page" .. tostring(tonumber(CurrentPageNumber) + 1))
 									else
-										Page = game.ReplicatedStorage.GuiElements.ResearchPage:Clone()
-										Page.Visible = false
-										Page.Name = "Page" .. tostring(tonumber(CurrentPageNumber) + 1)
-										Page.Parent = Menu
+										local newPage = game.ReplicatedStorage.GuiElements.ResearchPage:Clone()
+										newPage.Visible = false
+										newPage.Name = "Page" .. tostring(tonumber(CurrentPageNumber) + 1)
+										newPage.Parent = Menu
+										Page = newPage
 									end
 									SlotCount = 0
 								elseif SlotCount < 0 then
@@ -1278,6 +1303,7 @@ function ManageTileTruePosition(Menu, Page, AffectingTile, TruePosition, MaxTile
 								if Change == -1 then
 									tile:Destroy()
 								else
+									--Will guaranteed be on this page since it was calculated earlier
 									SlotCount = GetTileSlotCount(page, tile.TruePosition.Value)
 									Page = page
 								end
@@ -1285,7 +1311,7 @@ function ManageTileTruePosition(Menu, Page, AffectingTile, TruePosition, MaxTile
 							
 							if Page then
 								tile.Parent = Page
-
+								
 								local PageNumber = string.gsub(Page.Name, "Page", "")
 								local TruePositionValue = SlotCount + (tonumber(PageNumber)-1)*MaxTileAmount
 								tile.TruePosition.Value = TruePositionValue
@@ -1344,51 +1370,6 @@ local function CompareHighPage(Page, HighPage)
 	end
 end
 
-local function GetHighestSlotOfRarity(Page, RarityName)
-	local HighestSlotValue = 0
-	for i,slot in pairs (Page:GetChildren()) do
-		if slot:IsA("TextButton") and string.find(slot.Name, "Slot") then
-			if slot.Rarity.Value.Name == RarityName then
-				local SlotValue = string.gsub(slot.Name, "Slot", "")
-				if tonumber(SlotValue) > HighestSlotValue then
-					HighestSlotValue = tonumber(SlotValue)
-				end
-			end
-		end
-	end
-	return HighestSlotValue
-end
-
-local function SeekSlotAvailability(Menu, CheckedPageNumber, RarityName, MaxTileAmount)
-	local Page
-	local TruePosition
-	local SlotCount = 0
-
-	local PossiblePage = Menu:FindFirstChild("Page" .. tostring(CheckedPageNumber))
-	local HighestSlotValue = GetHighestSlotOfRarity(PossiblePage, RarityName)
-
-	if HighestSlotValue < MaxTileAmount then --Slot available on rarity page
-		Page = PossiblePage
-		SlotCount = HighestSlotValue
-		TruePosition = GetTileTruePosition(Page, SlotCount, MaxTileAmount)
-	else 
-		if Menu:FindFirstChild("Page" .. tostring(CheckedPageNumber + 1)) then --go to next page and insert on top
-			Page = Menu:FindFirstChild("Page" .. tostring(CheckedPageNumber + 1))
-		else --no next page, make a new page
-			local NewPage = game.ReplicatedStorage.GuiElements.ResearchPage:Clone()
-			NewPage.Visible = false
-			NewPage.Name = "Page" .. tostring(CheckedPageNumber + 1)
-			NewPage.Parent = Menu
-			Page = NewPage
-		end
-		SlotCount = 0
-		TruePosition = GetTileTruePosition(Page, SlotCount, MaxTileAmount)
-	end
-	
-	return Page,TruePosition,SlotCount
-end
-
-
 function GetHighPage(Menu, RarityName)
 	local HighPage = 0
 	for i,page in pairs (Menu:GetChildren()) do
@@ -1415,107 +1396,6 @@ function GetHighPage(Menu, RarityName)
 		end
 	end
 	return HighPage
-end
-
-local function FindNearbyRarity(Menu, RarityInfo, OrderValue, Change)
-	local CheckedRarity
-	for i,rarity in pairs (RarityInfo.Parent:GetChildren()) do
-		if rarity:IsA("Color3Value") and CheckedRarity == nil then
-			if rarity.Order.Value == OrderValue + Change then
-				CheckedRarity = rarity.Name
-			end
-		end
-	end
-	
-	local HighPage = GetHighPage(Menu, CheckedRarity)
-	if HighPage ~= 0 then --tile of rarity exists
-		return HighPage,CheckedRarity
-	else --Continue searching lower/higher rarities
-		if OrderValue ~= 0 or OrderValue ~= GetHighPage(Menu) then
-			return FindNearbyRarity(Menu, RarityInfo, OrderValue + Change, Change)
-		else
-			return nil
-		end
-	end
-end
-
-function FindMenuPage(Menu, MaxTileAmount, ResearchData, StatTable)
-	--PAGE SORTING STRATEGY:
-	--if 0 pages, make the first page
-	--Otherwise, look for pages with rarity in them
-	--if one is available, check if slot available
-	--(function)
-	--if slot, insert and move tiles below
-	--if no slot, put in next page
-	--if no next page, make a new page
-
-	--if no pages with rarity, look for page with order value less
-	--if found, put tile at end and move any with higher order value (do slot checks above)
-	--if none available, look for one with order value more
-	--if found, put tile at top and move any with higher order value
-	
-	local Pages = Menu:GetChildren()
-	
-	local RarityName
-	local StatInfo
-	if StatTable == nil then
-		StatInfo = ResearchData
-		RarityName = StatInfo["Rarity"]
-	else
-		StatInfo = StatTable[1]
-		if StatInfo["GUI Info"]:FindFirstChild("RarityName") then
-			RarityName = StatInfo["GUI Info"].RarityName.Value
-		else
-			RarityName = "DisplayFirst"
-		end
-	end
-	local RarityInfo = game.ReplicatedStorage.GuiElements.RarityColors:FindFirstChild(RarityName)
-	local RarityOrderValue = RarityInfo.Order.Value
-	
-	local PageCount = GetHighPage(Menu)
-	
-	local Page
-	local TruePosition
-	local SlotCount = 0 --Position reference, +1 for name (Count=0: "Slot1")
-	if PageCount > 0 then
-		local HighRarityPage = GetHighPage(Menu, RarityName)
-		
-		if HighRarityPage ~= 0 then --Tile already exists for rarity
-			Page,TruePosition,SlotCount = SeekSlotAvailability(Menu, HighRarityPage, RarityName, MaxTileAmount)
-		else --No tiles with rarity exist, connect with associated rarities
-			--Look for lesser rarity to reference
-			local LesserRarityPage,LesserRarityName = FindNearbyRarity(Menu, RarityInfo, RarityOrderValue, -1)
-			if LesserRarityPage then
-				Page,TruePosition,SlotCount = SeekSlotAvailability(Menu, LesserRarityPage, LesserRarityName, MaxTileAmount)
-			else
-				--Look for higher rarity to reference
-				local HigherRarityPage,HigherRarityName = FindNearbyRarity(Menu, RarityInfo, RarityOrderValue, 1)
-				if HigherRarityPage then
-					Page,TruePosition,SlotCount = SeekSlotAvailability(Menu, HigherRarityPage, HigherRarityName, MaxTileAmount)
-				end
-			end
-		end
-	else --No pages even available, make new page
-		local NewPage = game.ReplicatedStorage.GuiElements.ResearchPage:Clone()
-		NewPage.Visible = true
-		NewPage.Name = "Page1"
-		NewPage.Parent = Menu
-		Page = NewPage
-		SlotCount = 0
-		TruePosition = 0
-	end
-	--print("Final slot identifier values for " .. RarityName .. " are: PTS -->",Page,TruePosition,SlotCount)
-
-	local NewTile = game.ReplicatedStorage.GuiElements.ResearchSlot:Clone()
-	NewTile.Name = "Slot" .. tostring(SlotCount + 1)
-	NewTile.Rarity.Value = RarityInfo
-	NewTile.TruePosition.Value = TruePosition
-	NewTile.Parent = Page
-	
-	--Position Tile
-	ManageTileTruePosition(Menu, Page, NewTile, TruePosition, MaxTileAmount, 1)
-	
-	return NewTile
 end
 
 local function ManagePageInvis(VisiblePage)
