@@ -206,7 +206,7 @@ function ReadyMenuButtons(Menu)
 						ButtonMenu.SelectedBagInfo.Visible = true
 						
 						PageManager.Menu.Value = MaterialsMenu
-						local PageCount = CountPages()
+						local PageCount = GetHighPage(MaterialsMenu)
 						if PageCount > 0 then
 							PageManager.Visible = true
 							PageManager.FullBottomDisplay.Visible = true
@@ -231,7 +231,7 @@ function ReadyMenuButtons(Menu)
 						Menu.QuickViewMenu.QuickViewPreview.Visible = true
 						PageManager.Menu.Value = ButtonMenu
 						
-						local PageCount = CountPages()
+						local PageCount = GetHighPage(ButtonMenu)
 						if PageCount > 0 then
 							PageManager.Visible = true
 							PageManager.FullBottomDisplay.Visible = false
@@ -492,6 +492,7 @@ function ManagePageInvis(VisiblePage) --Use this in more places than page manage
 	PageDebounce = false
 end
 
+--[[
 function CountPages()
 	local HighPage = 0
 	for i,page in pairs (PageManager.Menu.Value:GetChildren()) do
@@ -504,9 +505,50 @@ function CountPages()
 	end
 	return HighPage
 end
+]]
+
+local function CompareHighPage(page, HighPage)
+	local pageNumber = string.gsub(page.Name, "Page", "")
+	if tonumber(pageNumber) > HighPage then
+		return tonumber(pageNumber)
+	else
+		return HighPage
+	end	
+end
+
+function GetHighPage(Menu, rarityName) --Find page for rarity tile OR max page count
+	local highPage = 0
+	for i,page in pairs (Menu:GetChildren()) do
+		if page:IsA("Frame") and string.find(page.Name, "Page") then
+			if rarityName then
+				--Want highest page with tile rarity present
+				local RarityIsPresent = false
+				for i,tile in pairs (page:GetChildren()) do
+					if not RarityIsPresent then
+						if (tile:IsA("ImageButton") or tile:IsA("TextButton")) and string.find(tile.Name, "Slot") then
+							if tile.Rarity.Value.Name == rarityName then
+								RarityIsPresent = true
+							end
+						end
+					end
+				end
+				
+				if RarityIsPresent then
+					highPage = CompareHighPage(page, highPage)
+				end
+			else
+				--Want high page
+				highPage = CompareHighPage(page, highPage)
+			end
+		end
+	end
+	
+	return highPage
+end
 
 function CommitPageChange(Page)
 	PageDebounce = true
+	--[[
 	local RarityName = Page.Rarity.Value
 	if GuiElements.RarityColors:FindFirstChild(RarityName) then
 		local Rarity = GuiElements.RarityColors:FindFirstChild(RarityName)
@@ -536,6 +578,7 @@ function CommitPageChange(Page)
 			--PageManager.PageRarityDisplay.Visible = false
 		--end
 	end
+	]]
 	Page.ZIndex += 1
 	Page.Visible = true
 	Page:TweenPosition(UDim2.new(0,0,0,0), "Out", "Quint", .25)
@@ -545,7 +588,7 @@ end
 
 local function StartPageChange(pageChange)
 	if PageDebounce == false then
-		local HighPage = CountPages()
+		local HighPage = GetHighPage(PageManager.Menu.Value)
 		local Menu = PageManager.Menu.Value
 		
 		if HighPage ~= 1 then --not only one page
@@ -602,17 +645,180 @@ for i,pageDisplay in pairs (PageManager:GetChildren()) do
 	end
 end
 
-DataMenu.ItemViewer.BackButton.Activated:Connect(function()
-	if DataMenu.ItemViewer.Visible == true then
-		DataMenu.ItemViewer.Visible = false
-		ItemViewerOpen = false
+local function CreateNewMenuPage(Type, Menu, Page)
+	local newPage
+	if Type == "Research" then
+		newPage = game.ReplicatedStorage.GuiElements.ResearchPage:Clone()
+	else
+		newPage = game.ReplicatedStorage.GuiElements.DataMenuPage:Clone()
 	end
-end)
 
---Creates pages for tiles to be held (tiles managed by ManageTiles())
-local function FindStatPage(Stat, Menu, MaxTileAmount, RaritySort, AcquiredLocation)
-	local Pages = Menu:GetChildren()
+	newPage.Visible = false
+	newPage.Name = "Page1"
+	newPage.Parent = Menu
 	
+	return newPage
+end
+
+
+local function GetHighestSlotOfRarity(Page, rarityName) --highest slot of rarity on page
+	local highestSlotValue = 0
+	for i,slot in pairs (Page:GetChildren()) do
+		if (slot:IsA("ImageButton") or slot:IsA("TextButton")) and string.find(slot.Name, "Slot") then
+			if slot.Rarity.Value.Name == rarityName then
+				local slotValue = string.gsub(slot.Name, "Slot", "")
+				if tonumber(slotValue) > highestSlotValue then
+					highestSlotValue = tonumber(slotValue)
+				end
+			end
+		end
+	end
+
+	return highestSlotValue
+end
+
+local function GetTileTruePosition(Page, PageSlotCount, maxTileAmount)
+	local pageNumber = string.gsub(Page.Name, "Page", "")
+	local TruePosition = PageSlotCount + ((tonumber(pageNumber) - 1) * maxTileAmount)
+	return TruePosition
+end
+
+local function SeekSlotAvailability(Menu, Type, checkedPageNumber, rarityName, maxTileAmount)
+	local Page
+	local TruePosition
+	local PageSlotCount = 0
+	
+	local possiblePage = Menu:FindFirstChild("Page" .. tostring(checkedPageNumber))
+	local highestSlotValue = GetHighestSlotOfRarity(possiblePage, rarityName)
+	if highestSlotValue < maxTileAmount then
+		Page = possiblePage
+		PageSlotCount = highestSlotValue
+		TruePosition = GetTileTruePosition(Page, PageSlotCount, maxTileAmount)
+	else --newTile cannot fit on checkedPage
+		if Menu:findFirstChild("Page" .. tostring(checkedPageNumber + 1)) then --next page is available
+			Page = Menu:FindFirstChild("Page" .. tostring(checkedPageNumber + 1))
+		else --no next page, make a new page
+			Page = CreateNewMenuPage(Type, Menu, Page)
+		end
+		PageSlotCount = 0
+		TruePosition = GetTileTruePosition(Page, PageSlotCount, maxTileAmount)
+	end
+
+	return Page,TruePosition,PageSlotCount
+end
+
+local function FindNearbyRarity(Menu, rarityInfo, orderValue, Direction)
+	local checkedRarityName
+	for i,rarity in pairs (rarityInfo.Parent:GetChildren()) do
+		if rarity:IsA("Color3Value") and checkedRarityName == nil then
+			if rarity.Order.Value == orderValue + Direction then
+				checkedRarityName = rarity.Name
+			end
+		end
+	end
+
+	local highPage = GetHighPage(Menu, checkedRarityName)
+	--print("44444444444444 Checking if ", checkedRarityName, " is in ", Menu, " rarity high page is ", highPage)
+
+	if highPage ~= 0 then --Page found with seeked rarity
+		return highPage,checkedRarityName
+	else --Not found, continue searching lower/higher rarities
+		if orderValue ~= 0 or orderValue ~= GetHighPage(Menu) then
+			return FindNearbyRarity(Menu, rarityInfo, orderValue + Direction, Direction)
+		else
+			return nil
+		end
+	end
+end
+
+local function ManageTilePlacement(Menu, Type, rarityInfo)
+	--PAGE SORTING STRATEGY: (Same as research tiles)
+	--if 0 pages, make the first page
+	--Otherwise, look for pages with rarity in them
+	--if one is available, check if slot available
+	--(function)
+	--if slot, insert and move tiles below
+	--if no slot, put in next page
+	--if no next page, make a new page
+
+	--if no pages with rarity, look for page with order value less
+	--if found, put tile at end and move any with higher order value (do slot checks above)
+	--if none available, look for one with order value more
+	--if found, put tile at top and move any with higher order value
+	
+	local rarityName
+	local maxTileAmount
+	if rarityInfo then 
+		rarityName = rarityInfo.Name
+		
+		if Type == "Inventory" then
+			maxTileAmount = 18
+		elseif Type == "Research" then
+			maxTileAmount = 5
+		else
+			maxTileAmount = 12
+		end
+	else --Experience Tiles (& later research tiles as well)
+		rarityName = "No Rarity"
+		maxTileAmount = 4
+	end
+	
+	local pageCount = GetHighPage(Menu)
+
+	local Page
+	local TruePosition
+	local PageSlotCount = 0 --Position reference, +1 for name (Count=0: "Slot1")
+	if pageCount > 0 then
+		local highRarityPage = GetHighPage(Menu, rarityName)
+		local rarityOrderValue = rarityInfo.Order.Value
+		
+		if highRarityPage ~= 0 then
+			--print("11111111111 highRarityPage ~= 0: ", rarityName)
+			Page,TruePosition,PageSlotCount = SeekSlotAvailability(Menu, Type, highRarityPage, rarityName, maxTileAmount)
+		else
+			--Look for lesser rarity to reference instead
+			local lesserRarityPage,lesserRarityName = FindNearbyRarity(Menu, rarityInfo, rarityOrderValue, -1)
+			if lesserRarityPage then
+				--print("22222222222 lesserRarity: ", lesserRarityPage, lesserRarityName)
+				Page,TruePosition,PageSlotCount = SeekSlotAvailability(Menu, Type, lesserRarityPage, lesserRarityName, maxTileAmount)
+			else
+				--Look for higher rarity to reference instead
+				local higherRarityPage,higherRarityName = FindNearbyRarity(Menu, rarityInfo, rarityOrderValue, 1)
+				if higherRarityPage then
+					--print("3333333333 higherRarityName: ", higherRarityPage, higherRarityName)
+					Page,TruePosition,PageSlotCount = SeekSlotAvailability(Menu, Type, higherRarityPage, higherRarityName, maxTileAmount)
+				end
+			end
+		end
+	else --No pages in menu, make new page
+		Page = CreateNewMenuPage(Type, Menu, Page)
+		PageSlotCount = 0
+		TruePosition = 0
+	end
+	
+	--Create tile with new-found info
+	local newTile
+	if Type == "Experience" then
+		newTile = game.ReplicatedStorage.GuiElements.ExperienceSlot:Clone()
+	elseif Type == "Research" then
+		newTile = game.ReplicatedStorage.GuiElements.ResearchSlot:Clone()
+	else
+		newTile = game.ReplicatedStorage.GuiElements.InventoryMaterialSlot:Clone()
+	end
+	
+	newTile.Name = "Slot" .. tostring(PageSlotCount + 1)
+	newTile.Rarity.Value = rarityInfo
+	newTile.TruePosition.Value = TruePosition
+	newTile.Parent = Page
+	
+	print("*****", Type, newTile, "'s final values are TruePosition: ", TruePosition, " and PageSlotCount: ", PageSlotCount, " in ", Page)
+	
+	--Position tile with new-found info
+	ManageTileTruePosition(Menu, Page, newTile, TruePosition, maxTileAmount, 1, Type)
+	
+	return newTile
+	
+	--[[
 	local StatRarity
 	if RaritySort then
 		StatRarity = game.ReplicatedStorage.ItemLocations:FindFirstChild(AcquiredLocation):FindFirstChild(Stat)["GUI Info"].RarityName.Value
@@ -718,7 +924,129 @@ local function FindStatPage(Stat, Menu, MaxTileAmount, RaritySort, AcquiredLocat
 	end
 	
 	return StatRarity,Page,SlotCount
+	]]
 end
+
+local ManageTilePlacementFunction = EventsFolder.GUI:FindFirstChild("ManageTilePlacement")
+ManageTilePlacementFunction.OnInvoke = ManageTilePlacement
+
+local function GetTileSlotCount(Page, tileTruePosition, affectingTile, Change)
+	--Count other slots on page
+	local PageSlotCount = 0
+	for i,slot in pairs (Page:GetChildren()) do
+		if (slot:IsA("ImageButton") or slot:IsA("TextButton")) and string.find(slot.Name, "Slot") then
+			if slot.TruePosition.Value < tileTruePosition then
+				if Change == -1 then
+					PageSlotCount -= 1
+				else
+					PageSlotCount += 1
+				end
+			end
+		end
+	end
+	
+	return PageSlotCount
+end
+
+local function ConvertPageSlotCount(PageSlotCount, tilesPerRow)
+	local tileNumber = PageSlotCount
+	local rowValue = math.floor(tileNumber / tilesPerRow)
+	local columnValue = (PageSlotCount % (tilesPerRow))
+	return columnValue, rowValue
+end
+
+function ManageTileTruePosition(Menu, Page, affectingTile, TruePosition, maxTileAmount, Change, Type)
+	--TruePosition is used to move all other tiles around
+	--PageSlotCount is used to position the tile on that page properly
+	--Change is how higher TruePosition tiles should move (up 1 or down 1)
+	
+	local pageNumber = string.gsub(Page.Name, "Page", "")
+	
+	for i,page in pairs (Menu:GetChildren()) do
+		if page:IsA("Frame") and string.find(page.Name, "Page") then
+			local currentPageNumber = string.gsub(page.Name, "Page", "")
+			
+			--Grab only pages containing tiles that will be affected by this new tile (affectingTile)
+			if tonumber(currentPageNumber) >= tonumber(pageNumber) then
+				for i,tile in pairs (page:GetChildren()) do
+					if (tile:IsA("ImageButton") or tile:IsA("TextButton")) and string.find(tile.Name, "Slot") then
+						if tile.TruePosition.Value >= TruePosition then --Every tile "above" affecting tile
+							local PageSlotCount = 0
+							local Page
+							
+							if tile ~= affectingTile then
+								tile.TruePosition.Value += Change
+								PageSlotCount = GetTileSlotCount(page, tile.TruePosition.Value, affectingTile, Change)
+								
+								if PageSlotCount >= maxTileAmount then
+									--Affected tile will be moved to next page
+									if Menu:FindFirstChild("Page" .. tostring(tonumber(currentPageNumber) + 1)) then
+										Page = Menu:FindFirstChild("Page" .. tostring(tonumber(currentPageNumber) + 1))
+									else --No next page, making new one
+										Page = CreateNewMenuPage(Type, Menu, Page)
+									end
+									PageSlotCount = 0
+								elseif PageSlotCount < 0 then
+									--Affected tile will be moved to previous page
+									Page = Menu:FindFirstChild("Page" .. tostring(tonumber(currentPageNumber) - 1))
+								else
+									--Affected tile will stay on this page
+									Page = page
+								end
+								tile.Name = "Slot" .. tostring(PageSlotCount + 1)
+							else
+								if Change == -1 then
+									tile:Destroy()
+								else
+									--Will guaranteed be on this page since it was calculated earlier
+									PageSlotCount = GetTileSlotCount(page, tile.TruePosition.Value, affectingTile, Change)
+									Page = page
+								end
+							end
+							
+							if Page then --Reposition affected tile
+								tile.Parent = Page
+								
+								local truePositionValue = GetTileTruePosition(Page, PageSlotCount, maxTileAmount)
+								tile.TruePosition.Value = truePositionValue
+								
+								print("Type: ", Type)
+								if Type == "Experience" or Type == "Research" then --straight down insertion
+									if Type == "Experience" then
+										tile.Position = UDim2.new(0.028,0,0.037+((PageSlotCount)*0.24),0)
+										tile.Size = UDim2.new(0.944, 0, 0.2, 0)
+									else
+										tile.Position = UDim2.new(0.05, 0, 0.054+0.173*PageSlotCount, 0)
+										tile.Size = UDim2.new(0.9, 0, 0.14, 0)
+									end
+								else --2D insertion (Inventory & Equipment)
+									if Type == "Inventory" then	
+										local tilesPerRow = 6
+										local columnValue, rowValue = ConvertPageSlotCount(PageSlotCount, tilesPerRow)
+										tile.Position = UDim2.new(0.018+0.164*columnValue, 0, 0.028+0.29*rowValue, 0)
+										tile.Size = UDim2.new(0.142, 0, 0.259, 0)
+									else
+										local tilesPerRow = 4
+										local columnValue, rowValue = ConvertPageSlotCount(PageSlotCount, tilesPerRow)
+										tile.Position = UDim2.new(0.043+.239*columnValue, 0, 0.028+0.29*rowValue, 0)
+										tile.Size = UDim2.new(0.208, 0, 0.258, 0)
+									end
+								end
+							end
+						end
+					end
+				end
+			end
+		end
+	end
+end
+
+DataMenu.ItemViewer.BackButton.Activated:Connect(function()
+	if DataMenu.ItemViewer.Visible == true then
+		DataMenu.ItemViewer.Visible = false
+		ItemViewerOpen = false
+	end
+end)
 
 local DepositInventory = EventsFolder.Utility:WaitForChild("DepositInventory")
 DepositInventory.OnClientEvent:Connect(function()
@@ -774,7 +1102,7 @@ local function InsertItemViewerInfo(StatMenu, Type, Stat, StatInfo, Value, Acqui
 		StatMenu.ItemDescription.Text = StatInfo["GUI Info"].Description.Value
 		
 		StatMenu.ItemWorth.Visible = true
-		StatMenu.EquipButton.Visible = false
+		--StatMenu.EquipButton.Visible = false
 
 	--elseif Type == "Bags" then
 		--ItemViewerMenu.ItemDescription.Text = StatInfo["GUI Info"].Description.Value
@@ -813,14 +1141,14 @@ local function InsertItemViewerInfo(StatMenu, Type, Stat, StatInfo, Value, Acqui
 end
 
 local previousEquipmentTile
-local function InsertTileInfo(Type, tile, Stat, Value, found, AcquiredLocation)
+local function InsertTileInfo(Type, tile, Stat, Value, AcquiredLocation)
 	tile.StatName.Value = tostring(Stat)
 
 	local StatInfo
 	local StatMenu
 	if Type == "Inventory" then
 		StatMenu = ItemViewerMenu
-		StatInfo = game.ReplicatedStorage.ItemLocations:FindFirstChild(tostring(AcquiredLocation)):FindFirstChild(tostring(Stat))
+		StatInfo = game.ReplicatedStorage.ItemLocations:FindFirstChild(AcquiredLocation):FindFirstChild(Stat)
 		tile.Picture.Image = GetStatImage(StatInfo)
 		tile.Amount.Text = tostring(Value)
 			
@@ -828,14 +1156,12 @@ local function InsertTileInfo(Type, tile, Stat, Value, found, AcquiredLocation)
 			DataMenu.ItemViewer.ItemAmount.Text = "You Have: " .. tostring(Value)
 		end
 		
-		--**Make rarity tile imaging a function
+		--**Make rarity tile imaging a function (replace all other instances of this code too)
 		local RarityName = StatInfo["GUI Info"].RarityName.Value
 		local Rarity = GuiElements.RarityColors:FindFirstChild(RarityName)
 		tile.Image = Rarity.TileImages.StaticRarityTile.Value
 		--tile.HoverImage = 
 		--tile.PressedImage = 
-
-		found = true
 		
 	elseif Type == "Experience" then
 		StatMenu = ItemViewerMenu
@@ -868,20 +1194,18 @@ local function InsertTileInfo(Type, tile, Stat, Value, found, AcquiredLocation)
 		local Percentage = tonumber(Value - CurrentLevelEXP.Value) / tonumber(NextLevel.Value - CurrentLevelEXP.Value)
 		ProgressBar.Progress.Size = UDim2.new(Percentage, 0, 1, 0)
 		
-		found = true
-		
 	else --Non-Bag, Equippable PlayerItems (Stat Table Referencing)
 		StatMenu = QuickViewMenu
-		local RSTypeFile = game.ReplicatedStorage.Equippable:FindFirstChild(tostring(Type))
-		StatInfo = RSTypeFile:FindFirstChild(tostring(AcquiredLocation)):FindFirstChild(tostring(Stat))
+		local RSTypeFile = game.ReplicatedStorage.Equippable:FindFirstChild(Type)
+		StatInfo = RSTypeFile:FindFirstChild(AcquiredLocation):FindFirstChild(Stat)
 		
 		tile.Picture.Image = GetStatImage(StatInfo)
 		tile.Amount.Visible = false
 		local RarityName = StatInfo["GUI Info"].RarityName.Value
 		local Rarity = GuiElements.RarityColors:FindFirstChild(RarityName)
 		tile.Image = Rarity.TileImages.StaticRarityTile.Value
-		--tile.HoverImage = 
-		--tile.PressedImage = 
+		tile.HoverImage = Rarity.TileImages.HoverRarityTile.Value
+		tile.PressedImage = Rarity.TileImages.PressedRarityTile.Value
 		
 		--tile.DisplayName.Text = tostring(Stat)
 		--tile.Picture.Image = StatInfo["GUI Info"].StatImage.Value
@@ -889,43 +1213,47 @@ local function InsertTileInfo(Type, tile, Stat, Value, found, AcquiredLocation)
 	
 	--ItemViewerMenu GUI Management
 	tile.Activated:Connect(function()
-		if ItemViewerOpen == false then
+		if ItemViewerOpen == false and (Type == "Inventory" or Type == "Experience") then
 			ItemViewerOpen = true
 			InsertItemViewerInfo(StatMenu, Type, Stat, StatInfo, Value, AcquiredLocation)
-		elseif Type ~= "Inventory" and Type ~= "Experience" then
+		else
 			InsertItemViewerInfo(StatMenu, Type, Stat, StatInfo, Value, AcquiredLocation)
 			
 			if previousEquipmentTile then --deselect previous tile
-				local prevTileRarity = previousEquipmentTile.Rarity.Value
-				local prevRarityInfo = game.ReplicatedStorage.GuiElements.RarityColors:FindFirstChild(prevTileRarity)
+				local prevRarityInfo = previousEquipmentTile.Rarity.Value
 				previousEquipmentTile.Image = prevRarityInfo.TileImages.StaticRarityTile.Value
 				--previousEquipmentTile.HoverImage = prevRarityInfo.TileImages.HoverRarityTile.Value
 				--previousEquipmentTile.PressedImage = prevRarityInfo.TileImages.PressedRarityTile.Value
 			end
 			
-			local tileRarity = tile.Rarity.Value
-			local rarityInfo = game.ReplicatedStorage.GuiElements.RarityColors:FindFirstChild(tileRarity)
+			local rarityInfo = tile.Rarity.Value
 			tile.Image = rarityInfo.TileImages.SelectedRarityTile.Value
 			previousEquipmentTile = tile
 		end
 	end)
-	
-	return found
-end
-
-local function ManageTileAdvancedInsertion(tile, slotNumber, previousTile, tilesPerRow)
-	if (slotNumber-1)%tilesPerRow == 0 then
-		tile.Row.Value = previousTile.Row.Value + 1
-		tile.Column.Value = 0
-	else
-		tile.Row.Value = previousTile.Row.Value
-		tile.Column.Value = previousTile.Column.Value + 1
-	end
-
 end
 
 function ManageTiles(Stat, Menu, Value, Type, AcquiredLocation)
 	--print(Stat,Menu,Value,Type,AcquiredLocation) = Stone,OresMenu,2,Inventory,Mineshaft
+	
+	local rarityInfo
+	if Type ~= "Experience" then
+		local statLocation
+		if Type == "Inventory" then
+			statLocation = game.ReplicatedStorage.ItemLocations:FindFirstChild(AcquiredLocation):FindFirstChild(Stat)
+		else
+			statLocation = game.ReplicatedStorage.Equippable:FindFirstChild(Type):FindFirstChild(AcquiredLocation):FindFirstChild(Stat)
+		end
+		local rarityName = statLocation["GUI Info"].RarityName.Value
+		rarityInfo = game.ReplicatedStorage.GuiElements.RarityColors:FindFirstChild(rarityName)
+	end
+	
+	local newTile = ManageTilePlacement(Menu, Type, rarityInfo)
+	newTile.Active = true
+	newTile.Selectable = true
+	InsertTileInfo(Type, newTile, Stat, Value, AcquiredLocation)
+	
+	--[[
 	local Rarity
 	local Page
 	local SlotCount
@@ -1045,6 +1373,7 @@ function ManageTiles(Stat, Menu, Value, Type, AcquiredLocation)
 			InsertTileInfo(Type, FirstSlot, Stat, Value, nil, AcquiredLocation)
 		end
 	end
+	]]
 end
 
 
@@ -1573,8 +1902,8 @@ UpdateInventory.OnClientEvent:Connect(function(Stat, File, Value, AmountAdded, T
 	end
 	
 	--When levelling-up...
-	--Inventory, on next open, would then display what the player now has access too with their new level
-	--Level-up data could be in Server Storage, grabbed by PlayerStatManager
+	--exp menu is updated with their "roadmap"
+	--if reward, show player they have a reward and where it is awaiting them
 	
 	if Currency == nil then
 		if tonumber(Value) ~= 0 then
