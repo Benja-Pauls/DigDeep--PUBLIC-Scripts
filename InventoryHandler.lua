@@ -219,13 +219,14 @@ function ReadyMenuButtons(Menu)
 						end
 					elseif tostring(ButtonMenu) == "PlayerMenu" then
 						ButtonMenu.EmptyNotifier.Visible = false
+						PageManager.FullBottomDisplay.Visible = false
+						PageManager.PartialBottomDisplay.Visible = false
 						
 						ButtonMenu.QuickViewMenu.Visible = false
 						ButtonMenu.PlayerInfo.Visible = true
 					end
 					
 					if tostring(Menu) == "PlayerMenu" then
-						print("The menu of this menu is the PlayerMenu")
 						Menu.QuickViewMenu.Visible = true
 						Menu.QuickViewMenu.QuickViewMenu.Visible = false
 						Menu.QuickViewMenu.QuickViewPreview.Visible = true
@@ -264,12 +265,23 @@ function ReadyMenuButtons(Menu)
 end
 
 local CurrentTweens = {}
-local function PressGUIButton(button, newPosition, newSize, movetype)
+local function PressGUIButton(button, newPosition, newSize, moveType)
 	if button.Visible == true then
 		if button.Position ~= newPosition and button.Size ~= newSize then
 			
-			if CurrentTweens[tostring(button.Parent) .. tostring(button) .. movetype] then
-				local tween = CurrentTweens[tostring(button.Parent) .. tostring(button) .. movetype]
+			local opposingMoveType
+			if moveType == "neutral" then
+				opposingMoveType = "press"
+			else
+				opposingMoveType = "neutral"
+			end
+			if CurrentTweens[tostring(button.Parent) .. tostring(button) .. opposingMoveType] then
+				local opposingTween = CurrentTweens[tostring(button.Parent) .. tostring(button) .. opposingMoveType]
+				opposingTween:Pause()
+			end
+			
+			if CurrentTweens[tostring(button.Parent) .. tostring(button) .. moveType] then
+				local tween = CurrentTweens[tostring(button.Parent) .. tostring(button) .. moveType]
 				tween:Pause()
 				tween:Play()
 			else
@@ -277,7 +289,7 @@ local function PressGUIButton(button, newPosition, newSize, movetype)
 				local tween = TweenService:Create(button, tweenInfo, {Position = newPosition, Size = newSize})
 				
 				tween:Play()
-				CurrentTweens[tostring(button.Parent) .. tostring(button) .. movetype] = tween
+				CurrentTweens[tostring(button.Parent) .. tostring(button) .. moveType] = tween
 			end
 		end
 	end
@@ -294,15 +306,19 @@ local function SetUpPressableButton(button, scaleChange)
 	local pressSize = UDim2.new(neutralSize.X.Scale, 0, neutralSize.Y.Scale - scaleChange, 0)
 	
 	button.MouseButton1Down:Connect(function()
+		print("press")
 		PressGUIButton(button, pressPosition, pressSize, "press")
 	end)
-	button.Activated:Connect(function()
-		PressGUIButton(button, neutralPosition, neutralSize, "neutral")
-	end)
+	--button.Activated:Connect(function()
+		--print("neutral")
+		--PressGUIButton(button, neutralPosition, neutralSize, "neutral")
+	--end)
 	button.MouseLeave:Connect(function()
+		print("neutral")
 		PressGUIButton(button, neutralPosition, neutralSize, "neutral")
 	end)
 	button.MouseButton1Up:Connect(function()
+		print("neutral")
 		PressGUIButton(button, neutralPosition, neutralSize, "neutral")
 	end)
 end
@@ -811,7 +827,7 @@ local function ManageTilePlacement(Menu, Type, rarityInfo)
 	newTile.TruePosition.Value = TruePosition
 	newTile.Parent = Page
 	
-	print("*****", Type, newTile, "'s final values are TruePosition: ", TruePosition, " and PageSlotCount: ", PageSlotCount, " in ", Page)
+	--print("*****", Type, newTile, "'s final values are TruePosition: ", TruePosition, " and PageSlotCount: ", PageSlotCount, " in ", Page)
 	
 	--Position tile with new-found info
 	ManageTileTruePosition(Menu, Page, newTile, TruePosition, maxTileAmount, 1, Type)
@@ -1010,7 +1026,6 @@ function ManageTileTruePosition(Menu, Page, affectingTile, TruePosition, maxTile
 								local truePositionValue = GetTileTruePosition(Page, PageSlotCount, maxTileAmount)
 								tile.TruePosition.Value = truePositionValue
 								
-								print("Type: ", Type)
 								if Type == "Experience" or Type == "Research" then --straight down insertion
 									if Type == "Experience" then
 										tile.Position = UDim2.new(0.028,0,0.037+((PageSlotCount)*0.24),0)
