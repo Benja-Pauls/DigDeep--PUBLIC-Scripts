@@ -24,7 +24,7 @@ local Character = game.Workspace.Players:WaitForChild(tostring(Player))
 local DefaultWalkSpeed = Character.Humanoid.WalkSpeed
 local DefaultJumpPower = Character.Humanoid.JumpPower
 
-local TextAnimate = require(game.ReplicatedStorage:WaitForChild("TextAnimate"))
+local GuiUtility = require(game.ReplicatedStorage:WaitForChild("GuiUtility"))
 local SoundEffects = require(game.ReplicatedStorage:WaitForChild("SoundEffects"))
 
 ----------------------<|Utility|>--------------------------------------------------------------------------------------------------------------
@@ -510,7 +510,7 @@ local function ShowNPCDialogue(npcData, SetResponse, Index, MissingFunds)
 	--NPCDialogue.Text = Message
 	
 	coroutine.resume(coroutine.create(function()
-		TextAnimate.typeWrite(NPCDialogue, Message, 0.045)
+		GuiUtility.typeWrite(NPCDialogue, Message, 0.045)
 	end))
 	
 	for i = 1,CharacterCount/math.sqrt(2),1 do
