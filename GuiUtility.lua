@@ -17,6 +17,8 @@ function GuiUtility.typeWrite(guiObject, text, delayBetweenChars)
 	end
 end
 
+-----------<|Exclusively Calculations|>------------------------------------
+
 function GuiUtility.ConvertShort(Filter_Num) --this function is also in PlayerStatManager for server
 	local x = tostring(Filter_Num)
 	
@@ -34,11 +36,18 @@ function GuiUtility.ConvertShort(Filter_Num) --this function is also in PlayerSt
 	end
 end
 
+function GuiUtility.SlotCountToXY(PageSlotCount, tilesPerRow)
+	local tileNumber = PageSlotCount
+	local rowValue = math.floor(tileNumber / tilesPerRow)
+	local columnValue = (PageSlotCount % (tilesPerRow))
+	return columnValue, rowValue
+end
+
 -------------<|Menu Display Functions|>------------------------------------------------
 
 function GuiUtility.Display3DModels(Player, viewport, displayModel, bool, displayAngle)
 	--possibly clear all viewports once menu is closed? (or once viewport is not visible?)
-	print("Display3DModels: ", Player, viewport, displayModel, bool, displayAngle)
+	--print("Display3DModels: ", Player, viewport, displayModel, bool, displayAngle)
 	if bool == true then
 		GuiUtility.Display3DModels(Player, viewport, displayModel:Clone(), false) --reset current viewPort
 
