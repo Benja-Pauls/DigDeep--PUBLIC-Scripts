@@ -187,8 +187,6 @@ function ReadyMenuButtons(Menu)
 				end
 				
 				button.Activated:Connect(function()
-					print(button,Menu,ButtonMenu, " has been activated")
-					
 					--Reset new item notifiers
 					if button:FindFirstChild("NewItem") then
 						button.NewItem.Value = false
@@ -214,7 +212,6 @@ function ReadyMenuButtons(Menu)
 					--Possibly make this ~= "PlayerMenu" since the PlayerMenu is the only menu that has a "main menu"
 					--that doesn't auto select a menu to look at immediately like the inventory, exp, and journal
 					if tostring(ButtonMenu) == "InventoryMenu" then
-						print("ButtonMenu == InventoryMenu")
 						ButtonMenu.EmptyNotifier.Visible = false
 						
 						local MaterialsMenu = ButtonMenu.MaterialsMenu
@@ -237,7 +234,6 @@ function ReadyMenuButtons(Menu)
 							ButtonMenu.EmptyNotifier.Visible = true
 						end
 					elseif tostring(ButtonMenu) == "PlayerMenu" then
-						print("ButtonMenu == PlayerMenu")
 						ButtonMenu.EmptyNotifier.Visible = false
 						PageManager.FullBottomDisplay.Visible = false
 						PageManager.PartialBottomDisplay.Visible = false
@@ -250,7 +246,6 @@ function ReadyMenuButtons(Menu)
 					--to act like with this code
 					
 					if tostring(Menu) == "PlayerMenu" then
-						print("Menu == PlayerMenu")
 						Menu.QuickViewMenu.Visible = true
 						Menu.QuickViewMenu.QuickViewMenu.Visible = false
 						Menu.QuickViewMenu.QuickViewPreview.Visible = true
@@ -334,7 +329,6 @@ local function SetUpPressableButton(button, scaleChange)
 	button.MouseButton1Up:Connect(function()
 		PressGUIButton(button, neutralPosition, neutralSize, "neutral")
 	end)
-	print(button, " has been properly set up to tween when clicked")
 end
 
 GuiUtility.Reset3DObject(Player, PlayerViewport, PlayerModel, 178)
@@ -629,27 +623,27 @@ local function SeekSlotAvailability(Menu, Type, checkedPageNumber, rarityName, m
 	return Page,TruePosition,PageSlotCount
 end
 
-local function FindNearbyRarity(Menu, rarityInfo, orderValue, Direction)
-	local checkedRarityName
-	for i,rarity in pairs (rarityInfo.Parent:GetChildren()) do
-		if rarity:IsA("Color3Value") and checkedRarityName == nil then
-			if rarity.Order.Value == orderValue + Direction then
-				checkedRarityName = rarity.Name
+local function FindNearbyRarity(Menu, rarityInfo, orderValue, direction)
+	if orderValue + direction ~= 0 and orderValue + direction < #rarityInfo.Parent:GetChildren() then
+		local checkedRarityName
+		for i,rarity in pairs (rarityInfo.Parent:GetChildren()) do
+			if rarity:IsA("Color3Value") and checkedRarityName == nil then
+				if rarity.Order.Value == orderValue + direction then
+					checkedRarityName = rarity.Name
+				end
 			end
 		end
-	end
 
-	local highPage = GetHighPage(Menu, checkedRarityName)
-	--print("44444444444444 Checking if ", checkedRarityName, " is in ", Menu, " rarity high page is ", highPage)
+		local highPage = GetHighPage(Menu, checkedRarityName)
+		--print("44444444444444 Checking if ", checkedRarityName, " is in ", Menu, " rarity high page is ", highPage)
 
-	if highPage ~= 0 then --Page found with seeked rarity
-		return highPage,checkedRarityName
-	else --Not found, continue searching lower/higher rarities
-		if orderValue ~= 0 or orderValue ~= GetHighPage(Menu) then
-			return FindNearbyRarity(Menu, rarityInfo, orderValue + Direction, Direction)
-		else
-			return nil
+		if highPage ~= 0 then --Page found with seeked rarity
+			return highPage, checkedRarityName
+		else --Not found, continue searching lower/higher rarities
+			return FindNearbyRarity(Menu, rarityInfo, orderValue + direction, direction)
 		end
+	else
+		return nil	
 	end
 end
 
@@ -870,7 +864,7 @@ local function GetTileSlotCount(Page, tileTruePosition, affectingTile, Change)
 	return PageSlotCount
 end
 
-local function ConvertPageSlotCount(PageSlotCount, tilesPerRow)
+local function SlotCountToXY(PageSlotCount, tilesPerRow)
 	local tileNumber = PageSlotCount
 	local rowValue = math.floor(tileNumber / tilesPerRow)
 	local columnValue = (PageSlotCount % (tilesPerRow))
@@ -943,12 +937,12 @@ function ManageTileTruePosition(Menu, Page, affectingTile, TruePosition, maxTile
 								else --2D insertion (Inventory & Equipment)
 									if Type == "Inventory" then	
 										local tilesPerRow = 6
-										local columnValue, rowValue = ConvertPageSlotCount(PageSlotCount, tilesPerRow)
+										local columnValue, rowValue = SlotCountToXY(PageSlotCount, tilesPerRow)
 										tile.Position = UDim2.new(0.018+0.164*columnValue, 0, 0.028+0.29*rowValue, 0)
 										tile.Size = UDim2.new(0.142, 0, 0.259, 0)
 									else
 										local tilesPerRow = 4
-										local columnValue, rowValue = ConvertPageSlotCount(PageSlotCount, tilesPerRow)
+										local columnValue, rowValue = SlotCountToXY(PageSlotCount, tilesPerRow)
 										tile.Position = UDim2.new(0.043+.239*columnValue, 0, 0.028+0.29*rowValue, 0)
 										tile.Size = UDim2.new(0.208, 0, 0.258, 0)
 									end
@@ -986,8 +980,7 @@ end)
 local QuickViewMenu = DataMenu.PlayerMenu.QuickViewMenu.QuickViewMenu
 local function ManageEquipButton(CurrentlyEquipped, Stat, Equip)
 	local EquipButton = QuickViewMenu.EquipButton
-	
-	print("managing equip button")
+
 	if Equip == true or (Stat and CurrentlyEquipped == tostring(Stat)) then
 		--"Unequip"
 		EquipButton.Image = "rbxassetid://6892832163"
@@ -1680,7 +1673,6 @@ local function HideRemainingStatDisplays()
 end
 
 function ManageStatBars(ItemStats)
-	print("manage stat bars for ", ItemStats)
 	for i,statDisplay in pairs (QuickViewMenu.StatDisplays:GetChildren()) do
 		if statDisplay:FindFirstChild("Utilized") then
 			statDisplay.Utilized.Value = false
