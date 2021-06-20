@@ -261,15 +261,17 @@ function ManageSellMenu(bool)
 end
 
 function OpenAffiliatedItemPreview(MenuName)
+	print("Opening affiliated Item preview")
 	if StorageMenu.ItemsPreview:FindFirstChild(MenuName) then
 		SelectionMenu.Visible = true
 		ItemsPreview.Visible = true
 		
-		SelectionMenu.SelectItem.Active = true
-		SelectionMenu.NextItem.Active = true
-		SelectionMenu.PreviousItem.Active = true
-		SelectionMenu.NextRarity.Active = true
-		SelectionMenu.PrevRarity.Active = true
+		for i,button in pairs (SelectionMenu:GetChildren()) do
+			if button:IsA("ImageButton") and string.find(button.Name, "Item") or string.find(button.Name, "Rarity") then
+				button.Active = true
+				button.Selectable = true
+			end
+		end
 		
 		for i,menu in pairs (ItemsPreview:GetChildren()) do
 			if menu:IsA("Frame") then
@@ -287,8 +289,8 @@ end
 
 ------------------------<|Current Selection Info|>-------------------------------------
 
-local CurrentTile
 local function UpdateSelectionInfo(Page, tile)
+	print("Updating selection info")
 	local Menu = Page.Parent
 	local ItemInformation = FindItemInfo(tile.ItemName.Value, tostring(Menu))
 	local Discovered = tile.Discovered.Value
@@ -298,14 +300,16 @@ local function UpdateSelectionInfo(Page, tile)
 	SelectionMenu.UnitPrice.Visible = Discovered
 	SelectionMenu.Hint.Visible = not Discovered
 	
-	if CurrentTile ~= nil then --Unhighlight previous tile
-		CurrentTile.BorderSizePixel = 1
+	if SelectionMenu.CurrentSelection.Value ~= tile then --Unhighlight previous tile
+		SelectionMenu.CurrentSelection.Value.BorderSizePixel = 1
+		local rarityInfo = SelectionMenu.CurrentSelection.Value.Parent.Rarity.Value
+		SelectionMenu.CurrentSelection.Value.BorderColor3 = rarityInfo.Value
 	end
+	
 	tile.BorderSizePixel = 2 --Change now selected tile to
 	tile.BorderColor3 = Color3.fromRGB(255, 255, 255)
-	SelectionMenu.CurrentRarity.Value = rarityName
+	SelectionMenu.CurrentPage.Value = Page
 	SelectionMenu.CurrentSelection.Value = tile
-	CurrentTile = tile
 	
 	--Rarity Coloring
 	if SelectionMenu.RarityDisplay.CurrentRarity.Text ~= rarityName then
@@ -396,6 +400,7 @@ end
 
 local CurrentMenu
 function ReadyItemTypeMenu(Menu)
+	print("ready item type menu")
 	CurrentMenu = Menu
 	
 	for i,page in pairs (Menu:GetChildren()) do
@@ -407,34 +412,30 @@ function ReadyItemTypeMenu(Menu)
 			end
 		end
 	end
-	
-	for i,tile in pairs (Menu.Page1:GetChildren()) do
-		if (tile:IsA("TextButton") or tile:IsA("ImageButton")) and string.find(tile.Name, "Slot") then
-			local tileNumber = string.gsub(tile.Name, "Slot", "")
-			if tileNumber == "1" then --Select first common item (for first menu open, tiles never switched yet)
-				local discovered = tile.Discovered.Value
-				local itemInfo = FindItemInfo(tostring(tile), tostring(Menu))
 
-				SelectionMenu.CurrentSelection.Value = tile
-				SelectionMenu.CurrentRarity.Value = "Common"
-				SelectionMenu.UnitPrice.Visible = discovered
-				SelectionMenu.Hint.Visible = not discovered
+	if Menu.Page1.Slot1 then
+		local tile = Menu.Page1.Slot1
+		local discovered = tile.Discovered.Value
+		local itemInfo = FindItemInfo(tostring(tile), tostring(Menu))
+		
+		SelectionMenu.CurrentSelection.Value = tile
+		SelectionMenu.CurrentPage.Value = Menu.Page1
+		SelectionMenu.UnitPrice.Visible = discovered
+		SelectionMenu.Hint.Visible = not discovered
 
-				if itemInfo then
-					UpdateSelectionInfo(Menu.Common, tile)
-				end
-			end
+		if itemInfo then
+			UpdateSelectionInfo(Menu.Page1, tile)
 		end
 	end
 end
 
 --CurrentMenu = "Materials"
 SelectionMenu.NextItem.Activated:Connect(function()
-	MoveToTile(CurrentMenu, 1)
+	MoveToTile(CurrentMenu, 1, 1)
 end)
 
 SelectionMenu.PreviousItem.Activated:Connect(function()
-	MoveToTile(CurrentMenu, -1)
+	MoveToTile(CurrentMenu, -1, -1)
 end)
 
 SelectionMenu.NextRarity.Activated:Connect(function()
@@ -499,7 +500,7 @@ SelectionMenu.SelectItem.Activated:Connect(function()
 end)
 
 local function ChangeToTileInMenu(Page, seekedTileSlot)
-	local newTile
+	--local newTile
 	if seekedTileSlot == -1 then --last tile of page
 		local pageTileCount = 0
 		for i,tile in pairs (Page:GetChildren()) do
@@ -507,79 +508,101 @@ local function ChangeToTileInMenu(Page, seekedTileSlot)
 				 pageTileCount += 1
 			end
 		end
-		seekedTileSlot = pageTileCount
+		seekedTileSlot = pageTileCount --last tile of page
 	end
 	
+	local tileNotFound = true
 	for i,tile in pairs (Page:GetChildren()) do
-		if (tile:IsA("TextButton") or tile:IsA("ImageButton")) and string.find(tile.Name, "Slot") then
-			local tileSlotCount = string.gsub(tile.Name, "Slot", "")
-			if tonumber(tileSlotCount) == seekedTileSlot then
-				UpdateSelectionInfo(Page, tile)
+		if tileNotFound then
+			if (tile:IsA("TextButton") or tile:IsA("ImageButton")) and string.find(tile.Name, "Slot") then
+				local tileSlotCount = string.gsub(tile.Name, "Slot", "")
+				if tonumber(tileSlotCount) == seekedTileSlot then
+					tileNotFound = false
+					UpdateSelectionInfo(Page, tile)
+					
+					--local prevTile = SelectionMenu.CurrentSelection.Value
+					--local prevTileRarity = prevTile
+					--SelectionMenu.CurrentSelection.Value = tile
+					--SelectionMenu.CurrentPage.Value = Page
+				end
 			end
 		end
 	end
 end
 
+local moveDebounce = false
 function MoveToTile(Menu, tileDirection, rarityDirection)
 	--amount is for tile change direction
 	--RaritySkip is rarity change direction
 	
 	if SelectionMenu.Visible == true then
-		local currentTile = SelectionMenu.CurrentSelection.Value
-		local tileNumber = string.gsub(currentTile.Name, "Slot", "")
-		tileNumber = tonumber(tileNumber)
-		
-		local currentPage = currentTile.Parent
-		local pageNumber = string.gsub(currentPage.Name, "Page", "")
-		pageNumber = tonumber(pageNumber)
-
-		--Tile Count on page
-		local pageTileCount = 0
-		for i,tile in pairs (currentPage:GetChildren()) do
-			if tile:IsA("TextButton") then
-				pageTileCount += 1
-			end
-		end
-
-		local pageCount = GetHighPage(Menu)
-		
-		local currentPage = Menu:FindFirstChild("Page" .. tostring(pageCount))
-		local changedToPage
-		if tileDirection then --change tile selection
-			if tileNumber + tileDirection > pageTileCount or tileNumber + tileDirection <= 0 then			
-				if pageNumber + tileDirection > pageCount then 
-					changedToPage = Menu.Page1
-					ChangeToTileInMenu(Menu.Page1, 1) --Moving to start of first page
-				elseif pageNumber + tileDirection <= 0 then
-					changedToPage = Menu:FindFirstChild("Page" .. tostring(pageCount))
-					ChangeToTileInMenu(Menu:FindFirstChild("Page" .. tostring(pageCount)), 0)--Moving to end of last page
-				else
-					changedToPage = Menu:FindFirstChild("Page" .. tostring(pageNumber + tileDirection))
-					ChangeToTileInMenu(changedToPage, tileDirection)
-				end
-			else --Move to next/prev tile
-				ChangeToTileInMenu(currentPage, tileNumber + tileDirection)
-			end
-		elseif rarityDirection then
-			if pageNumber + rarityDirection > pageCount or pageNumber + rarityDirection <= 0 then
-				if rarityDirection == 1 then
-					changedToPage = Menu.Page1
-					ChangeToTileInMenu(Menu.Page1, 1) --Moving to first page
-				else
-					changedToPage = Menu:FindFirstChild("Page" .. tostring(pageCount))
-					ChangeToTileInMenu(Menu:FindFirstChild("Page" .. tostring(pageCount)), 1) --Moving to last page
-				end
-			else --Move to next/prev page
-				changedToPage = Menu:FindFirstChild("Page" .. tostring(pageNumber + rarityDirection))
-				ChangeToTileInMenu(Menu:FindFirstChild("Page" .. tostring(pageNumber + rarityDirection)), 1)
-			end
-		end
-		
-		if changedToPage then
-			currentPage.Visible = false
-			changedToPage.Visible = true
+		if moveDebounce == false then
 			
-			--*****do a tween effect depending on the direction of the change
+			local currentTile = SelectionMenu.CurrentSelection.Value
+			local tileNumber = string.gsub(currentTile.Name, "Slot", "")
+			tileNumber = tonumber(tileNumber)
+			
+			local currentPage = SelectionMenu.CurrentPage.Value
+			local pageNumber = string.gsub(currentPage.Name, "Page", "")
+			pageNumber = tonumber(pageNumber)
+
+			--Tile Count on page
+			local pageTileCount = 0
+			for i,tile in pairs (currentPage:GetChildren()) do
+				if tile:IsA("TextButton") then
+					pageTileCount += 1
+				end
+			end
+
+			local pageCount = GetHighPage(Menu)
+			
+			local changedToPage
+			if tileDirection then --change tile selection
+				if tileNumber + tileDirection > pageTileCount or tileNumber + tileDirection <= 0 then			
+					if pageNumber + tileDirection > pageCount then 
+						changedToPage = Menu.Page1
+						ChangeToTileInMenu(Menu.Page1, 1) --Moving to start of first page
+					elseif pageNumber + tileDirection <= 0 then
+						changedToPage = Menu:FindFirstChild("Page" .. tostring(pageCount))
+						ChangeToTileInMenu(Menu:FindFirstChild("Page" .. tostring(pageCount)), 0)--Moving to end of last page
+					else
+						changedToPage = Menu:FindFirstChild("Page" .. tostring(pageNumber + tileDirection))
+						ChangeToTileInMenu(changedToPage, tileDirection)
+					end
+				else --Move to next/prev tile
+					ChangeToTileInMenu(currentPage, tileNumber + tileDirection)
+				end
+			elseif rarityDirection then
+				if pageCount > 1 then
+					if pageNumber + rarityDirection > pageCount or pageNumber + rarityDirection == 0 then
+						if rarityDirection == 1 then
+							changedToPage = Menu.Page1
+							ChangeToTileInMenu(Menu.Page1, 1) --Moving to first page
+						else
+							changedToPage = Menu:FindFirstChild("Page" .. tostring(pageCount))
+							ChangeToTileInMenu(Menu:FindFirstChild("Page" .. tostring(pageCount)), 1) --Moving to last page
+						end
+					else --Move to next/prev page
+						changedToPage = Menu:FindFirstChild("Page" .. tostring(pageNumber + rarityDirection))
+						ChangeToTileInMenu(Menu:FindFirstChild("Page" .. tostring(pageNumber + rarityDirection)), 1)
+					end
+				else
+					--Bounce Effect
+					moveDebounce = true
+					Menu.Page1:TweenPosition(UDim2.new(0,0,0.03*rarityDirection,0), "Out", "Quint", .1)
+					wait(.1)
+					Menu.Page1:TweenPosition(UDim2.new(0,0,0,0), "Out" , "Bounce", .25)
+					wait(.25)
+					moveDebounce = false
+				end
+			end
+			
+			if changedToPage then
+				moveDebounce = true
+				changedToPage.Position = UDim2.new(0, 0, rarityDirection, 0)
+				currentPage:TweenPosition(UDim2.new(0, 0, -rarityDirection, 0), "Out", "Quint", 0.5)
+				moveDebounce = GuiUtility.CommitPageChange(changedToPage, 0.5)
+			end
 		end
 	end
 end
@@ -785,6 +808,8 @@ function ManageStorageTiles(MenuName)
 				newTile.Parent = Page
 				newTile.Name = "Slot" .. tostring(slotCount + 1)
 				newTile.ItemName.Value = tostring(item)
+				local rarityInfo = newTile.Parent.Rarity.Value
+				newTile.BorderColor3 = rarityInfo.Value
 				
 				local columnValue, rowValue = GuiUtility.SlotCountToXY(slotCount, tilesPerRow)
 				newTile.Position = UDim2.new(0.021+0.204*columnValue, 0, 0.153+0.176*rowValue, 0)
@@ -1782,7 +1807,7 @@ end)
 
 ComputerScreen.Taskbar.Shutdown.Activated:Connect(function()
 	SelectionMenu.CurrentSelection.Value = nil
-	SelectionMenu.CurrentRarity.Value = ""
+	SelectionMenu.CurrentPage.Value = nil
 
 	--Move "back button" back
 	ShutDownComputer()
