@@ -153,8 +153,6 @@ end)
 local ItemViewerMenu = DataMenu.ItemViewer
 ItemViewerMenu.ItemViewerClosed.Value = true
 
-local PageDebounce = false
-
 local function EnableOnlyButtonMenu(buttonMenu, bool)
 	for i,button in pairs (buttonMenu:GetDescendants()) do
 		if button:IsA("ImageButton") or button:IsA("TextButton") then
@@ -165,6 +163,7 @@ local function EnableOnlyButtonMenu(buttonMenu, bool)
 end
 
 local ButtonPresses = {}
+local pageDebounce = false
 local MenuAcceptance = true
 function ReadyMenuButtons(Menu)
 	
@@ -228,7 +227,8 @@ function ReadyMenuButtons(Menu)
 							PageManager.FullBottomDisplay.Visible = true
 							PageManager.PartialBottomDisplay.Visible = false
 							if MaterialsMenu:FindFirstChild("Page1") then
-								CommitPageChange(MaterialsMenu.Page1)
+								pageDebounce = true
+								pageDebounce = GuiUtility.CommitPageChange(MaterialsMenu.Page1, 0.25)
 							end
 						else
 							ButtonMenu.EmptyNotifier.Visible = true
@@ -257,7 +257,8 @@ function ReadyMenuButtons(Menu)
 							PageManager.FullBottomDisplay.Visible = false
 							PageManager.PartialBottomDisplay.Visible = true
 							if ButtonMenu:FindFirstChild("Page1") then
-								CommitPageChange(ButtonMenu.Page1)
+								pageDebounce = true
+								pageDebounce = GuiUtility.CommitPageChange(ButtonMenu.Page1, 0.25)
 							end
 						else
 							DataMenu.PlayerMenu.EmptyNotifier.Visible = true
@@ -439,20 +440,6 @@ end
 
 --------------<|PageManager Functions|>---------------------------------------------------------------------------------
 
-function ManagePageInvis(VisiblePage) --Use this in more places than page management?
-	for i,page in pairs (VisiblePage.Parent:GetChildren()) do
-		if page:IsA("Frame") then
-			if page ~= VisiblePage then
-				page.Visible = false
-			else
-				page.Visible = true
-			end
-		end
-	end
-	VisiblePage.ZIndex -= 1
-	PageDebounce = false
-end
-
 local function CompareHighPage(page, HighPage)
 	local pageNumber = string.gsub(page.Name, "Page", "")
 	if tonumber(pageNumber) > HighPage then
@@ -492,18 +479,30 @@ function GetHighPage(Menu, rarityName) --Find page for rarity tile OR max page c
 	return highPage
 end
 
+--[[
 function CommitPageChange(Page)
-	PageDebounce = true
-
 	Page.ZIndex += 1
 	Page.Visible = true
 	Page:TweenPosition(UDim2.new(0,0,0,0), "Out", "Quint", .25)
 	wait(.25)
-	ManagePageInvis(Page)
+	
+	--Manage Page Invisibility
+	for i,page in pairs (Page.Parent:GetChildren()) do
+		if page:IsA("Frame") then
+			if page ~= Page then
+				page.Visible = false
+			else
+				page.Visible = true
+			end
+		end
+	end
+	Page.ZIndex -= 1
+	PageDebounce = false
 end
+]]
 
 local function StartPageChange(pageChange)
-	if PageDebounce == false then
+	if pageDebounce == false then
 		local HighPage = GetHighPage(PageManager.Menu.Value)
 		local Menu = PageManager.Menu.Value
 		
@@ -531,15 +530,16 @@ local function StartPageChange(pageChange)
 				PageManager.CurrentPage.Value = PageManager.CurrentPage.Value + pageChange
 			end
 			
+			pageDebounce = true
 			NewPage.Position = UDim2.new(pageChange,0,0,0)
-			CommitPageChange(NewPage)
+			pageDebounce = GuiUtility.CommitPageChange(NewPage, 0.25)
 		else --Bounce Effect (no other pages)
-			PageDebounce = true
-			Menu:FindFirstChild("Page1"):TweenPosition(UDim2.new(.03*pageChange,0,0,0), "Out", "Quint", .1)
+			pageDebounce = true
+			Menu.Page1:TweenPosition(UDim2.new(.03*pageChange,0,0,0), "Out", "Quint", .1)
 			wait(.1)
-			Menu:FindFirstChild("Page1"):TweenPosition(UDim2.new(0,0,0,0), "Out" , "Bounce", .25)
+			Menu.Page1:TweenPosition(UDim2.new(0,0,0,0), "Out" , "Bounce", .25)
 			wait(.25)
-			PageDebounce = false
+			pageDebounce = false
 		end
 	end
 end
