@@ -127,7 +127,29 @@ end
 
 
 
+---------------<|Page Manager Functions|>--------------------
 
+function GuiUtility.CommitPageChange(changedToPage, delayAmount)
+	changedToPage.ZIndex += 1
+	changedToPage.Visible = true
+	changedToPage:TweenPosition(UDim2.new(0,0,0,0), "Out", "Quint", delayAmount)
+	wait(.25)
+
+	--Manage Page Invisibility
+	for i,page in pairs (changedToPage.Parent:GetChildren()) do
+		if page:IsA("Frame") then
+			if page ~= changedToPage then
+				page.Visible = false
+			else
+				page.Visible = true
+			end
+			page.Position = UDim2.new(0, 0, 0, 0)
+		end
+	end
+	changedToPage.ZIndex -= 1
+	
+	return false
+end
 
 
 
