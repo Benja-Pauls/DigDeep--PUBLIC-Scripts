@@ -17,6 +17,16 @@ function GuiUtility.typeWrite(guiObject, text, delayBetweenChars)
 	end
 end
 
+function GuiUtility.ManageSearchVisual(searchInput)
+	searchInput.Text = "Search..."
+	searchInput.Focused:Connect(function()
+		searchInput.Text = ""
+	end)
+	searchInput.FocusLost:Connect(function()
+		searchInput.Text = "Search..."
+	end)
+end
+
 -----------<|Exclusively Calculations|>------------------------------------
 
 function GuiUtility.ConvertShort(Filter_Num) --this function is also in PlayerStatManager for server
@@ -122,6 +132,19 @@ function GuiUtility.Reset3DObject(Player, viewport, displayModel, angle)
 	end)
 end
 
+function GuiUtility.ManageTextBoxSize(frame, inputText, charactersPerRow, rowSize)
+	local characterAmount = string.len(inputText)
+	local rowCount = characterAmount/charactersPerRow
+
+	if rowCount < 1 then
+		rowCount = 1
+	--else
+		--rowCount = math.ceil(rowCount)
+	end
+
+	frame.Size = UDim2.new(frame.Size.X.Scale, 0, rowSize * rowCount, 0)
+end
+
 
 
 
@@ -151,7 +174,9 @@ function GuiUtility.CommitPageChange(changedToPage, delayAmount)
 	return false
 end
 
-
+function GuiUtility.ManageTilePlacement()
+	
+end
 
 
 
@@ -160,4 +185,3 @@ end
 
 
 return GuiUtility
-
