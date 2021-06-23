@@ -95,8 +95,10 @@ OpenDataMenuButton.Activated:Connect(function()
 		--CheckForNewItems()
 		
 		DataMenu.PlayerMenu.Visible = true
-		DataMenu:TweenPosition(UDim2.new(0.159, 0, 0.173, 0), "Out", "Quint", .5)
-		wait(.5)
+		DataMenu:TweenPosition(UDim2.new(0.159, 0, 0.173, 0), "Out", "Quint", 0.5)
+		wait(0.5)
+		
+		--
 		
 		--Manage Tabs
 		if InventoryOpens == 0 then
@@ -105,6 +107,20 @@ OpenDataMenuButton.Activated:Connect(function()
 			ReadyMenuButtons(DataMenu)
 			ReadyMenuButtons(DataMenu.PlayerMenu) --Prep menu buttons on default screen
 		else
+			--Reset Tab Selection
+			for i,tab in pairs (MenuTabs) do
+				if tab.Name == "PlayerMenuButton" then
+					local playerMenuButton = DataMenu.PlayerMenuButton
+					local tabWidth = playerMenuButton.Size.X.Scale
+					local newSelectPos = math.abs(tabWidth - tsWidth)/2 + playerMenuButton.Position.X.Scale
+					tabSelection.Position = UDim2.new(newSelectPos, 0, 0.888, 0)
+					playerMenuButton.Image = playerMenuButton.SelectedImage.Value
+					playerMenuButton.Active = true
+				else
+					tab.Image = tab.StaticImage.Value
+				end
+			end
+			
 			CleanupMenuTabs(DataMenu)
 		end
 		
@@ -115,8 +131,8 @@ OpenDataMenuButton.Activated:Connect(function()
 		
 	elseif DataMenu.Visible == true then
 		OpenDataMenuButton.Active = false
-		DataMenu:TweenPosition(UDim2.new(0.159, 0, -0.8, 0), "Out", "Quint", .5)
-		wait(.5)
+		DataMenu:TweenPosition(UDim2.new(0.159, 0, -0.8, 0), "Out", "Quint", 0.5)
+		wait(0.5)
 		DataMenu.Visible = false
 		DataMenu.Position = UDim2.new(0.159, 0, 0.141, 0)
 		PageManager.Visible = false
@@ -151,6 +167,8 @@ end)
 
 --------------<|Utility Functions|>-----------------------------------------------------------------------------
 local ItemViewerMenu = DataMenu.ItemViewer
+local inventoryQuickViewMenu = DataMenu.InventoryMenu.QuickViewMenu.QuickViewMenu
+local equipmentQuickViewMenu = DataMenu.PlayerMenu.QuickViewMenu.QuickViewMenu
 ItemViewerMenu.ItemViewerClosed.Value = true
 
 local function EnableOnlyButtonMenu(buttonMenu, bool)
@@ -158,6 +176,19 @@ local function EnableOnlyButtonMenu(buttonMenu, bool)
 		if button:IsA("ImageButton") or button:IsA("TextButton") then
 			button.Active = bool
 			button.Selectable = bool
+		end
+	end
+end
+
+local function ResetRarityTiles(Menu)
+	for i,page in pairs (Menu:GetChildren()) do
+		if page:IsA("Frame") and string.find(page.Name, "Page") then
+			for i,tile in pairs (page:GetChildren()) do
+				if tile:IsA("ImageButton") and string.find(tile.Name, "Slot") then
+					local rarityInfo = tile.Rarity.Value
+					tile.Image = rarityInfo.TileImages.StaticRarityTile.Value
+				end
+			end
 		end
 	end
 end
@@ -220,12 +251,14 @@ function ReadyMenuButtons(Menu)
 						ButtonMenu.SelectedBagInfo.BagType.Text = string.gsub(tostring(ButtonMenu), "Menu", "")
 						ButtonMenu.SelectedBagInfo.Visible = true
 						
+						ResetRarityTiles(ButtonMenu.MaterialsMenu)
+						
 						PageManager.Menu.Value = MaterialsMenu
 						local PageCount = GetHighPage(MaterialsMenu)
 						if PageCount > 0 then
 							PageManager.Visible = true
-							PageManager.FullBottomDisplay.Visible = true
-							PageManager.PartialBottomDisplay.Visible = false
+							--PageManager.FullBottomDisplay.Visible = true
+							PageManager.PartialBottomDisplay.Visible = true
 							if MaterialsMenu:FindFirstChild("Page1") then
 								pageDebounce = true
 								pageDebounce = GuiUtility.CommitPageChange(MaterialsMenu.Page1, 0.25)
@@ -233,6 +266,9 @@ function ReadyMenuButtons(Menu)
 						else
 							ButtonMenu.EmptyNotifier.Visible = true
 						end
+
+						inventoryQuickViewMenu.Visible = false
+						ButtonMenu.QuickViewMenu.QuickViewPreview.Visible = true
 					elseif tostring(ButtonMenu) == "PlayerMenu" then
 						ButtonMenu.EmptyNotifier.Visible = false
 						PageManager.FullBottomDisplay.Visible = false
@@ -249,8 +285,11 @@ function ReadyMenuButtons(Menu)
 						Menu.QuickViewMenu.Visible = true
 						Menu.QuickViewMenu.QuickViewMenu.Visible = false
 						Menu.QuickViewMenu.QuickViewPreview.Visible = true
-						PageManager.Menu.Value = ButtonMenu
 						
+						print("Menu == PlayerMenu", ButtonMenu)
+						ResetRarityTiles(ButtonMenu)
+						
+						PageManager.Menu.Value = ButtonMenu
 						local PageCount = GetHighPage(ButtonMenu)
 						if PageCount > 0 then
 							PageManager.Visible = true
@@ -334,7 +373,8 @@ end
 
 GuiUtility.Reset3DObject(Player, PlayerViewport, PlayerModel, 178)
 GuiUtility.Reset3DObject(Player, DataMenu.ItemViewer.ItemImage)
-GuiUtility.Reset3DObject(Player, DataMenu.PlayerMenu.QuickViewMenu.QuickViewMenu.ItemImage)
+GuiUtility.Reset3DObject(Player, equipmentQuickViewMenu.ItemImage)
+GuiUtility.Reset3DObject(Player, inventoryQuickViewMenu.ItemImage)
 
 function CleanupMenuTabs(Menu)
 	--Prep Default Menu
@@ -667,12 +707,10 @@ local function ManageTilePlacement(Menu, Type, rarityInfo)
 	if rarityInfo then 
 		rarityName = rarityInfo.Name
 		
-		if Type == "Inventory" then
-			maxTileAmount = 18
-		elseif Type == "Research" then
+		if Type == "Research" then
 			maxTileAmount = 5
 		else
-			maxTileAmount = 12
+			maxTileAmount = 12 --Inventory was 18
 		end
 	else --Experience Tiles (& later research tiles as well)
 		rarityName = "No Rarity"
@@ -935,17 +973,17 @@ function ManageTileTruePosition(Menu, Page, affectingTile, TruePosition, maxTile
 										tile.Size = UDim2.new(0.9, 0, 0.14, 0)
 									end
 								else --2D insertion (Inventory & Equipment)
-									if Type == "Inventory" then	
-										local tilesPerRow = 6
-										local columnValue, rowValue = SlotCountToXY(PageSlotCount, tilesPerRow)
-										tile.Position = UDim2.new(0.018+0.164*columnValue, 0, 0.028+0.29*rowValue, 0)
-										tile.Size = UDim2.new(0.142, 0, 0.259, 0)
-									else
+									--if Type == "Inventory" then	
+										--local tilesPerRow = 6
+										--local columnValue, rowValue = SlotCountToXY(PageSlotCount, tilesPerRow)
+										--tile.Position = UDim2.new(0.018+0.164*columnValue, 0, 0.028+0.29*rowValue, 0)
+										--tile.Size = UDim2.new(0.142, 0, 0.259, 0)
+									--else
 										local tilesPerRow = 4
 										local columnValue, rowValue = SlotCountToXY(PageSlotCount, tilesPerRow)
 										tile.Position = UDim2.new(0.043+.239*columnValue, 0, 0.028+0.29*rowValue, 0)
 										tile.Size = UDim2.new(0.208, 0, 0.258, 0)
-									end
+									--end
 								end
 							end
 						end
@@ -977,9 +1015,8 @@ end)
 
 --------------<|Tile Functions|>--------------------------------------------------------------------------------------------------------------------
 
-local QuickViewMenu = DataMenu.PlayerMenu.QuickViewMenu.QuickViewMenu
 local function ManageEquipButton(CurrentlyEquipped, Stat, Equip)
-	local EquipButton = QuickViewMenu.EquipButton
+	local EquipButton = equipmentQuickViewMenu.EquipButton
 
 	if Equip == true or (Stat and CurrentlyEquipped == tostring(Stat)) then
 		--"Unequip"
@@ -1004,15 +1041,13 @@ local function InsertItemViewerInfo(StatMenu, Type, Stat, StatInfo, Value, Acqui
 		local RarityName = StatInfo["GUI Info"].RarityName.Value
 		local Rarity = game.ReplicatedStorage.GuiElements.RarityColors:FindFirstChild(RarityName)
 	
-		StatMenu.ItemRarity.Text = RarityName
-		StatMenu.ItemRarity.TextColor3 = Rarity.Value
-		StatMenu.ItemRarity.TextStrokeColor3 = Rarity.TileColor.Value
+		--StatMenu.ItemRarity.Text = RarityName
+		--StatMenu.ItemRarity.TextColor3 = Rarity.Value
+		--StatMenu.ItemRarity.TextStrokeColor3 = Rarity.TileColor.Value
 
-		StatMenu.ItemAmount.Text = "You Have: " .. tostring(Value)
-		StatMenu.ItemWorth.Text = "Worth: " .. "$" .. tostring(StatInfo.CurrencyValue.Value)
-		StatMenu.ItemDescription.Text = StatInfo["GUI Info"].Description.Value
-		
-		StatMenu.ItemWorth.Visible = true
+		StatMenu.ItemAmount.Text = tostring(Value)
+		StatMenu.ItemWorth.Text = tostring(StatInfo.CurrencyValue.Value)
+		--StatMenu.ItemDescription.Text = StatInfo["GUI Info"].Description.Value
 		
 		--StatMenu.ItemImage.BorderColor3 = Rarity.Value
 		StatMenu.ItemImage.BackgroundColor3 = Rarity.TileColor.Value
@@ -1034,8 +1069,8 @@ local function InsertItemViewerInfo(StatMenu, Type, Stat, StatInfo, Value, Acqui
 		ManageEquipButton(DataMenu.PlayerMenu:FindFirstChild(AcquiredLocation).CurrentlyEquipped.Value, Stat)
 		StatMenu.EquipButton.Visible = true
 			
-		local ItemModel = game.ReplicatedStorage.Equippable:FindFirstChild(Type):FindFirstChild(AcquiredLocation):FindFirstChild(Stat)
-		GuiUtility.Display3DModels(Player, StatMenu.ItemImage, ItemModel.Handle:Clone(), true, ItemModel["GUI Info"].DisplayAngle.Value)
+		--local ItemModel = game.ReplicatedStorage.Equippable:FindFirstChild(Type):FindFirstChild(AcquiredLocation):FindFirstChild(Stat)
+		GuiUtility.Display3DModels(Player, StatMenu.ItemImage, StatInfo.Handle:Clone(), true, StatInfo["GUI Info"].DisplayAngle.Value)
 	end
 	
 	for i,b in pairs (StatMenu:GetChildren()) do
@@ -1049,13 +1084,29 @@ local function InsertItemViewerInfo(StatMenu, Type, Stat, StatInfo, Value, Acqui
 	StatMenu.Visible = true 
 end
 
-local previousEquipmentTile
+local previousTile
 local function InsertTileInfo(Type, tile, Stat, Value, AcquiredLocation)
 	tile.StatName.Value = tostring(Stat)
 
 	local StatInfo
 	local StatMenu
 	if Type == "Inventory" then
+		StatMenu = inventoryQuickViewMenu
+		StatInfo = game.ReplicatedStorage.ItemLocations:FindFirstChild(AcquiredLocation):FindFirstChild(Stat)
+		tile.Picture.Image = GetStatImage(StatInfo)
+		tile.Amount.Text = tostring(Value)
+		
+		if tostring(Stat) == StatMenu.ItemName.Text then
+			StatMenu.ItemAmount.Text = "You Have: " .. tostring(Value)
+		end
+		
+		--Do Rarity Imaging
+		local rarityInfo = tile.Rarity.Value
+		tile.Image = rarityInfo.TileImages.StaticRarityTile.Value
+		tile.HoverImage = rarityInfo.TileImages.HoverRarityTile.Value
+		tile.PressedImage = rarityInfo.TileImages.PressedRarityTile.Value
+		
+		--[[
 		StatMenu = ItemViewerMenu
 		StatInfo = game.ReplicatedStorage.ItemLocations:FindFirstChild(AcquiredLocation):FindFirstChild(Stat)
 		tile.Picture.Image = GetStatImage(StatInfo)
@@ -1071,6 +1122,7 @@ local function InsertTileInfo(Type, tile, Stat, Value, AcquiredLocation)
 		tile.Image = Rarity.TileImages.StaticRarityTile.Value
 		--tile.HoverImage = 
 		--tile.PressedImage = 
+		]]
 		
 	elseif Type == "Experience" then
 		StatMenu = ItemViewerMenu
@@ -1104,40 +1156,37 @@ local function InsertTileInfo(Type, tile, Stat, Value, AcquiredLocation)
 		ProgressBar.Progress.Size = UDim2.new(Percentage, 0, 1, 0)
 		
 	else --Non-Bag, Equippable PlayerItems (Stat Table Referencing)
-		StatMenu = QuickViewMenu
+		StatMenu = equipmentQuickViewMenu
 		local RSTypeFile = game.ReplicatedStorage.Equippable:FindFirstChild(Type)
 		StatInfo = RSTypeFile:FindFirstChild(AcquiredLocation):FindFirstChild(Stat)
 		
 		tile.Picture.Image = GetStatImage(StatInfo)
 		tile.Amount.Visible = false
-		local RarityName = StatInfo["GUI Info"].RarityName.Value
-		local Rarity = GuiElements.RarityColors:FindFirstChild(RarityName)
-		tile.Image = Rarity.TileImages.StaticRarityTile.Value
-		tile.HoverImage = Rarity.TileImages.HoverRarityTile.Value
-		tile.PressedImage = Rarity.TileImages.PressedRarityTile.Value
-		
-		--tile.DisplayName.Text = tostring(Stat)
-		--tile.Picture.Image = StatInfo["GUI Info"].StatImage.Value
+		local rarityInfo = tile.Rarity.Value
+		tile.Image = rarityInfo.TileImages.StaticRarityTile.Value
+		tile.HoverImage = rarityInfo.TileImages.HoverRarityTile.Value
+		tile.PressedImage = rarityInfo.TileImages.PressedRarityTile.Value
 	end
 	
 	--ItemViewerMenu GUI Management
 	tile.Activated:Connect(function()
-		if ItemViewerMenu.ItemViewerClosed.Value == true and (Type == "Inventory" or Type == "Experience") then
+		if ItemViewerMenu.ItemViewerClosed.Value == true and Type == "Experience" then
 			ItemViewerMenu.ItemViewerClosed.Value = false 
 			InsertItemViewerInfo(StatMenu, Type, Stat, StatInfo, Value, AcquiredLocation)
 		else
 			InsertItemViewerInfo(StatMenu, Type, Stat, StatInfo, Value, AcquiredLocation)
+			local rarityInfo = tile.Rarity.Value
+			local newTileImage = rarityInfo.TileImages.SelectedRarityTile.Value
 			
-			if previousEquipmentTile then --deselect previous tile
-				local prevRarityInfo = previousEquipmentTile.Rarity.Value
-				previousEquipmentTile.Image = prevRarityInfo.TileImages.StaticRarityTile.Value
-				--previousEquipmentTile.HoverImage = prevRarityInfo.TileImages.HoverRarityTile.Value
-				--previousEquipmentTile.PressedImage = prevRarityInfo.TileImages.PressedRarityTile.Value
+			--Both Equipment and Inventory use a QuickViewMenu (deselect previous tile)
+			if previousTile then
+				local prevRarityInfo = previousTile.Rarity.Value
+				previousTile.Image = prevRarityInfo.TileImages.StaticRarityTile.Value
 			end
 			
-			local rarityInfo = tile.Rarity.Value
-			tile.Image = rarityInfo.TileImages.SelectedRarityTile.Value
-			previousEquipmentTile = tile
+			previousTile = tile
+			StatMenu.Visible = true
+			tile.Image = newTileImage
 		end
 	end)
 end
@@ -1275,6 +1324,16 @@ function ManageTiles(Stat, Menu, Value, Type, AcquiredLocation)
 	]]
 end
 
+local SearchBars = {
+	PageManager.FullBottomDisplay.SearchBar,
+	PageManager.PartialBottomDisplay.SearchBar
+}
+for i,searchBar in pairs (SearchBars) do
+	GuiUtility.ManageSearchVisual(searchBar.SearchInput)
+end
+
+--Was used to disable inventory tiles with ItemViewerOpened, possibly use with exp/journal tiles
+--[[
 ItemViewerMenu.ItemViewerClosed.Changed:Connect(function(bool)
 	for i,page in pairs (DataMenu.InventoryMenu.MaterialsMenu:GetChildren()) do
 		if page:IsA("Frame") and string.find(page.Name, "Page") then
@@ -1284,7 +1343,10 @@ ItemViewerMenu.ItemViewerClosed.Changed:Connect(function(bool)
 			end
 		end
 	end
+	
+	PageManager.FullBottomDisplay.Visible = bool
 end)
+]]
 
 
 --------------------<|Material PopUp Functions|>-------------------------------------------------------------------------------------------------------------------
@@ -1623,7 +1685,7 @@ local UpdateEquippedItem = EventsFolder.GUI.UpdateEquippedItem
 PlayerInfo.PlayerThumbnail.Image = PlayerProfilePicture
 PlayerInfo.PlayerName.Text = tostring(Player)
 
-local EquipButton = QuickViewMenu.EquipButton
+local EquipButton = equipmentQuickViewMenu.EquipButton
 local equipBtnScaleChange = 0.008
 SetUpPressableButton(EquipButton, equipBtnScaleChange)
 
@@ -1632,9 +1694,9 @@ EquipButton.Activated:Connect(function()
 	if EquipButton.Visible == true then
 		EquipButton.Active = false
 		
-		local ItemName = QuickViewMenu.ItemName.Text
-		local ItemType = QuickViewMenu.ItemType.Value
-		local EquipType = QuickViewMenu.EquipType.Value
+		local ItemName = equipmentQuickViewMenu.ItemName.Text
+		local ItemType = equipmentQuickViewMenu.ItemType.Value
+		local EquipType = equipmentQuickViewMenu.EquipType.Value
 		
 		if EquipButton.EquipStatus.Value == false then --Equip item
 			ManageEquipButton(nil, nil, true)
@@ -1665,7 +1727,7 @@ end)
 
 --May have to use this in item viewer too, so keep as function (not only equipment)
 local function HideRemainingStatDisplays()
-	for i,statDisplay in pairs (QuickViewMenu.StatDisplays:GetChildren()) do
+	for i,statDisplay in pairs (equipmentQuickViewMenu.StatDisplays:GetChildren()) do
 		if statDisplay:FindFirstChild("Utilized") then
 			statDisplay.Visible = statDisplay.Utilized.Value
 		end
@@ -1673,7 +1735,7 @@ local function HideRemainingStatDisplays()
 end
 
 function ManageStatBars(ItemStats)
-	for i,statDisplay in pairs (QuickViewMenu.StatDisplays:GetChildren()) do
+	for i,statDisplay in pairs (equipmentQuickViewMenu.StatDisplays:GetChildren()) do
 		if statDisplay:FindFirstChild("Utilized") then
 			statDisplay.Utilized.Value = false
 		end
@@ -1689,7 +1751,7 @@ function ManageStatBars(ItemStats)
 				local ImageType = ItemStats["Images"][StatName .. "Image"][2]
 				
 				local FoundStatDisplay = false
-				for i,statDisplay in pairs (QuickViewMenu.StatDisplays:GetChildren()) do
+				for i,statDisplay in pairs (equipmentQuickViewMenu.StatDisplays:GetChildren()) do
 					if FoundStatDisplay == false then
 						if string.find(tostring(statDisplay), ImageType) and statDisplay:FindFirstChild("Utilized") then
 							if statDisplay.Utilized.Value ~= true then
@@ -1887,6 +1949,6 @@ end)
 
 game.Workspace.Players:WaitForChild(tostring(Player)).Archivable = true
 
-wait(5)
+wait(3)
 script.Parent.OpenDataMenuButton.Active = true
 
