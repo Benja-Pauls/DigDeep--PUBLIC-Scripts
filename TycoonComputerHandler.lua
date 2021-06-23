@@ -67,6 +67,15 @@ local function MenuButtonActiveState(Menu, State)
 	end
 end
 
+local function AddRarityGradient(rarityInfo, parent, rotation)
+	if parent:FindFirstChild("RarityGradient") then
+		parent.RarityGradient:Destroy()
+	end
+	local newGradient = rarityInfo.RarityGradient:Clone()
+	newGradient.Parent = parent
+	newGradient.Rotation = rotation
+end
+
 --------------------------<|Set Up Menu Functions|>-------------------------------------------------------------------------------------------------------------
 
 local function StartUpComputer()
@@ -261,7 +270,6 @@ function ManageSellMenu(bool)
 end
 
 function OpenAffiliatedItemPreview(MenuName)
-	print("Opening affiliated Item preview")
 	if StorageMenu.ItemsPreview:FindFirstChild(MenuName) then
 		SelectionMenu.Visible = true
 		ItemsPreview.Visible = true
@@ -290,15 +298,15 @@ end
 ------------------------<|Current Selection Info|>-------------------------------------
 
 local function UpdateSelectionInfo(Page, tile)
-	print("Updating selection info")
 	local Menu = Page.Parent
 	local ItemInformation = FindItemInfo(tile.ItemName.Value, tostring(Menu))
-	local Discovered = tile.Discovered.Value
+	local discovered = tile.Discovered.Value
 	local rarityName = tostring(Page.Rarity.Value)
 	
-	SelectionMenu.Amount.Visible = Discovered
-	SelectionMenu.UnitPrice.Visible = Discovered
-	SelectionMenu.Hint.Visible = not Discovered
+	--SelectionMenu.Amount.Visible = discovered
+	--SelectionMenu.UnitPrice.Visible = discovered
+	--SelectionMenu.StorageSymbol.Visible = discovered
+	--SelectionMenu.CurrencySymbol.Visible = discovered
 	
 	if SelectionMenu.CurrentSelection.Value ~= tile then --Unhighlight previous tile
 		SelectionMenu.CurrentSelection.Value.BorderSizePixel = 1
@@ -312,29 +320,20 @@ local function UpdateSelectionInfo(Page, tile)
 	SelectionMenu.CurrentSelection.Value = tile
 	
 	--Rarity Coloring
-	if SelectionMenu.RarityDisplay.CurrentRarity.Text ~= rarityName then
-		SelectionMenu.RarityDisplay.CurrentRarity.Text = rarityName
-		local RarityInfo = game.ReplicatedStorage.GuiElements.RarityColors:FindFirstChild(rarityName)
-
-		local NewGradient1 = RarityInfo.RarityGradient:Clone()
-		if SelectionMenu.RarityDisplay.CurrentRarity:FindFirstChild("RarityGradient") then
-			SelectionMenu.RarityDisplay.CurrentRarity.RarityGradient:Destroy()
-		end
-		NewGradient1.Parent = SelectionMenu.RarityDisplay.CurrentRarity
-
-		local NewGradient2 = RarityInfo.RarityGradient:Clone()
-		if SelectionMenu.RarityFrame:FindFirstChild("RarityGradient") then
-			SelectionMenu.RarityFrame.RarityGradient:Destroy()
-		end
-		NewGradient2.Parent = SelectionMenu.RarityFrame
-
-		SelectionMenu.Picture.BorderColor3 = RarityInfo.Value
-		SelectionMenu.Picture.BackgroundColor3 = RarityInfo.TileColor.Value
-		SelectionMenu.RarityFrame.BorderColor3 = RarityInfo.Value
-		SelectionMenu.RarityFrame.BackgroundColor3 = RarityInfo.TileColor.Value
-	end
+	local rarityInfo = Page.Rarity.Value
+	AddRarityGradient(rarityInfo, ItemsPreview.MenuIcon, 50)
+	AddRarityGradient(rarityInfo, SelectionMenu.RarityFrame, 90)
+	AddRarityGradient(rarityInfo, SelectionMenu.RarityName, 90)
+	SelectionMenu.RarityName.Text = tostring(rarityInfo)
 	
-	if Discovered == true then
+	SelectionMenu.Picture.BorderColor3 = rarityInfo.Value
+	SelectionMenu.Picture.BackgroundColor3 = rarityInfo.TileColor.Value
+	SelectionMenu.RarityFrame.BorderColor3 = rarityInfo.Value
+	SelectionMenu.RarityFrame.BackgroundColor3 = rarityInfo.TileColor.Value
+	SelectionMenu.ItemInfo.Size = UDim2.new(0.95, 0, 0.48, 0)
+	
+	--Display Selected Item Info
+	if discovered == true then
 		--SelectionMenu.Picture.Image = ItemInformation["GUI Info"].StatImage.Value
 		--SelectionMenu.Picture.Visible = true
 		--SelectionMenu.LockPicture.Visible = false
@@ -343,16 +342,19 @@ local function UpdateSelectionInfo(Page, tile)
 		
 		SelectionMenu.Picture.BackgroundColor3 = SelectionMenu.RarityFrame.BackgroundColor3
 		SelectionMenu.DisplayName.Text = tile.ItemName.Value
+		SelectionMenu.DisplayName.TextColor3 = Color3.fromRGB(255, 255, 255)
 		SelectionMenu.Amount.Text = tostring(tile.AmountInStorage.Value)
 		SelectionMenu.UnitPrice.Text = tostring(ItemInformation.CurrencyValue.Value)
-		--SelectionMenu.Description.Text = 
 		
-		--Enabled Button
-		if SelectionMenu.SelectItem.Image ~= "rbxassetid://6760390045" then
+		SelectionMenu.ItemInfo.TextLabel.Text = '<font color="#2ccad6"><b>Description</b>:</font> ' .. ItemInformation["GUI Info"].Description.Value
+		GuiUtility.ManageTextBoxSize(SelectionMenu.ItemInfo, ItemInformation["GUI Info"].Description.Value, 30, 0.15)
+		
+		--Enabled Button Image
+		if SelectionMenu.SelectItem.Image ~= "rbxassetid://6989208905" then
 			SelectionMenu.SelectItem.Active = true
-			SelectionMenu.SelectItem.Image = "rbxassetid://6760390045"
-			SelectionMenu.SelectItem.HoverImage = "rbxassetid://6760391957"
-			SelectionMenu.SelectItem.PressedImage = "rbxassetid://6760411821"
+			SelectionMenu.SelectItem.Image = "rbxassetid://6989208905"
+			SelectionMenu.SelectItem.HoverImage = "rbxassetid://6989241680"
+			SelectionMenu.SelectItem.PressedImage = "rbxassetid://6989252025"
 		end
 		ManageSellMenu(false)
 		
@@ -362,23 +364,22 @@ local function UpdateSelectionInfo(Page, tile)
 			end
 		end)
 	else --Item not discovered
-		--SelectionMenu.LockPicture.Image = "rbxassetid://6741669069"
-		--SelectionMenu.Picture.Visible = false
-		--SelectionMenu.LockPicture.Visible = true
-		--SelectionMenu.LockPicture.BackgroundColor3 = Color3.fromRGB(5, 16, 29)
 		GuiUtility.Display3DModels(Player, SelectionMenu.Picture, game.ReplicatedStorage.GuiElements.LockedBlock:Clone(), true, ItemInformation["GUI Info"].DisplayAngle.Value)
 		SelectionMenu.Picture.BackgroundColor3 = Color3.fromRGB(5, 16, 29)
-		SelectionMenu.DisplayName.Text = "[UnDiscovered]"
-		SelectionMenu.Amount.Text = "?"
+		SelectionMenu.DisplayName.Text = "Not Discovered"
+		SelectionMenu.DisplayName.TextColor3 = Color3.fromRGB(150, 150, 150)
+		SelectionMenu.Amount.Text = "0"
 		SelectionMenu.UnitPrice.Text = "?"
-		SelectionMenu.Hint.Text = "Hint: " .. tostring(ItemInformation["GUI Info"])
 		
-		--Disabled Button
-		if SelectionMenu.SelectItem.Image ~= "rbxassetid://6760430013" then
+		SelectionMenu.ItemInfo.TextLabel.Text = '<font color="#FFA500"><b>Hint</b>:</font> ' .. ItemInformation["GUI Info"].Hint.Value
+		GuiUtility.ManageTextBoxSize(SelectionMenu.ItemInfo, ItemInformation["GUI Info"].Hint.Value, 30, 0.15)
+		
+		--Disabled Button Image
+		if SelectionMenu.SelectItem.Image ~= "rbxassetid://6989423818" then
 			SelectionMenu.SelectItem.Active = false
-			SelectionMenu.SelectItem.Image = "rbxassetid://6760430013"
-			SelectionMenu.SelectItem.HoverImage = "rbxassetid://6760430013"
-			SelectionMenu.SelectItem.PressedImage = "rbxassetid://6760430013"
+			SelectionMenu.SelectItem.Image = "rbxassetid://6989423818"
+			SelectionMenu.SelectItem.HoverImage = "rbxassetid://6989423818"
+			SelectionMenu.SelectItem.PressedImage = "rbxassetid://6989423818"
 		end
 	end
 end
@@ -396,15 +397,19 @@ local function UpdateTileLock(tile, StatValue, RarityName)
 	end
 end
 
+GuiUtility.ManageSearchVisual(SelectionMenu.SearchBar.SearchInput)
+
 ------------------------<|Tile Selection Buttons|>------------------------------------
 
 local CurrentMenu
 function ReadyItemTypeMenu(Menu)
-	print("ready item type menu")
 	CurrentMenu = Menu
 	
+	local pageCount = 0
 	for i,page in pairs (Menu:GetChildren()) do
-		if page:IsA("Frame") then
+		if page:IsA("Frame") and string.find(page.Name, "Page") then
+			page.Visible = false
+			pageCount += 1
 			for i,tile in pairs (page:GetChildren()) do
 				if tile:IsA("TextButton") then
 					tile.BorderSizePixel = 1
@@ -412,21 +417,24 @@ function ReadyItemTypeMenu(Menu)
 			end
 		end
 	end
-
+	
+	--Select Slot1 on first open
 	if Menu.Page1.Slot1 then
 		local tile = Menu.Page1.Slot1
 		local discovered = tile.Discovered.Value
-		local itemInfo = FindItemInfo(tostring(tile), tostring(Menu))
+		local itemInfo = FindItemInfo(tile.ItemName.Value, tostring(Menu))
 		
 		SelectionMenu.CurrentSelection.Value = tile
 		SelectionMenu.CurrentPage.Value = Menu.Page1
 		SelectionMenu.UnitPrice.Visible = discovered
-		SelectionMenu.Hint.Visible = not discovered
+		Menu.Page1.Visible = true
 
 		if itemInfo then
 			UpdateSelectionInfo(Menu.Page1, tile)
 		end
 	end
+	
+	StorageMenu.TopTab.ItemPages.Text = "1/" .. tostring(pageCount)
 end
 
 --CurrentMenu = "Materials"
@@ -434,7 +442,7 @@ SelectionMenu.NextItem.Activated:Connect(function()
 	MoveToTile(CurrentMenu, 1, 1)
 end)
 
-SelectionMenu.PreviousItem.Activated:Connect(function()
+SelectionMenu.PrevItem.Activated:Connect(function()
 	MoveToTile(CurrentMenu, -1, -1)
 end)
 
@@ -564,7 +572,7 @@ function MoveToTile(Menu, tileDirection, rarityDirection)
 						ChangeToTileInMenu(Menu.Page1, 1) --Moving to start of first page
 					elseif pageNumber + tileDirection <= 0 then
 						changedToPage = Menu:FindFirstChild("Page" .. tostring(pageCount))
-						ChangeToTileInMenu(Menu:FindFirstChild("Page" .. tostring(pageCount)), 0)--Moving to end of last page
+						ChangeToTileInMenu(Menu:FindFirstChild("Page" .. tostring(pageCount)), -1)--Moving to end of last page
 					else
 						changedToPage = Menu:FindFirstChild("Page" .. tostring(pageNumber + tileDirection))
 						ChangeToTileInMenu(changedToPage, tileDirection)
@@ -599,6 +607,9 @@ function MoveToTile(Menu, tileDirection, rarityDirection)
 			
 			if changedToPage then
 				moveDebounce = true
+				local changedToPageCount = string.gsub(changedToPage.Name, "Page", "")
+				StorageMenu.TopTab.ItemPages.Text = changedToPageCount .. "/" .. tostring(pageCount)
+				
 				changedToPage.Position = UDim2.new(0, 0, rarityDirection, 0)
 				currentPage:TweenPosition(UDim2.new(0, 0, -rarityDirection, 0), "Out", "Quint", 0.5)
 				moveDebounce = GuiUtility.CommitPageChange(changedToPage, 0.5)
@@ -731,7 +742,7 @@ function ManageStorageTiles(MenuName)
 				if pageCount > 0 then
 					local highRarityPage = GetHighPage(itemMenu, itemRarity)
 					
-					print("High rarity page for " .. itemRarity .. " is " .. tostring(highRarityPage))
+					--print("High rarity page for " .. itemRarity .. " is " .. tostring(highRarityPage))
 					if highRarityPage > 0 then --page found, check slot availability
 						local possiblePage = itemMenu:FindFirstChild("Page" .. tostring(highRarityPage))
 						
@@ -810,6 +821,7 @@ function ManageStorageTiles(MenuName)
 				newTile.ItemName.Value = tostring(item)
 				local rarityInfo = newTile.Parent.Rarity.Value
 				newTile.BorderColor3 = rarityInfo.Value
+				newTile.Picture.Image = item["GUI Info"].StatImage.Value
 				
 				local columnValue, rowValue = GuiUtility.SlotCountToXY(slotCount, tilesPerRow)
 				newTile.Position = UDim2.new(0.021+0.204*columnValue, 0, 0.153+0.176*rowValue, 0)
@@ -1173,10 +1185,10 @@ local function InsertTileInfo(Menu, Tile, ResearchData, ResearchType, FinishTime
 					InfoMenu.ResearchTime.Text = toDHMS(ResearchData["Research Length"], true)
 					
 					--change size of description box based on character count
-					local NameCharacterCount = string.len(ResearchData["Description"])
-					local NewYScale = math.ceil(NameCharacterCount/37)*.069
-					InfoMenu.Description.Size = UDim2.new(InfoMenu.Description.Size.X.Scale, 0, NewYScale, 0)
-					InfoMenu.Description.Text = ResearchData["Description"]
+					--local NameCharacterCount = string.len(ResearchData["Description"])
+					--local NewYScale = math.ceil(NameCharacterCount/37)*.069
+					--InfoMenu.Description.Size = UDim2.new(InfoMenu.Description.Size.X.Scale, 0, NewYScale, 0)
+					InfoMenu.ItemInfo.TextLabel.Text = ResearchData["Description"]
 					
 					InfoMenu.Rarity.Text = ResearchData["Rarity"]
 					local RarityInfo = game.ReplicatedStorage.GuiElements.RarityColors:FindFirstChild(ResearchData["Rarity"])
