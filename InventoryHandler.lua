@@ -247,8 +247,9 @@ function ReadyMenuButtons(Menu)
 						local MaterialsMenu = ButtonMenu.MaterialsMenu
 						local BagCapacity = MaterialsMenu:GetAttribute("BagCapacity")
 						local ItemCount = MaterialsMenu:GetAttribute("ItemCount")
-						ButtonMenu.SelectedBagInfo.Text = tostring(ItemCount) .. "/" .. tostring(BagCapacity)
-						ButtonMenu.SelectedBagInfo.BagType.Text = string.gsub(tostring(ButtonMenu), "Menu", "")
+						ButtonMenu.SelectedBagInfo.BagAmount.Text = tostring(ItemCount) .. "/" .. tostring(BagCapacity)
+						ButtonMenu.SelectedBagInfo.FillProgress.Size = UDim2.new(ItemCount/BagCapacity, 0, 1, 0)
+						ButtonMenu.SelectedBagInfo.BagType.Value = string.gsub(tostring(ButtonMenu), "Menu", "")
 						ButtonMenu.SelectedBagInfo.Visible = true
 						
 						ResetRarityTiles(ButtonMenu.MaterialsMenu)
@@ -477,6 +478,58 @@ local function FindStatLevel(StatInfo, EXPValue)
 	return CurrentLevel,NextLevel
 end
 
+local mouse = Player:GetMouse()
+local mouseoverDisplay = Player.PlayerGui.PopUps.MouseoverPopUp.MouseoverDisplay
+mouseoverDisplay.Visible = false
+local function CountdownToMouseDisplay(timeBeforeAppear)
+	local timer = mouseoverDisplay.TimeLeft
+	timer.Value = 0
+	
+	coroutine.resume(coroutine.create(function()
+		for sec = 1,timeBeforeAppear,1 do
+			wait(1)
+			if sec == timer.Value + 1 then --this is still countdown function
+				timer.Value = sec
+				if sec == timeBeforeAppear then
+					mouseoverDisplay.Visible = true
+				end
+			end
+		end
+	end))
+end
+
+--Display small tip when hovering over some GUI
+local mouseDisplayGuiUsed = false
+for i,gui in pairs (DataMenu:GetDescendants()) do
+	if gui:FindFirstChild("MouseoverInfo") then
+		gui.MouseEnter:Connect(function()
+			mouseDisplayUsed = true
+			mouseoverDisplay.Visible = false
+
+			local charCount = string.len(" " .. gui.MouseoverInfo.Value)
+			mouseoverDisplay.Size = UDim2.new(0.007 * charCount, 0, mouseoverDisplay.Size.Y.Scale, 0)
+			mouseoverDisplay.Position = UDim2.new(0.017, mouse.X, 0, mouse.Y)
+			mouseoverDisplay.TextLabel.Text = "<b>" .. gui.MouseoverInfo.Value .. "</b>"
+			mouseoverDisplay.TextLabel.UIPadding.PaddingLeft = UDim.new(0.05 * (1-0.007*charCount))
+			
+			CountdownToMouseDisplay(2)
+		end)
+
+		gui.MouseLeave:Connect(function()
+			mouseDisplayUsed = false
+			mouseoverDisplay.Visible = false
+			mouseoverDisplay.TimeLeft.Value = -1
+		end)
+	end
+end
+
+mouse.Move:Connect(function()
+	if mouseDisplayUsed == true then
+		mouseoverDisplay.Position = UDim2.new(0.017, mouse.X, 0, mouse.Y)
+		--mouseoverDisplay.Visible = false (keep visible once touched)
+		--CountdownToMouseDisplay(2)
+	end
+end)
 
 --------------<|PageManager Functions|>---------------------------------------------------------------------------------
 
@@ -1038,20 +1091,14 @@ end
 local function InsertItemViewerInfo(StatMenu, Type, Stat, StatInfo, Value, AcquiredLocation)
 
 	if Type == "Inventory" then
-		local RarityName = StatInfo["GUI Info"].RarityName.Value
-		local Rarity = game.ReplicatedStorage.GuiElements.RarityColors:FindFirstChild(RarityName)
-	
-		--StatMenu.ItemRarity.Text = RarityName
-		--StatMenu.ItemRarity.TextColor3 = Rarity.Value
-		--StatMenu.ItemRarity.TextStrokeColor3 = Rarity.TileColor.Value
-
+		local rarityName = StatInfo["GUI Info"].RarityName.Value
+		local rarity = game.ReplicatedStorage.GuiElements.RarityColors:FindFirstChild(rarityName)
+		StatMenu.ItemImage.BackgroundColor3 = rarity.TileColor.Value
+		StatMenu.ItemImageBorder.BackgroundColor3 = rarity.Value
+		
 		StatMenu.ItemAmount.Text = tostring(Value)
 		StatMenu.ItemWorth.Text = tostring(StatInfo.CurrencyValue.Value)
-		--StatMenu.ItemDescription.Text = StatInfo["GUI Info"].Description.Value
-		
-		--StatMenu.ItemImage.BorderColor3 = Rarity.Value
-		StatMenu.ItemImage.BackgroundColor3 = Rarity.TileColor.Value
-		--StatMenu.ItemImage.Image = StatInfo["GUI Info"].StatImage.Value
+
 		GuiUtility.Display3DModels(Player, StatMenu.ItemImage, StatInfo:Clone(), true, StatInfo["GUI Info"].DisplayAngle.Value)
 	elseif Type == "Experience" then
 		StatMenu.ItemRarity.Text = ""
@@ -1064,6 +1111,11 @@ local function InsertItemViewerInfo(StatMenu, Type, Stat, StatInfo, Value, Acqui
 		StatMenu.EquipType.Value = Type
 		StatMenu.ItemType.Value = AcquiredLocation
 		
+		local rarityName = StatInfo["GUI Info"].RarityName.Value
+		local rarity = game.ReplicatedStorage.GuiElements.RarityColors:FindFirstChild(rarityName)
+		StatMenu.ItemImage.BackgroundColor3 = rarity.TileColor.Value
+		StatMenu.ItemImageBorder.BackgroundColor3 = rarity.Value
+		
 		StatMenu.EquipButton.Visible = false
 		ManageStatBars(Value)
 		ManageEquipButton(DataMenu.PlayerMenu:FindFirstChild(AcquiredLocation).CurrentlyEquipped.Value, Stat)
@@ -1072,6 +1124,8 @@ local function InsertItemViewerInfo(StatMenu, Type, Stat, StatInfo, Value, Acqui
 		--local ItemModel = game.ReplicatedStorage.Equippable:FindFirstChild(Type):FindFirstChild(AcquiredLocation):FindFirstChild(Stat)
 		GuiUtility.Display3DModels(Player, StatMenu.ItemImage, StatInfo.Handle:Clone(), true, StatInfo["GUI Info"].DisplayAngle.Value)
 	end
+	
+	--Display description when InfoButton is pressed!
 	
 	for i,b in pairs (StatMenu:GetChildren()) do
 		if b:IsA("ImageButton") or b:IsA("TextButton") then
@@ -1824,7 +1878,9 @@ UpdateEquippedItem.OnClientEvent:Connect(function(EquipType, ItemType, Item)
 		local ItemInfo = game.ReplicatedStorage.Equippable:FindFirstChild(EquipType):FindFirstChild(ItemType):FindFirstChild(Item)
 		local ItemImage = GetStatImage(ItemInfo)
 
-		DefaultMenuButton.Image = ItemImage
+		DefaultMenuButton.ItemImage.Image = ItemImage
+	else
+		DefaultMenuButton.ItemImage.Image = ""
 	end
 	
 	--Highlight Equipped Item
