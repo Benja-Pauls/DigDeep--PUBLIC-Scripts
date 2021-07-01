@@ -388,25 +388,25 @@ end)
 
 -------------------------------<|StoreFront Purchase Functions|>---------------------------------------------------------------------------------------------------------
 
-local AllNPCData = require(game.ServerStorage:WaitForChild("NPCData"))
+local AllShopData = require(game.ServerStorage:WaitForChild("ShopData"))
 local StoreFrontInteract = EventsFolder.HotKeyInteract:WaitForChild("StoreFrontInteract")
 local UpdateStoreFront = EventsFolder.GUI:WaitForChild("UpdateStoreFront")
 
 StoreFrontInteract.OnServerEvent:Connect(function(player, NPC)
-	local npcData = Utility:CloneTable(AllNPCData[tostring(NPC)])
+	local shopData = Utility:CloneTable(AllShopData[tostring(NPC)])
 	local AlreadyPurchased = {}
 	
-	for item = 1,#npcData["Items"],1 do
-		local Value = PlayerStatManager:getStat(player, tostring(npcData["Items"][item][1]))
+	for item = 1,#shopData["Items"],1 do
+		local buyValue = PlayerStatManager:getStat(player, tostring(shopData["Items"][item][1]))
 		
-		if Value == true then
-			table.insert(AlreadyPurchased, npcData["Items"][item][1])
+		if buyValue == true then
+			table.insert(AlreadyPurchased, shopData["Items"][item][1])
 		end
 	end
 	
 	print("AlreadyPurchased",AlreadyPurchased)
 	
-	UpdateStoreFront:FireClient(player, NPC, npcData, AlreadyPurchased)
+	UpdateStoreFront:FireClient(player, NPC, shopData, AlreadyPurchased)
 end)
 
 local StoreFrontPurchase = game.ReplicatedStorage.Events.Utility:WaitForChild("StoreFrontPurchase")
@@ -414,12 +414,12 @@ StoreFrontPurchase.OnServerEvent:Connect(function(player, NPC, ItemName, ItemTyp
 	local PlayerDataFile = PlayerData:FindFirstChild(tostring(player.UserId))
 	local Item = game.ReplicatedStorage.Equippable:FindFirstChild(EquipType):FindFirstChild(ItemType):FindFirstChild(ItemName)
 
-	local npcData = AllNPCData[NPC]
+	local shopData = AllShopData[NPC]
 	
 	local ItemPrice 	
-	for item = 1,#npcData["Items"],1 do
-		if npcData["Items"][item][1] == Item then
-			ItemPrice = npcData["Items"][item][2]
+	for item = 1,#shopData["Items"],1 do
+		if shopData["Items"][item][1] == Item then
+			ItemPrice = shopData["Items"][item][2]
 		end
 	end
 	
