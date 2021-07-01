@@ -4,16 +4,21 @@
 local TweenService = game:GetService("TweenService")
 local Camera = game.Workspace.CurrentCamera
 
+game.StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, false)
+--game.StarterGui:SetCore("TopbarEnabled", false)
+--local playerGui = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+--playerGui:SetTopbarTransparency(1)
+script.Parent.OpenDataMenuButton.Visible = true
+
 local Player = game.Players.LocalPlayer
 local PlayerUserId = Player.UserId
 local OpenDataMenuButton = script.Parent.OpenDataMenuButton
 local DataMenu = script.Parent.DataMenu
-local TweenService = game:GetService("TweenService")
 local GuiElements = game.ReplicatedStorage.GuiElements
 local PageManager = DataMenu.PageManager
 
-local EventsFolder = game.ReplicatedStorage.Events
-local MoveAllBaseScreenUI = EventsFolder.GUI:WaitForChild("MoveAllBaseScreenUI")
+local eventsFolder = game.ReplicatedStorage.Events
+local MoveAllBaseScreenUI = eventsFolder.GUI:WaitForChild("MoveAllBaseScreenUI")
 
 local GuiUtility = require(game.ReplicatedStorage:FindFirstChild("GuiUtility"))
 
@@ -324,54 +329,6 @@ function ReadyMenuButtons(Menu)
 	end
 end
 
-local CurrentTweens = {}
-local function PressGUIButton(button, newPosition, newSize, moveType)
-	if button.Visible == true then
-		if button.Position ~= newPosition and button.Size ~= newSize then
-			
-			local opposingMoveType
-			if moveType == "neutral" then
-				opposingMoveType = "press"
-			else
-				opposingMoveType = "neutral"
-			end
-			if CurrentTweens[tostring(button.Parent) .. tostring(button) .. opposingMoveType] then
-				local opposingTween = CurrentTweens[tostring(button.Parent) .. tostring(button) .. opposingMoveType]
-				opposingTween:Pause()
-			end
-			
-			if CurrentTweens[tostring(button.Parent) .. tostring(button) .. moveType] then
-				local tween = CurrentTweens[tostring(button.Parent) .. tostring(button) .. moveType]
-				tween:Pause()
-				tween:Play()
-			else
-				local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
-				local tween = TweenService:Create(button, tweenInfo, {Position = newPosition, Size = newSize})
-				
-				tween:Play()
-				CurrentTweens[tostring(button.Parent) .. tostring(button) .. moveType] = tween
-			end
-		end
-	end
-end
-
-local function SetUpPressableButton(button, scaleChange)
-	local neutralPosition = button.Position
-	local neutralSize = button.Size
-	local pressPosition = UDim2.new(neutralPosition.X.Scale, 0, neutralPosition.Y.Scale + (scaleChange + scaleChange*.2), 0)
-	local pressSize = UDim2.new(neutralSize.X.Scale, 0, neutralSize.Y.Scale - scaleChange, 0)
-	
-	button.MouseButton1Down:Connect(function()
-		PressGUIButton(button, pressPosition, pressSize, "press")
-	end)
-	button.MouseLeave:Connect(function()
-		PressGUIButton(button, neutralPosition, neutralSize, "neutral")
-	end)
-	button.MouseButton1Up:Connect(function()
-		PressGUIButton(button, neutralPosition, neutralSize, "neutral")
-	end)
-end
-
 GuiUtility.Reset3DObject(Player, PlayerViewport, PlayerModel, 178)
 GuiUtility.Reset3DObject(Player, DataMenu.ItemViewer.ItemImage)
 GuiUtility.Reset3DObject(Player, equipmentQuickViewMenu.ItemImage)
@@ -488,6 +445,7 @@ local function CountdownToMouseDisplay(timeBeforeAppear)
 	coroutine.resume(coroutine.create(function()
 		for sec = 1,timeBeforeAppear,1 do
 			wait(1)
+			
 			if sec == timer.Value + 1 then --this is still countdown function
 				timer.Value = sec
 				if sec == timeBeforeAppear then
@@ -552,7 +510,7 @@ function GetHighPage(Menu, rarityName) --Find page for rarity tile OR max page c
 				for i,tile in pairs (page:GetChildren()) do
 					if not RarityIsPresent then
 						if (tile:IsA("ImageButton") or tile:IsA("TextButton")) and string.find(tile.Name, "Slot") then
-							if tile.Rarity.Value.Name == rarityName then
+							if tostring(tile.Rarity.Value) == rarityName then
 								RarityIsPresent = true
 							end
 						end
@@ -640,14 +598,14 @@ end
 local pageBtnScaleChange = 0.045
 for i,pageDisplay in pairs (PageManager:GetChildren()) do
 	if pageDisplay:FindFirstChild("Next") then
-		SetUpPressableButton(pageDisplay.Next, pageBtnScaleChange)
+		GuiUtility.SetUpPressableButton(pageDisplay.Next, pageBtnScaleChange)
 		pageDisplay.Next.Activated:Connect(function()
 			StartPageChange(1)
 		end)
 	end
 	
 	if pageDisplay:FindFirstChild("Previous") then
-		SetUpPressableButton(pageDisplay.Previous, pageBtnScaleChange)
+		GuiUtility.SetUpPressableButton(pageDisplay.Previous, pageBtnScaleChange)
 		pageDisplay.Previous.Activated:Connect(function()
 			StartPageChange(-1)
 		end)
@@ -657,9 +615,9 @@ end
 local function CreateNewMenuPage(Type, Menu, Page)
 	local newPage
 	if Type == "Research" then
-		newPage = game.ReplicatedStorage.GuiElements.ResearchPage:Clone()
+		newPage = GuiElements.ResearchPage:Clone()
 	else
-		newPage = game.ReplicatedStorage.GuiElements.DataMenuPage:Clone()
+		newPage = GuiElements.DataMenuPage:Clone()
 	end
 
 	newPage.Visible = false
@@ -776,26 +734,39 @@ local function ManageTilePlacement(Menu, Type, rarityInfo)
 	local TruePosition
 	local PageSlotCount = 0 --Position reference, +1 for name (Count=0: "Slot1")
 	if pageCount > 0 then
-		local highRarityPage = GetHighPage(Menu, rarityName)
-		local rarityOrderValue = rarityInfo.Order.Value
-		
-		if highRarityPage ~= 0 then
-			--print("11111111111 highRarityPage ~= 0: ", rarityName)
-			Page,TruePosition,PageSlotCount = SeekSlotAvailability(Menu, Type, highRarityPage, rarityName, maxTileAmount)
-		else
-			--Look for lesser rarity to reference instead
-			local lesserRarityPage,lesserRarityName = FindNearbyRarity(Menu, rarityInfo, rarityOrderValue, -1)
-			if lesserRarityPage then
-				--print("22222222222 lesserRarity: ", lesserRarityPage, lesserRarityName)
-				Page,TruePosition,PageSlotCount = SeekSlotAvailability(Menu, Type, lesserRarityPage, lesserRarityName, maxTileAmount)
+		if rarityName ~= "No Rarity" then
+			local highRarityPage = GetHighPage(Menu, rarityName)
+			local rarityOrderValue = rarityInfo.Order.Value
+			
+			if highRarityPage ~= 0 then
+				--print("11111111111 highRarityPage ~= 0: ", rarityName)
+				Page,TruePosition,PageSlotCount = SeekSlotAvailability(Menu, Type, highRarityPage, rarityName, maxTileAmount)
 			else
-				--Look for higher rarity to reference instead
-				local higherRarityPage,higherRarityName = FindNearbyRarity(Menu, rarityInfo, rarityOrderValue, 1)
-				if higherRarityPage then
-					--print("3333333333 higherRarityName: ", higherRarityPage, higherRarityName)
-					Page,TruePosition,PageSlotCount = SeekSlotAvailability(Menu, Type, higherRarityPage, higherRarityName, maxTileAmount)
+				--Look for lesser rarity to reference instead
+				local lesserRarityPage,lesserRarityName = FindNearbyRarity(Menu, rarityInfo, rarityOrderValue, -1)
+				if lesserRarityPage then
+					--print("22222222222 lesserRarity: ", lesserRarityPage, lesserRarityName)
+					Page,TruePosition,PageSlotCount = SeekSlotAvailability(Menu, Type, lesserRarityPage, lesserRarityName, maxTileAmount)
+				else
+					--Look for higher rarity to reference instead
+					local higherRarityPage,higherRarityName = FindNearbyRarity(Menu, rarityInfo, rarityOrderValue, 1)
+					if higherRarityPage then
+						--print("3333333333 higherRarityName: ", higherRarityPage, higherRarityName)
+						Page,TruePosition,PageSlotCount = SeekSlotAvailability(Menu, Type, higherRarityPage, higherRarityName, maxTileAmount)
+					end
 				end
 			end
+		else
+			Page = Menu:FindFirstChild("Page" .. tostring(pageCount))
+			
+			local slotCount = 0
+			for i,slot in pairs (Page:GetChildren()) do
+				if (slot:IsA("TextButton") or slot:IsA("ImageButton")) and string.find(slot.Name, "Slot") then
+					slotCount += 1
+				end
+			end
+			PageSlotCount = slotCount
+			TruePosition = pageCount*4 + PageSlotCount
 		end
 	else --No pages in menu, make new page
 		Page = CreateNewMenuPage(Type, Menu, Page)
@@ -806,11 +777,11 @@ local function ManageTilePlacement(Menu, Type, rarityInfo)
 	--Create tile with new-found info
 	local newTile
 	if Type == "Experience" then
-		newTile = game.ReplicatedStorage.GuiElements.ExperienceSlot:Clone()
+		newTile = GuiElements.ExperienceSlot:Clone()
 	elseif Type == "Research" then
-		newTile = game.ReplicatedStorage.GuiElements.ResearchSlot:Clone()
+		newTile = GuiElements.ResearchSlot:Clone()
 	else
-		newTile = game.ReplicatedStorage.GuiElements.InventoryMaterialSlot:Clone()
+		newTile = GuiElements.InventoryMaterialSlot:Clone()
 	end
 	
 	newTile.Name = "Slot" .. tostring(PageSlotCount + 1)
@@ -934,7 +905,7 @@ local function ManageTilePlacement(Menu, Type, rarityInfo)
 	]]
 end
 
-local ManageTilePlacementFunction = EventsFolder.GUI:FindFirstChild("ManageTilePlacement")
+local ManageTilePlacementFunction = eventsFolder.GUI:FindFirstChild("ManageTilePlacement")
 ManageTilePlacementFunction.OnInvoke = ManageTilePlacement
 
 local function GetTileSlotCount(Page, tileTruePosition, affectingTile, Change)
@@ -1054,7 +1025,7 @@ DataMenu.ItemViewer.BackButton.Activated:Connect(function()
 	end
 end)
 
-local DepositInventory = EventsFolder.Utility:WaitForChild("DepositInventory")
+local DepositInventory = eventsFolder.Utility:WaitForChild("DepositInventory")
 DepositInventory.OnClientEvent:Connect(function()
 	for i,menu in pairs (DataMenu.InventoryMenu:GetChildren()) do
 		if menu:IsA("Frame") then
@@ -1092,7 +1063,7 @@ local function InsertItemViewerInfo(StatMenu, Type, Stat, StatInfo, Value, Acqui
 
 	if Type == "Inventory" then
 		local rarityName = StatInfo["GUI Info"].RarityName.Value
-		local rarity = game.ReplicatedStorage.GuiElements.RarityColors:FindFirstChild(rarityName)
+		local rarity = GuiElements.RarityColors:FindFirstChild(rarityName)
 		StatMenu.ItemImage.BackgroundColor3 = rarity.TileColor.Value
 		StatMenu.ItemImageBorder.BackgroundColor3 = rarity.Value
 		
@@ -1112,7 +1083,7 @@ local function InsertItemViewerInfo(StatMenu, Type, Stat, StatInfo, Value, Acqui
 		StatMenu.ItemType.Value = AcquiredLocation
 		
 		local rarityName = StatInfo["GUI Info"].RarityName.Value
-		local rarity = game.ReplicatedStorage.GuiElements.RarityColors:FindFirstChild(rarityName)
+		local rarity = GuiElements.RarityColors:FindFirstChild(rarityName)
 		StatMenu.ItemImage.BackgroundColor3 = rarity.TileColor.Value
 		StatMenu.ItemImageBorder.BackgroundColor3 = rarity.Value
 		
@@ -1257,7 +1228,7 @@ function ManageTiles(Stat, Menu, Value, Type, AcquiredLocation)
 			statLocation = game.ReplicatedStorage.Equippable:FindFirstChild(Type):FindFirstChild(AcquiredLocation):FindFirstChild(Stat)
 		end
 		local rarityName = statLocation["GUI Info"].RarityName.Value
-		rarityInfo = game.ReplicatedStorage.GuiElements.RarityColors:FindFirstChild(rarityName)
+		rarityInfo = GuiElements.RarityColors:FindFirstChild(rarityName)
 	end
 	
 	local newTile = ManageTilePlacement(Menu, Type, rarityInfo)
@@ -1428,7 +1399,7 @@ local function InsertNewMaterialPopUp(ItemPopUp, AcquiredLocation, Item, AmountA
 	end
 	
 	local Rarity = RealObject["GUI Info"].RarityName.Value
-	local RarityFile = game.ReplicatedStorage.GuiElements.RarityColors:FindFirstChild(Rarity)
+	local RarityFile = GuiElements.RarityColors:FindFirstChild(Rarity)
 	local NewItemPopUp = OriginalPopUpGUI:Clone()
 	NewItemPopUp.Parent = ItemPopUp
 	NewItemPopUp.Amount.Text = tostring(AmountAdded)
@@ -1734,14 +1705,14 @@ local PlayerInfo = PlayerMenu.PlayerInfo
 local thumbType = Enum.ThumbnailType.HeadShot
 local thumbSize = Enum.ThumbnailSize.Size420x420
 local PlayerProfilePicture = game.Players:GetUserThumbnailAsync(PlayerUserId, thumbType, thumbSize)
-local UpdateEquippedItem = EventsFolder.GUI.UpdateEquippedItem
+local UpdateEquippedItem = eventsFolder.GUI.UpdateEquippedItem
 
 PlayerInfo.PlayerThumbnail.Image = PlayerProfilePicture
 PlayerInfo.PlayerName.Text = tostring(Player)
 
 local EquipButton = equipmentQuickViewMenu.EquipButton
 local equipBtnScaleChange = 0.008
-SetUpPressableButton(EquipButton, equipBtnScaleChange)
+GuiUtility.SetUpPressableButton(EquipButton, equipBtnScaleChange)
 
 EquipButton.Activated:Connect(function()
 	print("Equip button activated")
@@ -1822,7 +1793,7 @@ function ManageStatBars(ItemStats)
 								end
 								
 								if ImageType == "StatBar" then
-									local MaxStatValue = game.ReplicatedStorage.GuiElements.MaxStatValues:FindFirstChild(StatName).Value
+									local MaxStatValue = GuiElements.MaxStatValues:FindFirstChild(StatName).Value
 									statDisplay.ProgressBar.Progress.Size = UDim2.new(StatValue/MaxStatValue, 0, 1, 0)
 									statDisplay.StatImageBorder.StatImage.Image = ImageId
 									statDisplay.StatName.Text = StatName
@@ -1904,7 +1875,7 @@ end)
 
 -------------------------------------<High-Traffic Events>-------------------------------------------------------------------------------------------------------------
 
-local UpdateInventory = EventsFolder.GUI:WaitForChild("UpdateInventory")
+local UpdateInventory = eventsFolder.GUI:WaitForChild("UpdateInventory")
 UpdateInventory.OnClientEvent:Connect(function(Stat, File, Value, AmountAdded, Type, Currency, AcquiredLocation)
 	local TypeSlots = DataMenu:FindFirstChild(tostring(Type) .. "Menu")
 	local Slots
@@ -1940,7 +1911,7 @@ UpdateInventory.OnClientEvent:Connect(function(Stat, File, Value, AmountAdded, T
 	end
 end)
 
-local UpdatePlayerMenu = EventsFolder.GUI:WaitForChild("UpdatePlayerMenu")
+local UpdatePlayerMenu = eventsFolder.GUI:WaitForChild("UpdatePlayerMenu")
 UpdatePlayerMenu.OnClientEvent:Connect(function(EquipType, ItemType, Item)
 	
 	local RealInfo = game.ReplicatedStorage.Equippable:FindFirstChild(EquipType):FindFirstChild(ItemType):FindFirstChild(Item)
@@ -1961,7 +1932,7 @@ UpdatePlayerMenu.OnClientEvent:Connect(function(EquipType, ItemType, Item)
 	end
 end)
 
-local UpdateItemCount = EventsFolder.GUI:WaitForChild("UpdateItemCount")
+local UpdateItemCount = eventsFolder.GUI:WaitForChild("UpdateItemCount")
 UpdateItemCount.OnClientEvent:Connect(function(ItemTypeCount, BagCapacity, BagType, DepositedInventory)
 	if ItemTypeCount < 0 then
 		ItemTypeCount = 0
