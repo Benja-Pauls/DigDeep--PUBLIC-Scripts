@@ -326,6 +326,7 @@ function FindPlayerData(JoinedPlayer)
 		print("SET TYCOON PURCHASES HAS FINISHED")
 	else
 		warn("Couldn't Get or Set-Up Player Data For " .. tostring(JoinedPlayer))
+		FindPlayerData(JoinedPlayer)
 	end		
 end
 
