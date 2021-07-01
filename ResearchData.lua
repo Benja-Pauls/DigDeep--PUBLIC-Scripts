@@ -23,6 +23,10 @@ local ResearchData = {
 			
 			--However, that could be inefficient, especially in local script, so possibly have server script handle
 			--these changes every time and send out UpdateStoreFront event?
+			----Could have previous boughts sent with UpdateStoreFront, but TycoonComputerHandler may have to handle
+			----updating storefronts with new items, changing a saved value and making a new "tile" in the storefront
+			----where you can buy the new item. With that value that is then saved, that will be referenced when they
+			----join the game again
 			
 			
 		},
