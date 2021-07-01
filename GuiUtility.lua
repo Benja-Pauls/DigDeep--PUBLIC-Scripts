@@ -40,7 +40,7 @@ function GuiUtility.ConvertShort(Filter_Num) --this function is also in PlayerSt
 		return x:sub(0,(important)).."."..(x:sub(#x-5,(#x-5))).."M"
 	elseif #x>=4 then
 		local important = (#x-3)
-		return x:sub(0,(important)).."."..(x:sub(#x-2,(#x-2))).."K"
+		return x:sub(0,(important)).."."..(x:sub(#x-2,(#x-2)))..(x:sub(#x-1,(#x-1))) .. "K"
 	else
 		return Filter_Num
 	end
@@ -52,6 +52,60 @@ function GuiUtility.SlotCountToXY(PageSlotCount, tilesPerRow)
 	local columnValue = (PageSlotCount % (tilesPerRow))
 	return columnValue, rowValue
 end
+
+-------------<|Tween Functions|>------------------------------------------------------
+local TweenService = game:GetService("TweenService")
+
+
+local CurrentTweens = {}
+local function PressGUIButton(button, newPosition, newSize, moveType)
+	if button.Visible == true then
+		if button.Position ~= newPosition and button.Size ~= newSize then
+
+			local opposingMoveType
+			if moveType == "neutral" then
+				opposingMoveType = "press"
+			else
+				opposingMoveType = "neutral"
+			end
+			if CurrentTweens[tostring(button.Parent) .. tostring(button) .. opposingMoveType] then
+				local opposingTween = CurrentTweens[tostring(button.Parent) .. tostring(button) .. opposingMoveType]
+				opposingTween:Pause()
+			end
+
+			if CurrentTweens[tostring(button.Parent) .. tostring(button) .. moveType] then
+				local tween = CurrentTweens[tostring(button.Parent) .. tostring(button) .. moveType]
+				tween:Pause()
+				tween:Play()
+			else
+				local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+				local tween = TweenService:Create(button, tweenInfo, {Position = newPosition, Size = newSize})
+
+				tween:Play()
+				CurrentTweens[tostring(button.Parent) .. tostring(button) .. moveType] = tween
+			end
+		end
+	end
+end
+
+function GuiUtility.SetUpPressableButton(button, scaleChange)
+	local neutralPosition = button.Position
+	local neutralSize = button.Size
+	local pressPosition = UDim2.new(neutralPosition.X.Scale, 0, neutralPosition.Y.Scale + (scaleChange + scaleChange*.2), 0)
+	local pressSize = UDim2.new(neutralSize.X.Scale, 0, neutralSize.Y.Scale - scaleChange, 0)
+
+	button.MouseButton1Down:Connect(function()
+		PressGUIButton(button, pressPosition, pressSize, "press")
+	end)
+	button.MouseLeave:Connect(function()
+		PressGUIButton(button, neutralPosition, neutralSize, "neutral")
+	end)
+	button.MouseButton1Up:Connect(function()
+		PressGUIButton(button, neutralPosition, neutralSize, "neutral")
+	end)
+end
+
+--possible page/tile change tween manager here as well..?
 
 -------------<|Menu Display Functions|>------------------------------------------------
 
@@ -149,7 +203,6 @@ end
 
 
 
-
 ---------------<|Page Manager Functions|>--------------------
 
 function GuiUtility.CommitPageChange(changedToPage, delayAmount)
@@ -185,3 +238,4 @@ end
 
 
 return GuiUtility
+
