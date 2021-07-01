@@ -82,7 +82,7 @@ ClaimTycoon.OnServerEvent:Connect(function(player,tycoon)
 		
 				PlayerCash.Value = PlayerCash.Value - tycoon.Entrance.Price.Value
 				local MoneyDisplay = game.Players:FindFirstChild(tostring(player)).PlayerGui.MoneyDisplay
-				MoneyDisplay.Display.Frame.Money.Text = "$" .. tostring(PlayerCash.Value)
+				MoneyDisplay["CoinDisplay"].Amount.Text = "$" .. tostring(PlayerCash.Value)
 		
 				LocalLoadTycoon:FireClient(player,tycoon)
 
