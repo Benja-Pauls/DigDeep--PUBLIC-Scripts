@@ -1,7 +1,7 @@
 --(LocalScript)
 --GUI handler for purchases around the tycoon (still refered to as buttons)
-game.StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList,false)
-wait(1)
+wait(5) --**change this later to add to the loading screen that the game is still loading assets
+--all assets that player can interact with will probably have to be loaded before the player can begin playing
 
 local Player = game.Players.LocalPlayer
 local PlayerGui = Player:WaitForChild("PlayerGui")
@@ -137,4 +137,5 @@ end)
 ]]
 
 PrepInteractables()
+
 
