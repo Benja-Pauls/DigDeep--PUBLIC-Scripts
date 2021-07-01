@@ -3,15 +3,12 @@
 ------------------------------------------------------------------------------------------------------------------------------------------------
 local Utility = {}
 
-function Utility:UpdateMoneyDisplay(Player, NewPlayerCash)
+function Utility:UpdateMoneyDisplay(Player, newPlayerCash)
 	local PlayerGui = game.Players:FindFirstChild(tostring(Player)).PlayerGui
-	
 	local MoneyDisplay = PlayerGui:WaitForChild("MoneyDisplay")
-	MoneyDisplay.Display.Frame.Money.Text = "$" .. tostring(NewPlayerCash)
 	
-	--Also updates wherever money is displayed GUI menus
-	PlayerGui.DataMenu.DataMenu.PlayerMenu.PlayerInfo.PlayerCash.Text = tostring(NewPlayerCash)
-	PlayerGui.StoreFrontGui.StoreFrontMenu.PlayerCashDisplay.PlayerCash.Text = "$" .. tostring(NewPlayerCash)
+	MoneyDisplay["Coin Display"].Amount.Text = "$" .. tostring(newPlayerCash)
+	PlayerGui.DataMenu.DataMenu.PlayerMenu.PlayerInfo.PlayerCash.Text = tostring(newPlayerCash)
 end
 
 function Utility:CloneTable(OriginalTable)
@@ -23,7 +20,7 @@ function Utility:CloneTable(OriginalTable)
 		copy[i] = tbl
 	end
 	return copy
-end
+end 
 
 function Utility:ConvertShort(Filter_Num)
 	--print(Filter_Num) = money amount player has in total
@@ -37,16 +34,10 @@ function Utility:ConvertShort(Filter_Num)
 		return x:sub(0,(important)).."."..(x:sub(#x-5,(#x-5))).."M"
 	elseif #x>=4 then
 		local important = (#x-3)
-		return x:sub(0,(important)).."."..(x:sub(#x-2,(#x-2))).."K"
+		return x:sub(0,(important)).."."..(x:sub(#x-2,(#x-2)))..(x:sub(#x-1,(#x-1))) .. "K"
 	else
 		return Filter_Num
 	end
-end
-
-local GetShortMoneyValue = game.ReplicatedStorage.Events.Utility:WaitForChild("GetShortMoneyValue")
-function GetShortMoneyValue.OnServerInvoke(player, Filter_Num)
-	local ShortValue = Utility:ConvertShort(Filter_Num)
-	return ShortValue
 end
 
 return Utility
