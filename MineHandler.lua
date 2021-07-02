@@ -121,28 +121,48 @@ local function CalculateNoise(x,y,z,Mining)
 	local BelowNoise = math.noise(x/25, (y+1)/15, z/25)
 	local TwoBelowNoise = math.noise(x/25, (y+2)/15, z/25)
 	if NoiseAcceptable("BlockBelow", -1, BelowNoise, x, y, z, nil, nil, Mining) then
+		--print("BlockBelow")
 		Bounds = "BlockBelow"
 		sourceBlockDist = -1
 		--print("TRIAL " .. tostring(calcNoiseCount) .. ": BlockBelow")
 	end
-	if NoiseAcceptable("Block2Below", -2, TwoBelowNoise, x, y, z, nil, 3, Mining) then
-		Bounds = "Block2Below"
-		sourceBlockDist = -2
-		--print("TRIAL " .. tostring(calcNoiseCount) .. ": Block2Below")
+	if Bounds ~= "BlockBelow" then
+		if NoiseAcceptable("Block2Below", -2, TwoBelowNoise, x, y, z, nil, 3, Mining) then
+			--print("Block2Below")
+			Bounds = "Block2Below"
+			sourceBlockDist = -2
+			--print("TRIAL " .. tostring(calcNoiseCount) .. ": Block2Below")
+		end
 	end
 	
 	local AboveNoise = math.noise(x/25, (y-1)/15, z/25)
 	local TwoAboveNoise = math.noise(x/25, (y-2)/15, z/25)
 	if NoiseAcceptable("BlockAbove", 1, AboveNoise, x, y, z, 3, nil, Mining) then
-		Bounds = "BlockAbove"
-		sourceBlockDist = 1
+		
+		local gamble = 0
+		if Bounds == "BlockBelow" then
+			gamble = math.random(1,2)
+		end
+		
+		if gamble == 2 then
+			--print("BlockAbove")
+			Bounds = "BlockAbove"
+			sourceBlockDist = 1
+		else
+			--print("BlockBelow again")
+		end
 		--print("TRIAL " .. tostring(calcNoiseCount) .. ": BlockAbove")
 	end
-	if NoiseAcceptable("Block2Above", 2, TwoAboveNoise, x, y, z, 4, 3, Mining) then
-		Bounds = "Block2Above"
-		sourceBlockDist = 2
-		--print("TRIAL " .. tostring(calcNoiseCount) .. ": Block2Above")
+	if Bounds ~= "BlockAbove" and Bounds ~= "BlockBelow" then
+		if NoiseAcceptable("Block2Above", 2, TwoAboveNoise, x, y, z, 4, 3, Mining) then
+			--print("Block2Above")
+			Bounds = "Block2Above"
+			sourceBlockDist = 2
+			--print("TRIAL " .. tostring(calcNoiseCount) .. ": Block2Above")
+		end
 	end
+	
+	--print("----------------------------------------")
 
 	return Bounds, sourceBlockDist
 end
@@ -243,7 +263,7 @@ local function SpawnStructures(x,y,z,Bounds,Region,sourceBlockDist)
 				--Structure.MeshPart.CFrame = CFrame.new(0+x*7, -5+y*(-7), 0+z*7)
 
 				--Variance in strucutre spawns
-				local RotationRandom = math.random(1,4)
+				local RotationRandom = math.random(1,3)
 				Structure.Target.Rotation = Vector3.new(0, 90*RotationRandom, 0)
 				if Structure.Target:FindFirstChild("Offset") then
 					local Offset = Structure.Target.Offset.Value
@@ -314,8 +334,7 @@ function GenerateOre(x,y,z,Override,PresetPoint,Region,Player)
 	if (UsedPositions[PositionKey(x,y,z)] == nil or Override == true) and y > 0 then
 		
 		local Noise = math.noise(x/25,y/15,z/25) --math.noise is a perlin noise calculator, #'s are near each other, hence ability to make "natural" caves
-		--print(Noise)
-		--print(tostring(250 % 4)) --% means modulo, finding the remainder of division between the first & second #
+
 		local CompactPos = Vector3.new(x,y,z)
 		
 		--Cave Generation (generates until all blocks are "taken", including VectorsGen nearby blocks)
@@ -326,9 +345,6 @@ function GenerateOre(x,y,z,Override,PresetPoint,Region,Player)
 			if y > HighestYValue then --highest y value, lowest point in cave
 				HighestYValue = y 
 			end
-			
-			--Ambient air here (fog, mist?)
-			--(How would this be done... random location assignment of block? Otherwise, blocks may interfere with pickaxe mining)
 		
 			if Override ~= "Branch" then --If not a branch of a cave's source block, start cave generation
 				HighestYValue = 0
@@ -345,6 +361,7 @@ function GenerateOre(x,y,z,Override,PresetPoint,Region,Player)
 				print("REGION: " .. tostring(GCounts[Region]))
 				
 				--For setting the region apart from just a cave, maybe a closer to zero noise value will be used to generate nearby solids?
+				--(make blocks around cave region specific as well)
 				
 				coroutine.resume(coroutine.create(function()
 					for i,Vec in pairs(VectorsGen) do
@@ -353,18 +370,27 @@ function GenerateOre(x,y,z,Override,PresetPoint,Region,Player)
 						if UsedPositions[PositionKey(NewPos.x,NewPos.y,NewPos.z)] == nil then 
 							GCounts[Origin] = GCounts[Origin] + 1
 							GenerateOre(NewPos.x,NewPos.y,NewPos.z,"Branch",Origin,Region)
+							
 							--Branch will start actual cave generation, checking Noise everytime
 							--Noise correlates to natural shape
 						end
 					end
 				end))
 				
+				--[[
 				coroutine.resume(coroutine.create(function() --After the entire mine has been generated, check the true value for high
 					wait(1)
 					print("The true highest value for y is " .. tostring(HighestYValue))
 					
+					--**for liquid generation, entire cave will probably have to be deciated to be a water cave
+					--(Then no structures will spawn, but ores still will)
+					----Probably make this once fishing is in the game since water regions and etc have to be
+					----understood before generating liquids
+					
+					
 					--For liquid generation, how will it be mined? Long mine, where you mine the entire body of liquid, or individual chunks?)
 				end))
+				]]
 				
 				
 			else --Generating ores in region
@@ -445,7 +471,7 @@ MineOre.Event:Connect(function(Player,Ore)
 		RealMineshaftItem = game.ReplicatedStorage.ItemLocations.Mineshaft:FindFirstChild(Ore.Name)
 	end
 	
-	local OreColor = RealMineshaftItem.OreColor.Value
+	local OreColor = RealMineshaftItem["GUI Info"].OreColor.Value
 	local AssociatedBag = RealMineshaftItem.Bag.Value
 	local ItemType = string.gsub(AssociatedBag, "Bag", "") .. "s"
 	
@@ -453,7 +479,7 @@ MineOre.Event:Connect(function(Player,Ore)
 	local MaxOreAmount = PlayerStatManager:getEquippedData(Player, AssociatedBag .. "s", "Bags") --Bag capacity
 	
 	if MaxOreAmount then --Check bag again before finally breaking block
-		if TypeAmount < MaxOreAmount.Value then
+		if TypeAmount < MaxOreAmount then
 			if Ore:FindFirstChild("Claimed") == nil then
 				
 				local Hitbox
@@ -488,7 +514,7 @@ MineOre.Event:Connect(function(Player,Ore)
 								OrePosition = ConnectedOre.Position
 							end
 							local replicatedConnectedOre = game.ReplicatedStorage.ItemLocations.Mineshaft:FindFirstChild(tostring(ConnectedOre))
-							local ConnectedOreColor = replicatedConnectedOre.OreColor.Value
+							local ConnectedOreColor = replicatedConnectedOre["GUI Info"].OreColor.Value
 							MakeDustParticles(OrePosition,ConnectedOreColor)
 							ConnectedOre:Destroy()
 						end
