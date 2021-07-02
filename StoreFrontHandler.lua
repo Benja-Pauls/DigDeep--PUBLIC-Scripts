@@ -31,7 +31,6 @@ local StarterGui = game:GetService("StarterGui")
 
 local function DisplayStoreFrontGUI(bool)
 	StoreFrontMenu.Visible = bool
-	--StoreFrontMenu.CurrentPage.Value = 1
 	
 	if bool == true then --Display
 		StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false)
@@ -39,11 +38,7 @@ local function DisplayStoreFrontGUI(bool)
 		for i,statDisplay in pairs (StoreFrontMenu.ItemStatView:GetChildren()) do
 			statDisplay.Visible = false
 		end
-		
-		--StoreFrontMenu.PurchaseItemButton.Active = false
-		--StoreFrontMenu.PurchaseItemButton.Visible = false
-		--StoreFrontMenu.NextMessage.Visible = false
-		
+
 		for i,guiElement in pairs (StoreFrontMenu:GetChildren()) do
 			guiElement.Visible = true
 		end
@@ -73,10 +68,9 @@ local function DisplayStoreFrontGUI(bool)
 		]]
 	else --Close StoreFrontMenu: Reset Menu
 		StoreFrontGui.InteractedShop.Value = nil
-		--StoreFrontMenu.CurrentPage.Value = 0
 		StoreFrontMenu.CurrentTile.Value = nil
 		
-		--Delete all pages in product display
+		--Delete products in display
 		for i,product in pairs (ProductsDisplay:GetChildren()) do
 			product:Destroy()
 		end
@@ -93,6 +87,7 @@ local function TweenCashFlaps(decimalPresent) --0.25 seconds to work with
 	if decimalPresent == nil then --Hide all flaps
 		finalYHeight = -0.1
 		style = "In"
+		--Play sound effect of flaps closing
 	else
 		if decimalPresent == false then
 			local changeTo = costFlaps.Decimal.Position.X.Scale
@@ -105,6 +100,7 @@ local function TweenCashFlaps(decimalPresent) --0.25 seconds to work with
 		end
 		finalYHeight = -4.6
 		style = "Out"
+		--Play sound effect for flaps opening
 	end
 	
 	--Move all flaps
@@ -134,8 +130,8 @@ local function TweenCashFlaps(decimalPresent) --0.25 seconds to work with
 	end
 end
 
-local function ManageStatDisplay(StatName, StatValue, Item, ImageType)
-	local StatImage = Item["GUI Info"].StatImage.Value
+local function ManageStatDisplay(statName, StatValue, Item, ImageType)
+	local statImage = Item["GUI Info"].StatImage.Value
 
 	local FoundStatDisplay = false
 	for i,statDisplay in pairs (ItemStatView:GetChildren()) do
@@ -145,7 +141,7 @@ local function ManageStatDisplay(StatName, StatValue, Item, ImageType)
 					statDisplay.Utilized.Value = true
 					FoundStatDisplay = true
 
-					statDisplay.Image = StatImage
+					statDisplay.Image = statImage
 
 					if math.abs(StatValue) < 1 then --Remove 0 before decimal
 						local RemovedZero = string.gsub(tostring(StatValue), "0." , "")
@@ -155,9 +151,9 @@ local function ManageStatDisplay(StatName, StatValue, Item, ImageType)
 					end
 
 					if ImageType == "StatBar" then
-						local MaxStatValue = game.ReplicatedStorage.GuiElements.MaxStatValues:FindFirstChild(StatName).Value
-						statDisplay.StatName.Text = string.gsub(StatName, tostring(Item.Parent), "")
-						statDisplay.ProgressBar.Progress.Size = UDim2.new(StatValue/MaxStatValue, 0, 1, 0)
+						local maxStatValue = game.ReplicatedStorage.GuiElements.MaxStatValues:FindFirstChild(statName).Value
+						statDisplay.StatName.Text = string.gsub(statName, tostring(Item.Parent), "")
+						statDisplay.ProgressBar.Progress.Size = UDim2.new(StatValue/maxStatValue, 0, 1, 0)
 					end
 				end
 			end
@@ -346,9 +342,16 @@ StoreFrontMenu.SecondaryPreviousSlot.Activated:Connect(function()
 end)
 
 -------------------------<|Tile Management Functions|>-----------------------------------------------------------------------------------------
+local getItemStats = EventsFolder.Utility:WaitForChild("GetItemStats")
+
+local staticPurchImage = "rbxassetid://7032450616"
+local hoverPurchImage = "rbxassetid://7032454116"
+local pressedPurchImage = "rbxassetid://7032459686"
+local disabledPurchImage = "rbxassetid://7032621610"
 
 --Update Product Info
 StoreFrontMenu.LowShopBanner.Position = UDim2.new(0.33, 0, 0.028, 0)
+StoreFrontMenu.CurrentTile.Value = nil
 StoreFrontMenu.CurrentTile.Changed:Connect(function()
 	local tile = StoreFrontMenu.CurrentTile.Value
 	
@@ -361,27 +364,39 @@ StoreFrontMenu.CurrentTile.Changed:Connect(function()
 			infoBannerOpen = false
 			extraWait = 0.5
 		end
-		--Update LowBanner with Rarity & Item Name
+		
+	------Update LowBanner with Rarity & Item Name
 		coroutine.resume(coroutine.create(function()
 			StoreFrontMenu.LowShopBanner:TweenPosition(UDim2.new(0.328, 0, -0.383, 0), "Out", "Quint", .24 + extraWait)
 			wait(.24 + extraWait)
 			StoreFrontMenu.LowShopBanner.ItemName.Text = tostring(item)
+			
+			local rarityName = item["GUI Info"].RarityName.Value
+			local rarityInfo = GuiElements.RarityColors:FindFirstChild(rarityName)
+			StoreFrontMenu.LowShopBanner.Image = rarityInfo.TileImages.ShopLowBanner.Value
+			
 			--Update image of banner for rarity
+			
+			
+			
 			--Update and color info under banner
 			StoreFrontMenu.LowShopBanner:TweenPosition(UDim2.new(0.328, 0, -0.295, 0), "Out", "Quint", .24)
 		end))
 		
 	------Manage Stat Displays
-		if item:FindFirstChild(tostring(item) .. "Stats") then
-			local ItemStats = require(item:FindFirstChild(tostring(item) .. "Stats"))
+		if item["GUI Info"].EquipType then
+			local equipType = item["GUI Info"].EquipType.Value
+			local itemType = item["GUI Info"].ItemType.Value
+			local itemName = tostring(item)
+			local itemStats = getItemStats:InvokeServer("Equipment", equipType, itemType, itemName)
 			
-			for stat = 1,#ItemStats["Stats"],1 do
-				local Stat = ItemStats["Stats"][stat]
-				if ItemStats["Images"][Stat[1] .. "Image"] then --Display Stat				
+			for stat = 1,#itemStats["Stats"],1 do
+				local Stat = itemStats["Stats"][stat]
+				if itemStats["Images"][Stat[1] .. "Image"] then --Display Stat				
 					local StatName = string.gsub(Stat[1], tostring(item), "")
 					local StatValue = Stat[2]
-					local StatImage = ItemStats["Images"][Stat[1] .. "Image"][1]
-					local ImageType = ItemStats["Images"][Stat[1] .. "Image"][2]
+					local StatImage = itemStats["Images"][Stat[1] .. "Image"][1]
+					local ImageType = itemStats["Images"][Stat[1] .. "Image"][2]
 					ManageStatDisplay(Stat[1], StatValue, item, ImageType)
 				end
 			end 
@@ -395,12 +410,6 @@ StoreFrontMenu.CurrentTile.Changed:Connect(function()
 			end
 		end
 		
-		--Display Name
-		--Display Rarity
-		--Display Item Cost
-		--Change how purchase button looks
-		--
-		
 		local alreadyPurchased = tile.AlreadyPurchased.Value
 		StoreFrontMenu.PurchaseBox.PurchaseItemButton.Active = not alreadyPurchased
 		--Change Purchase button image and active state based on purchaseValue
@@ -408,13 +417,24 @@ StoreFrontMenu.CurrentTile.Changed:Connect(function()
 		
 		
 	------Manage cost value flaps above purchase button
+		local purchaseButton = StoreFrontMenu.PurchaseBox.PurchaseItemButton
+		purchaseButton.Active = not tile.AlreadyPurchased.Value
+		if tile.AlreadyPurchased.Value == true then
+			purchaseButton.Image = disabledPurchImage
+			purchaseButton.HoverImage = disabledPurchImage
+			purchaseButton.PressedImage = disabledPurchImage
+		else
+			purchaseButton.Image = staticPurchImage
+			purchaseButton.HoverImage = hoverPurchImage
+			purchaseButton.PressedImage = pressedPurchImage
+		end
+		
 		TweenCashFlaps() --Hide Flaps
 
 		local shortCost = tostring(GuiUtility.ConvertShort(tile.ReferenceValue.Value))
 		local costFlaps = StoreFrontMenu.PurchaseBox.CostFlaps
 		
 		local decimalPresent = false
-		print(shortCost)
 		if string.len(shortCost) == 5 then
 			decimalPresent = true
 		end
@@ -426,7 +446,7 @@ StoreFrontMenu.CurrentTile.Changed:Connect(function()
 		end
 		
 		--Manage Cash Flap Text
-		if tonumber(string.sub(shortCost, 1, 1)) > 0 then
+		if tonumber(string.sub(shortCost, 1, 1)) > 0 and tile.AlreadyPurchased.Value == false then
 			local prevNumberT = 0
 			for t = 1,string.len(shortCost) do
 				local char = string.sub(shortCost, t, t)
@@ -454,7 +474,6 @@ StoreFrontMenu.CurrentTile.Changed:Connect(function()
 				end
 			end
 			
-			--Show Flaps (make this a function that can be used to show them as well)
 			TweenCashFlaps(decimalPresent) --Show Flaps
 		end
 		
@@ -515,7 +534,7 @@ local dialogueBox = StoreFrontMenu.DialogueBox
 local TalkButton = StoreFrontMenu.TalkButton
 local CurrentNPC
 
-local timeBeforeAppear = 5
+local timeBeforeAppear = 4
 local function CountDownDialogue()
 	local timer = dialogueBox.TimeLeft
 	timer.Value = 0
@@ -536,27 +555,6 @@ local function CountDownDialogue()
 					dialogueBox.Position = UDim2.new(0.019, 0, 1.05, 0)
 					dialogueBox.Size = UDim2.new(0.337, 0, 0.323, 0)
 				end
-			
-			--[[
-			if dialogueBox.TimeLeft.Value == i - 1 then
-				dialogueBox.TimeLeft.Value = i
-				if i == 10 then --Close NPC Dialogue
-					dialogueBox:TweenPosition(UDim2.new(0.178, 0, 0.412, 0), "Out", "Quint", .5)
-					dialogueBox:TweenSize(UDim2.new(0, 0, 0, 0), "Out", "Quint", .5)
-					wait(.5)
-
-					dialogueBox.Visible = false
-					dialogueBox.Text = ""
-					dialogueBox.Position = UDim2.new(0.14, 0, 0.412, 0)
-					dialogueBox.Size = UDim2.new(0.32/4, 0, 0.07)
-					
-					--NextMessage.Visible = false
-					--NextMessage.Active = false
-					--NextMessage.Selectable = false
-				end
-			end
-			wait(1)
-			]] 
 			end
 		end
 	end))
@@ -578,7 +576,7 @@ local function ShowNPCDialogue(shopData, SetResponse, Index, MissingFunds)
 	Message = CheckToReplaceText(Message, "MISSINGFUNDS", "$" .. tostring(MissingFunds))
 	
 	if StoreFrontMenu.CurrentTile.Value ~= nil then
-		Message = CheckToReplaceText(Message, "ITEM", tostring(StoreFrontMenu.CurrentTile.Value))
+		Message = CheckToReplaceText(Message, "ITEM", tostring(StoreFrontMenu.CurrentTile.Value.ReferenceObject.Value))
 	end
 	
 	local CharacterCount = string.len(Message)
@@ -649,25 +647,16 @@ end
 
 ---------------------<|Button-Press Functions|>------------------------------------------------------------------------------------------------
 
+GuiUtility.SetUpPressableButton(StoreFrontMenu.PurchaseBox.PurchaseItemButton, 0.025)
+
 StoreFrontMenu.PurchaseBox.PurchaseItemButton.Activated:Connect(function()
-	local CurrentTile = StoreFrontMenu.CurrentTile.Value
-	local ItemName = CurrentTile.DisplayName.Text
+	local currentTile = StoreFrontMenu.CurrentTile.Value
+	--local itemName = tostring(currentTile.ReferenceObject.Value)
 	
-	if CurrentTile.AlreadyPurchased.Value == false then
-		local NPC = StoreFrontGui.InteractedShop.Value.Name
-		local ItemType = CurrentTile.ItemType.Text
-		local EquipType = CurrentTile.EquipType.Value
+	if currentTile.AlreadyPurchased.Value == false then
+		local shopKeeper = StoreFrontGui.InteractedShop.Value.Name
 		
-		StoreFrontPurchase:FireServer(NPC, ItemName, ItemType, EquipType)
-		
-		--Shiny effect for new item of type on PlayerItem tiles
-		local PlayerMenu = StoreFrontGui.Parent.DataMenu.DataMenu.PlayerMenu
-		if PlayerMenu:FindFirstChild(ItemType) then
-			local MenuButton = PlayerMenu:FindFirstChild(ItemType)
-			if MenuButton.NewItem.Value == false then
-				MenuButton.NewItem.Value = true
-			end
-		end
+		StoreFrontPurchase:FireServer(shopKeeper, currentTile.ReferenceObject.Value)
 	else
 		ShowNPCDialogue(CurrentNPC, "Item Already Purchased", 1)
 	end
@@ -750,6 +739,21 @@ UpdateStoreFront.OnClientEvent:Connect(function(shopKeeper, shopData, AlreadyPur
 		MoveAllBaseScreenUI:Fire("Hide")
 		wait(.5)
 		
+		--Update Shop Banner
+		StoreFrontMenu.ShopBanner.ShopName.Text = shopData["Shop Name"]
+		StoreFrontMenu.ShopBanner.ShopType.Text = shopData["Shop Type"]
+		
+		local shopBanner = shopData["ShopTheme"]["Shop Banner"]
+		local primaryColor = shopData["ShopTheme"]["Primary Color"]
+		local secondaryColor = shopData["ShopTheme"]["Secondary Color"]
+		StoreFrontMenu.ShopBanner.Image = shopBanner
+		StoreFrontMenu.PurchaseBox.BackgroundColor3 = Color3.fromRGB(primaryColor.R, primaryColor.G, primaryColor.B)
+		StoreFrontMenu.PurchaseBox.DarkAccent.BackgroundColor3 = Color3.fromRGB(secondaryColor.R, secondaryColor.G, secondaryColor.B)
+		StoreFrontMenu.DialogueBox.BackgroundColor3 = Color3.fromRGB(primaryColor.R, primaryColor.G, primaryColor.B)
+		StoreFrontMenu.DialogueBox.DarkAccent.BackgroundColor3 = Color3.fromRGB(secondaryColor.R, secondaryColor.G, secondaryColor.B)
+		StoreFrontMenu.TopBar.BackgroundColor3 = Color3.fromRGB(secondaryColor.R, secondaryColor.G, secondaryColor.B)
+		
+		--Tween in all Shop GUI elements
 		coroutine.resume(coroutine.create(function()
 			DisplayStoreFrontGUI(true)
 		end))
@@ -758,9 +762,6 @@ UpdateStoreFront.OnClientEvent:Connect(function(shopKeeper, shopData, AlreadyPur
 		--Other player touches radius part turns invisible
 		--Player reappears no longer touching radius part: left radpart or radpart was deleted
 		
-		--Update Shop Banner
-		StoreFrontMenu.ShopBanner.ShopName.Text = shopData["Shop Name"]
-		StoreFrontMenu.ShopBanner.ShopType.Text = shopData["Shop Type"]
 		
 		local Items = shopData["Items"]
 		for item = 1,#Items,1 do
@@ -796,6 +797,7 @@ UpdateStoreFront.OnClientEvent:Connect(function(shopKeeper, shopData, AlreadyPur
 
 		local lockedBlock = GuiElements.LockedBlock
 		tipSlot.ReferenceObject.Value = lockedBlock
+		tipSlot.AlreadyPurchased.Value = true
 		GuiUtility.Display3DModels(Player, tipSlot, lockedBlock:Clone(), true, lockedBlock["GUI Info"].DisplayAngle.Value)
 		
 		
@@ -815,18 +817,22 @@ StoreFrontPurchase.OnClientEvent:Connect(function(Item, MissingFunds)
 		--SoundEffects:PlaySound(StoreFrontGui.InteractedShop.Value, SadVoice, math.sqrt(2))
 	else
 		print(tostring(Player) .. " has successfully purchased " .. tostring(Item))
-		local Tile = StoreFrontMenu.CurrentTile.Value
-		Tile.ItemCost.Text = "Purchased"
-		Tile.AlreadyPurchased.Value = true
+		local tile = StoreFrontMenu.CurrentTile.Value
+		tile.AlreadyPurchased.Value = true
 		
-		StoreFrontMenu.PurchaseItemButton.BackgroundColor3 = Color3.fromRGB(143, 136, 128)
-		StoreFrontMenu.PurchaseItemButton.BorderColor3 = Color3.fromRGB(88, 84, 79)
+		--Change PurchaseBox Visuals
+		local purchaseButton = StoreFrontMenu.PurchaseBox.PurchaseItemButton
+		purchaseButton.Image = disabledPurchImage
+		purchaseButton.HoverImage = disabledPurchImage
+		purchaseButton.PressedImage = disabledPurchImage
+		purchaseButton.Active = false
+		TweenCashFlaps()
+		
+		--Play sound effect!
 		
 		coroutine.resume(coroutine.create(function()
 			ShowNPCDialogue(CurrentNPC, "Thank You For Purchase", 1)
 		end))
-		
-		--SoundEffects:PlaySound(StoreFrontGui.InteractedShop.Value, HappyVoice, math.sqrt(2))
 	end
 end)
 
