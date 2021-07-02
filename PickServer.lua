@@ -16,7 +16,11 @@ function Tool.SetTarget.OnServerInvoke(player,Selection)
 	Tool.Target.Value = Selection
 end
 
-local ToolStats = require(Tool:WaitForChild(tostring(Tool) .. "Stats"))
+local equipType = Tool["GUI Info"].EquipType.Value
+local itemType = Tool["GUI Info"].ItemType.Value
+local itemName = Tool.Name
+local equipmentData = require(game.ServerStorage.EquipmentData)
+local ToolStats = equipmentData[equipType][itemType][itemName]
 
 local MouseDown = false
 local Debounce = true
@@ -68,7 +72,7 @@ local function StartMining()
 						
 						Debounce = false --Prevents mining to happen again until this block has been mined
 						coroutine.resume(coroutine.create(function()
-							wait(TimeToMine + FindStatValue(ToolStats["Stats"], "Speed"))
+							wait(TimeToMine + FindStatValue(ToolStats["Stats"], "Mining Speed"))
 							Debounce = true
 						end))
 						
@@ -88,7 +92,7 @@ local function StartMining()
 							Target.Reflectance = 0
 						end
 
-						wait(FindStatValue(ToolStats["Stats"], "Speed"))
+						wait(FindStatValue(ToolStats["Stats"], "Mining Speed"))
 						Debounce = true
 						if MouseDown then --keep mining if mouse is still down
 							StartMining()
