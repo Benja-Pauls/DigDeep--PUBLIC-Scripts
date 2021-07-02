@@ -6,7 +6,9 @@ local PlayerStatManager = {}
 local tycoons = game.Workspace:WaitForChild("Tycoons"):GetChildren()
 
 local PlayerData = game.ServerStorage:FindFirstChild("PlayerData")
-local Utility = require(game.ServerScriptService:WaitForChild("Utility"))
+local Utility = require(game.ServerScriptService.Utility)
+local equipmentData = require(game.ServerStorage.EquipmentData)
+local itemData = require(game.ServerStorage.ItemData)
 
 local EventsFolder = game.ReplicatedStorage.Events
 local UpdateInventory = EventsFolder.GUI:WaitForChild("UpdateInventory")
@@ -73,15 +75,15 @@ local sessionData = {}
 
 --------------------------<|Utility Functions|>----------------------------------------------------------------------------------------------------------------------------------
 
-GetBagCount.OnInvoke = function(Player, ItemInfo)
-	local ItemType = string.gsub(ItemInfo.Bag.Value, "Bag", "")
-	local Amount = PlayerStatManager:getItemTypeCount(Player, ItemType .. "s")
-	local MaxAmount = PlayerStatManager:getEquippedData(Player, ItemInfo.Bag.Value .. "s", "Bags")
+GetBagCount.OnInvoke = function(Player, itemInfo)
+	local itemType = string.gsub(itemInfo.Bag.Value, "Bag", "")
+	local amount = PlayerStatManager:getItemTypeCount(Player, itemType .. "s")
+	local maxAmount = PlayerStatManager:getEquippedData(Player, itemInfo.Bag.Value .. "s", "Bags")
 	
-	if Amount and MaxAmount then
-		return Amount,MaxAmount.Value,ItemType .. "s"
+	if amount and maxAmount then
+		return amount,maxAmount,itemType .. "s"
 	else
-		return Amount,nil,ItemType .. "s"
+		return amount,nil,itemType .. "s"
 	end
 end
 
@@ -180,18 +182,18 @@ local function UpdateGUIForFile(DataTabName, PlayerDataFile, player, playerUserI
 					
 					--Update Bag
 					local TypeAmount = PlayerStatManager:getItemTypeCount(player, tostring(file))
-					local MaxItemAmount = PlayerStatManager:getEquippedData(player, LocationOfAcquirement:FindFirstChild(statName).Bag.Value .. "s", "Bags") --Bag capacity
-					if MaxItemAmount then
+					local maxItemAmount = PlayerStatManager:getEquippedData(player, LocationOfAcquirement:FindFirstChild(statName).Bag.Value .. "s", "Bags") --Bag capacity
+					if maxItemAmount then
 						if value ~= 0 and not overFlow then
-							UpdateItemCount:FireClient(player, TypeAmount+value, MaxItemAmount.Value, tostring(file))
+							UpdateItemCount:FireClient(player, TypeAmount+value, maxItemAmount, tostring(file))
 						elseif overFlow then
 							--put up popup showing how much has been payed
 							local expense = math.abs(value - overFlow)
-							UpdateItemCount:FireClient(player, TypeAmount-expense, MaxItemAmount.Value, tostring(file))
+							UpdateItemCount:FireClient(player, TypeAmount-expense, maxItemAmount, tostring(file))
 							--remove tile from inventory
 							
 						else
-							UpdateItemCount:FireClient(player, 0, MaxItemAmount.Value, tostring(file), true)
+							UpdateItemCount:FireClient(player, 0, maxItemAmount, tostring(file), true)
 						end
 					end
 				else
@@ -280,14 +282,14 @@ function PlayerStatManager:ChangeStat(player, statName, value, Folder, ItemType,
 			
 			if Folder == "Bags" then --Update Equipped Bag (change bag capacity)
 				local TypeAmount = PlayerStatManager:getItemTypeCount(player, string.gsub(ItemType, "Bag", ""))
-				local MaxItemAmount
-				if value and value ~= "" then
-					MaxItemAmount = PlayerStatManager:getEquippedData(player, ItemType, "Bags").Value
+				local maxItemAmount
+				if value and value ~= "" then --if bag is equipped
+					maxItemAmount = PlayerStatManager:getEquippedData(player, ItemType, "Bags").Value
 				else	
-					MaxItemAmount = 0
+					maxItemAmount = 0
 				end
 				
-				UpdateItemCount:FireClient(player, TypeAmount, MaxItemAmount, ItemType)
+				UpdateItemCount:FireClient(player, TypeAmount, maxItemAmount, ItemType)
 				
 			elseif Folder == "Tools" then
 				UpdateToolbar(player, tostring(ItemType), value)
@@ -467,7 +469,8 @@ function LoadPlayerData(PlayerDataFile, data, JoinedPlayer)
 			if EquippedItem then
 				if tostring(equiptype) == "Bags" then --Update GUI Menus (Inventory Bag # Limits)
 					local MenuName = string.gsub(tostring(itemtype), "Bag", "") .. "Menu"
-					DataMenu:WaitForChild("InventoryMenu"):FindFirstChild(MenuName):SetAttribute("BagCapacity", EquippedItem.Value)
+					local bagStats = equipmentData["Bags"][tostring(itemtype)][tostring(EquippedItem)]
+					DataMenu:WaitForChild("InventoryMenu"):FindFirstChild(MenuName):SetAttribute("BagCapacity", bagStats["Stats"]["Bag Capacity"])
 
 					local ItemCount = PlayerStatManager:getItemTypeCount(JoinedPlayer, string.gsub(tostring(itemtype), "Bag", ""))
 					DataMenu:WaitForChild("InventoryMenu"):FindFirstChild(MenuName):SetAttribute("ItemCount", ItemCount)
@@ -538,7 +541,9 @@ function PlayerStatManager:getStat(player, statName) --Stat Check
 	if sessionData[playerUserId] then
 		return sessionData[playerUserId][statName]
 	else
-		warn(player," does not have save data!") --possibly kick player from game and tell to try again
+		warn(player," does not have save data! Trying again...") --possibly kick player from game and tell to try again
+		wait(2)
+		PlayerStatManager:getStat(player, statName)
 	end
 end 
 
@@ -556,20 +561,21 @@ function PlayerStatManager:getItemTypeCount(player, Type) --For Amount in Bag Ch
 	end
 end
 
-function PlayerStatManager:getEquippedData(player, Equippable, Type)
+function PlayerStatManager:getEquippedData(player, itemType, equipType)
 	local playerUserId = game.Players:FindFirstChild(tostring(player)).UserId
 	local PlayerDataFile = game.ServerStorage.PlayerData:FindFirstChild(tostring(playerUserId))
 	
-	if PlayerDataFile.Player.CurrentlyEquipped:FindFirstChild("Equipped" .. Type):FindFirstChild("Equipped" .. Equippable) then
-		local EquippedItem = PlayerDataFile.Player.CurrentlyEquipped:FindFirstChild("Equipped" .. Type):FindFirstChild("Equipped" .. Equippable)
-		local EquipmentName = EquippedItem.Value
+	if PlayerDataFile.Player.CurrentlyEquipped:FindFirstChild("Equipped" .. equipType):FindFirstChild("Equipped" .. itemType) then
+		local equippedItem = PlayerDataFile.Player.CurrentlyEquipped:FindFirstChild("Equipped" .. equipType):FindFirstChild("Equipped" .. itemType)
+		local equipmentName = equippedItem.Value
 
-		if EquipmentName ~= "" then
-			local EquipmentStats = game.ReplicatedStorage.Equippable:FindFirstChild(Type):FindFirstChild(Equippable):FindFirstChild(EquipmentName)
-			return EquipmentStats
+		if equipmentName ~= "" then
+			local maxAmount = equipmentData[equipType][itemType][equipmentName]["Stats"]["Bag Capacity"]
+				--game.ReplicatedStorage.Equippable:FindFirstChild(Type):FindFirstChild(Equippable):FindFirstChild(EquipmentName)
+			return maxAmount
 		end
 	else
-		warn("Could not find equippable for " .. tostring(player) .. " with name: " .. Equippable)
+		warn("Could not find equippable for " .. tostring(player) .. " with name: " .. itemType)
 	end
 end
 
@@ -611,6 +617,25 @@ function UpdateToolbar(Player, ItemType, NewlyEquippedItem)
 end
 
 -----------------------------<|Stat-Handling Remote Events/Functions|>------------------------------------------------------------------------------------------
+
+local getItemStats = EventsFolder.Utility:WaitForChild("GetItemStats")
+function getItemStats.OnServerInvoke(player, dataType, equipType, itemType, itemName)
+	local dataModule = require(game.ServerStorage:FindFirstChild(dataType .. "Data"))
+
+	local itemInfo
+	if dataType == "Equipment" then
+		itemInfo = dataModule[equipType][itemType][itemName]
+	else
+		itemInfo = dataModule[itemType][itemName]
+	end
+	
+	if itemInfo then
+		local cloneInfo = Utility:CloneTable(itemInfo)
+		return cloneInfo
+	else
+		warn(player, " is exploiting. Trying to grab false equipmentStats")
+	end
+end
 
 local SellItem = EventsFolder.Utility:WaitForChild("SellItem")
 SellItem.OnServerEvent:Connect(function(Player, Menu, item, Percentage)--, Amount)
