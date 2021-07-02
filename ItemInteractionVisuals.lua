@@ -41,12 +41,12 @@ local function CheckSelectedItem()
 		end
 		
 		if RealOre then
-			ItemLabel.TextColor3 = RealOre.OreColor.Value
+			ItemLabel.TextColor3 = RealOre["GUI Info"].OreColor.Value
 			
 			local ProgressBarClone = ProgressBar:Clone()
 			ProgressBarClone.Parent = Target
 			ProgressBarClone.Adornee = Target
-			ProgressBarClone.ProgressBar.TimeLeft.BackgroundColor3 = RealOre.OreColor.Value
+			ProgressBarClone.ProgressBar.TimeLeft.BackgroundColor3 = RealOre["GUI Info"].OreColor.Value
 			
 			while Target == workspace.CurrentCamera.SelectedItem.Value do
 				wait()
