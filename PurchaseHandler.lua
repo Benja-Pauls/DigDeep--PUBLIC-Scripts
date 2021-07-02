@@ -410,10 +410,8 @@ StoreFrontInteract.OnServerEvent:Connect(function(player, NPC)
 end)
 
 local StoreFrontPurchase = game.ReplicatedStorage.Events.Utility:WaitForChild("StoreFrontPurchase")
-StoreFrontPurchase.OnServerEvent:Connect(function(player, NPC, ItemName, ItemType, EquipType, Tile)
-	local PlayerDataFile = PlayerData:FindFirstChild(tostring(player.UserId))
-	local Item = game.ReplicatedStorage.Equippable:FindFirstChild(EquipType):FindFirstChild(ItemType):FindFirstChild(ItemName)
-
+StoreFrontPurchase.OnServerEvent:Connect(function(player, NPC, Item)
+	local playerDataFile = PlayerData:FindFirstChild(tostring(player.UserId))
 	local shopData = AllShopData[NPC]
 	
 	local ItemPrice 	
@@ -423,7 +421,7 @@ StoreFrontPurchase.OnServerEvent:Connect(function(player, NPC, ItemName, ItemTyp
 		end
 	end
 	
-	local PlayerCash = PlayerDataFile:FindFirstChild("Currencies"):FindFirstChild("UniversalCurrencies"):FindFirstChild("Currency")
+	local PlayerCash = playerDataFile:FindFirstChild("Currencies"):FindFirstChild("UniversalCurrencies"):FindFirstChild("Currency")
 	
 	if ItemPrice then
 		if PlayerCash.Value >= ItemPrice then
@@ -432,9 +430,17 @@ StoreFrontPurchase.OnServerEvent:Connect(function(player, NPC, ItemName, ItemTyp
 			Utility:UpdateMoneyDisplay(player, PlayerCash.Value)
 			UpdateInventory:FireClient(player, "Currency", "Currencies", nil, -ItemPrice, "Inventory", "Money1")
 			
-			--Get & Equip Item
-			PlayerStatManager:ChangeStat(player, ItemName, true, EquipType, ItemType)
-			PlayerStatManager:ChangeStat(player, "Equipped" .. ItemType, ItemName, EquipType, ItemType)
+			local itemName = tostring(Item)
+			local itemType = tostring(Item.Parent)
+			local equipType = tostring(Item.Parent.Parent)
+			
+			if equipType ~= "ItemLocations" then
+				--Get & Equip Item
+				PlayerStatManager:ChangeStat(player, itemName, true, equipType, itemType)
+				PlayerStatManager:ChangeStat(player, "Equipped" .. itemType, itemName, equipType, itemType)
+			else
+				PlayerStatManager:ChangeStat(player, itemName, true, equipType, itemType)
+			end
 			
 			StoreFrontPurchase:FireClient(player, Item)
 		else
