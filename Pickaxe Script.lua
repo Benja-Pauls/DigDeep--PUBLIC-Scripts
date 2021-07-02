@@ -17,8 +17,12 @@ RegionLabel.Visible = false
 CoordLabel.Visible = false
 ToSurfaceButton.Visible = false
 
-local Tool = script.Parent
-local ToolStats = require(Tool:WaitForChild(tostring(Tool) .. "Stats"))
+local getEquipmentStats = game.ReplicatedStorage.Events.Utility:WaitForChild("GetItemStats")
+
+local equipType = script.Parent["GUI Info"].EquipType.Value
+local itemType = script.Parent["GUI Info"].ItemType.Value
+local itemName = tostring(script.Parent)
+local toolStats = getEquipmentStats:InvokeServer("Equipment", equipType, itemType, itemName)
 
 local Equipped = false
 local Active = false
@@ -33,8 +37,7 @@ end
 
 local function SelectOre(Ore)
 	if Ore:IsDescendantOf(workspace.Mine) then--and (Ore.Position - script.Parent.Parent.UpperTorso.Position).Magnitude <= 7 then
-		print(FindStatValue(ToolStats["Stats"], "Reach"))
-		if (Ore.Position - HRP.Position).magnitude <= FindStatValue(ToolStats["Stats"], "Reach") * 6.3 then
+		if (Ore.Position - HRP.Position).magnitude <= FindStatValue(toolStats["Stats"], "Swing Reach") * 6.3 then
 			
 			--CONTROLS WHAT MOUSE HAS SELECTED
 			if Ore.Name == "Target" then
