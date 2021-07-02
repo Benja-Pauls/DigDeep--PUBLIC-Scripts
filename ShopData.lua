@@ -8,8 +8,9 @@ local NPCData = {
 		["Shop Type"] = "Mining Supplies",
 		
 		["ShopTheme"] = {
+			["Shop Banner"] = "rbxassetid://7024895384", --Pickaxe Shop Banner
 			["Primary Color"] = {R=179,G=179,B=179},
-			["Secondary Color"] = "SecondaryColorValue"
+			["Secondary Color"] = {R=106,G=106,B=106}
 			
 		},
 		
@@ -59,4 +60,3 @@ local NPCData = {
 --to go through each element of this table to get item info to be displayed
 
 return NPCData
-
