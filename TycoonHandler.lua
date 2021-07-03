@@ -17,6 +17,53 @@ local GateControl = script:WaitForChild("GateControl")
 local LoadTycoon = game:GetService("ReplicatedStorage").Events.Tycoon.LoadTycoon
 local ClaimTycoon = game:GetService("ReplicatedStorage").Events.Tycoon.ClaimTycoon
 
+------------<|Tycoon Setup and Reseting|>---------------------------------
+local TycoonTable = {}
+
+for i,tycoon in pairs (Tycoons) do
+	if tycoon:IsA("Model") then
+		Instance.new('Model',tycoon).Name = "TycoonDropStorage"
+		TycoonTable[tycoon.Name] = tycoon:Clone()
+	end
+end
+
+local TycoonPurchases = game.ReplicatedStorage:WaitForChild("TycoonPurchases")
+local Droppers = TycoonPurchases:FindFirstChild("Dropper")
+local DropperScript = script.DropperScript
+
+for i,dropper in pairs (Droppers:GetChildren()) do
+	if dropper:FindFirstChild("DropperScript") == nil then
+		local DropScriptClone = DropperScript:Clone()
+		DropScriptClone.Parent = dropper
+		DropScriptClone.Disabled = false
+	end
+end
+
+function getPlrTycoon(player)
+	for i,tycoon in pairs(Tycoons) do
+		if tycoon:IsA("Model") then
+			if tycoon.Owner.Value == player then
+				return tycoon
+			end
+		end
+	end
+end
+
+--When player leaves
+game.Players.PlayerRemoving:connect(function(player)
+
+	--Remove the tycoon when the player leaves
+	local tycoon = getPlrTycoon(player)
+	if tycoon then
+		local backup = TycoonTable[tycoon.Name]:Clone()
+		tycoon:Destroy() --Destroy the player's tycoon when they leave
+		wait()
+		backup.Parent = Tycoons --put the default tycoon in the tycoons folder
+	end
+end)
+
+
+
 local allObjects = {}
 
 --Hide buttons from previous games
@@ -167,7 +214,6 @@ local function PrepareTycoon(Tycoon)
 end
 
 for i,tycoon in pairs (Tycoons) do
-	--print("Preparing",tycoon)
 	PrepareTycoon(tycoon)
 end
 
@@ -182,10 +228,11 @@ while wait(59) do
 		local allPlayers = Players:GetChildren()
 		for i,player in pairs (Players:GetChildren()) do
 			if player ~= nil then
-				local PlayerDataFile = PlayerData:FindFirstChild(tostring(player.UserId))
-				local PlayerMoney = PlayerDataFile:FindFirstChild("Currencies"):FindFirstChild("UniversalCurrencies"):FindFirstChild("Currency")
-				if PlayerMoney then 
-					PlayerStatManager:initiateSaving(player, "Currency", PlayerMoney.Value)
+				local playerDataFile = PlayerData:FindFirstChild(tostring(player.UserId))
+				local playerMoney = playerDataFile:FindFirstChild("Currencies"):FindFirstChild("UniversalCurrencies"):FindFirstChild("Coins")
+				
+				if playerMoney then 
+					PlayerStatManager:initiateSaving(player, "Coins", playerMoney.Value)
 					 --Initiate saving process by saving player money, then save other player data
 				end
 			end
