@@ -7,7 +7,6 @@ local Player = Players.LocalPlayer
 local PlayerGui = Player:WaitForChild("PlayerGui")
 local StarterGui = game:GetService("StarterGui")
 local TycoonComputerGui = script.Parent
-local GuiUtility = require(game.ReplicatedStorage:FindFirstChild("GuiUtility"))
 
 local ComputerScreen = TycoonComputerGui.ComputerScreen
 local MenuSelect = ComputerScreen.MenuSelect
@@ -34,9 +33,9 @@ local KeyboardClickSound = script.Parent.KeyboardClick
 local StartUpSound = script.Parent.StartUp
 local HoverSound = script.Parent.Hover
 
-for i,v in pairs (ComputerScreen:GetDescendants()) do
-	if v:IsA("TextButton") or v:IsA("ImageButton") then
-		v.MouseEnter:Connect(function()
+for _,button in pairs (ComputerScreen:GetDescendants()) do
+	if button:IsA("TextButton") or button:IsA("ImageButton") then
+		button.MouseEnter:Connect(function()
 			HoverSound:Play()
 		end)
 	end
@@ -46,20 +45,8 @@ end
 
 local GuiUtility = require(game.ReplicatedStorage:FindFirstChild("GuiUtility"))
 
-local function FindItemInfo(statName, bagType)
-	local ItemInformation
-	for i,location in pairs (game.ReplicatedStorage.ItemLocations:GetChildren()) do
-		if location:FindFirstChild(statName) then
-			if string.gsub(location:FindFirstChild(statName).Bag.Value, "Bag", "") .. "s" == bagType then
-				ItemInformation = location:FindFirstChild(statName)
-			end
-		end
-	end	
-	return ItemInformation
-end
-
 local function MenuButtonActiveState(Menu, State)
-	for i,button in pairs (Menu:GetChildren()) do
+	for _,button in pairs (Menu:GetChildren()) do
 		if button:IsA("ImageButton") then
 			button.Active = State
 			button.Selectable = State
@@ -74,6 +61,33 @@ local function AddRarityGradient(rarityInfo, parent, rotation)
 	local newGradient = rarityInfo.RarityGradient:Clone()
 	newGradient.Parent = parent
 	newGradient.Rotation = rotation
+end
+
+local function EnsureStorageLoaded()
+	local tileCount = 0
+	for _,page in pairs(ComputerScreen.StorageMenu.ItemsPreview.Materials:GetChildren()) do
+		if page:IsA("Frame") and string.find(page.Name, "Page") then
+			for _,tile in pairs (page:GetChildren()) do
+				if (tile:IsA("ImageButton") or tile:IsA("TextButton")) and string.find(tile.Name, "Slot") then
+					tileCount += 1
+				end
+			end
+		end
+	end
+	
+	local trueItemCount = 0
+	for _,itemType in pairs (game.ReplicatedStorage.InventoryItems:GetChildren()) do
+		if itemType:IsA("Folder") then
+			for _,item in pairs (itemType:GetChildren()) do
+				trueItemCount += 1
+			end
+		end
+	end
+	
+	print("Ensuring storage is loaded before inputting values... ", tileCount, trueItemCount)
+	if trueItemCount == tileCount then
+		ComputerScreen.StorageMenu.Loaded.Value = true
+	end
 end
 
 --------------------------<|Set Up Menu Functions|>-------------------------------------------------------------------------------------------------------------
@@ -97,12 +111,12 @@ local function ShutDownComputer()
 end
 
 local function PrepareAllMenuVisibility()
-	for i,menu in pairs(ComputerScreen:GetChildren()) do
+	for _,menu in pairs(ComputerScreen:GetChildren()) do
 		if (menu:IsA("Frame") or menu:IsA("ImageLabel")) and tostring(menu) ~= "FadeOut" then
 			menu.Visible = false
 
 			if tostring(menu) == "StorageMenu" or tostring(menu) == "ResearchMenu" then
-				for i,itemMenu in pairs (menu:GetChildren()) do
+				for _,itemMenu in pairs (menu:GetChildren()) do
 					if itemMenu:IsA("Frame") then
 						itemMenu.Visible = false
 					end
@@ -299,14 +313,9 @@ end
 
 local function UpdateSelectionInfo(Page, tile)
 	local Menu = Page.Parent
-	local ItemInformation = FindItemInfo(tile.ItemName.Value, tostring(Menu))
+	local itemInfo = GuiUtility.GetItemInfo(tile.ItemName.Value)
 	local discovered = tile.Discovered.Value
 	local rarityName = tostring(Page.Rarity.Value)
-	
-	--SelectionMenu.Amount.Visible = discovered
-	--SelectionMenu.UnitPrice.Visible = discovered
-	--SelectionMenu.StorageSymbol.Visible = discovered
-	--SelectionMenu.CurrencySymbol.Visible = discovered
 	
 	if SelectionMenu.CurrentSelection.Value ~= tile then --Unhighlight previous tile
 		SelectionMenu.CurrentSelection.Value.BorderSizePixel = 1
@@ -334,20 +343,16 @@ local function UpdateSelectionInfo(Page, tile)
 	
 	--Display Selected Item Info
 	if discovered == true then
-		--SelectionMenu.Picture.Image = ItemInformation["GUI Info"].StatImage.Value
-		--SelectionMenu.Picture.Visible = true
-		--SelectionMenu.LockPicture.Visible = false
-		--print(SelectionMenu.Picture, ItemInformation:Clone(), true, ItemInformation["GUI Info"].DisplayAngle.Value)
-		GuiUtility.Display3DModels(Player, SelectionMenu.Picture, ItemInformation:Clone(), true, ItemInformation["GUI Info"].DisplayAngle.Value)
+		GuiUtility.Display3DModels(Player, SelectionMenu.Picture, itemInfo:Clone(), true, itemInfo["GUI Info"].DisplayAngle.Value)
 		
 		SelectionMenu.Picture.BackgroundColor3 = SelectionMenu.RarityFrame.BackgroundColor3
 		SelectionMenu.DisplayName.Text = tile.ItemName.Value
 		SelectionMenu.DisplayName.TextColor3 = Color3.fromRGB(255, 255, 255)
 		SelectionMenu.Amount.Text = tostring(tile.AmountInStorage.Value)
-		SelectionMenu.UnitPrice.Text = tostring(ItemInformation.CurrencyValue.Value)
+		SelectionMenu.UnitPrice.Text = tostring(itemInfo.CurrencyValue.Value)
 		
-		SelectionMenu.ItemInfo.TextLabel.Text = '<font color="#2ccad6"><b>Description</b>:</font> ' .. ItemInformation["GUI Info"].Description.Value
-		GuiUtility.ManageTextBoxSize(SelectionMenu.ItemInfo, ItemInformation["GUI Info"].Description.Value, 30, 0.15)
+		SelectionMenu.ItemInfo.TextLabel.Text = '<font color="#2ccad6"><b>Description</b>:</font> ' .. itemInfo["GUI Info"].Description.Value
+		GuiUtility.ManageTextBoxSize(SelectionMenu.ItemInfo, itemInfo["GUI Info"].Description.Value, 30, 0.15)
 		
 		--Enabled Button Image
 		if SelectionMenu.SelectItem.Image ~= "rbxassetid://6989208905" then
@@ -364,15 +369,15 @@ local function UpdateSelectionInfo(Page, tile)
 			end
 		end)
 	else --Item not discovered
-		GuiUtility.Display3DModels(Player, SelectionMenu.Picture, game.ReplicatedStorage.GuiElements.LockedBlock:Clone(), true, ItemInformation["GUI Info"].DisplayAngle.Value)
+		GuiUtility.Display3DModels(Player, SelectionMenu.Picture, game.ReplicatedStorage.GuiElements.LockedBlock:Clone(), true, itemInfo["GUI Info"].DisplayAngle.Value)
 		SelectionMenu.Picture.BackgroundColor3 = Color3.fromRGB(5, 16, 29)
 		SelectionMenu.DisplayName.Text = "Not Discovered"
 		SelectionMenu.DisplayName.TextColor3 = Color3.fromRGB(150, 150, 150)
 		SelectionMenu.Amount.Text = "0"
 		SelectionMenu.UnitPrice.Text = "?"
 		
-		SelectionMenu.ItemInfo.TextLabel.Text = '<font color="#FFA500"><b>Hint</b>:</font> ' .. ItemInformation["GUI Info"].Hint.Value
-		GuiUtility.ManageTextBoxSize(SelectionMenu.ItemInfo, ItemInformation["GUI Info"].Hint.Value, 30, 0.15)
+		SelectionMenu.ItemInfo.TextLabel.Text = '<font color="#FFA500"><b>Hint</b>:</font> ' .. itemInfo["GUI Info"].Hint.Value
+		GuiUtility.ManageTextBoxSize(SelectionMenu.ItemInfo, itemInfo["GUI Info"].Hint.Value, 30, 0.15)
 		
 		--Disabled Button Image
 		if SelectionMenu.SelectItem.Image ~= "rbxassetid://6989423818" then
@@ -422,7 +427,7 @@ function ReadyItemTypeMenu(Menu)
 	if Menu.Page1.Slot1 then
 		local tile = Menu.Page1.Slot1
 		local discovered = tile.Discovered.Value
-		local itemInfo = FindItemInfo(tile.ItemName.Value, tostring(Menu))
+		local itemInfo = GuiUtility.GetItemInfo(tile.ItemName.Value, tostring(Menu))
 		
 		SelectionMenu.CurrentSelection.Value = tile
 		SelectionMenu.CurrentPage.Value = Menu.Page1
@@ -485,7 +490,7 @@ SelectionMenu.SelectItem.Activated:Connect(function()
 		local itemName = itemTile.ItemName.Value
 		SellMenu.MaxAmount.Value = itemAmount
 		
-		local ItemInfo = FindItemInfo(itemName, tostring(CurrentMenu))
+		local ItemInfo = GuiUtility.GetItemInfo(itemName, tostring(CurrentMenu))
 		if ItemInfo then
 			SellMenu.SelectedItem.Value = ItemInfo
 			ManageSellMenu(true)
@@ -710,28 +715,17 @@ end)
 
 ---------------------------<|Storage Menu Tile Management|>-------------------------------------------
 
-local tilesPerRow = 5 --this number was 10 with old sorting
+local tilesPerRow = 5 --was 10 with old sorting
 local tilesPerPage = 20
 function ManageStorageTiles(MenuName)
 	ItemsPreview.Visible = false
 	if ItemsPreview:FindFirstChild(MenuName) then
-		local itemMenu = ItemsPreview:FindFirstChild(MenuName)
-		
-		local itemDataFolder
-		for i,location in pairs (game.ReplicatedStorage.ItemLocations:GetChildren()) do
-			if string.find(location:GetAttribute("ItemTypesPresent"), tostring(MenuName)) then
-				for i,item in pairs (location:GetChildren()) do
-					if string.gsub(item.Bag.Value, "Bag", "") .. "s" == tostring(MenuName) then
-						itemDataFolder = location
-					end
-				end
-			end
-		end	
+		local itemMenu = ItemsPreview:FindFirstChild(MenuName) --Save if different menus for item storage
 		
 		local tycoonStorageTile = game.ReplicatedStorage.GuiElements.TycoonStorageTile
 		
-		if itemDataFolder then
-			for i,item in pairs (itemDataFolder:GetChildren()) do --make tile for every item
+		for i,itemType in pairs (game.ReplicatedStorage.InventoryItems:GetChildren()) do
+			for i,item in pairs (itemType:GetChildren()) do --make tile for every item
 				local itemRarity = item["GUI Info"].RarityName.Value
 				local rarityInfo = game.ReplicatedStorage.GuiElements.RarityColors:FindFirstChild(itemRarity)
 				local orderValue = rarityInfo.Order.Value
@@ -837,81 +831,45 @@ function ManageStorageTiles(MenuName)
 	end
 end
 
-						
-		--[[
-		if ItemDataFolder then
-			for i,item in pairs (ItemDataFolder:GetChildren()) do
-				local ItemType = string.gsub(item.Bag.Value, "Bag", "") .. "s"
-				if ItemType == MenuName then
-					local ItemRarity = item["GUI Info"].RarityName.Value
-					--local RarityMenu = AffiliatedItemsPreview:FindFirstChild(ItemRarity)
-					local RarityChildCount = 0
-					local PrevTile
-					for i,tile in pairs (RarityMenu:GetChildren()) do
-						if tile:IsA("TextButton") then
-							if tile.SlotNumber.Value > RarityChildCount then
-								RarityChildCount = tile.SlotNumber.Value
-								PrevTile = tile
-							end
-						end
-					end
-					local RarityInfo = game.ReplicatedStorage.GuiElements.RarityColors:FindFirstChild(ItemRarity)
-					
-					local NewTile = TycoonStorageTile:Clone()
-					NewTile.SlotNumber.Value = RarityChildCount + 1
-					NewTile.Name = tostring(item)
-					NewTile.BackgroundColor3 = RarityInfo.TileColor.Value
-					NewTile.BorderColor3 = RarityInfo.Value
-					NewTile.Picture.Image = item["GUI Info"].StatImage.Value --Put in check for discovered remotefunction for image/lock
-					
-					NewTile.Parent = RarityMenu
-					
-					if RarityChildCount == 0 then
-						NewTile.Position = UDim2.new(0.05, 0, 1, 0)
-						MoveOtherRaritiesDown(RarityMenu)
-						
-					elseif (RarityChildCount)/AmountPerRow ~= math.floor(RarityChildCount/AmountPerRow) then
-						NewTile.Position = UDim2.new(PrevTile.Position.X.Scale + .3, 0, PrevTile.Position.Y.Scale, 0)
-						
-					elseif RarityChildCount/AmountPerRow == math.floor(RarityChildCount/AmountPerRow) then
-						--Starting a new row
-						local RowStarterTile
-						for i,tile in pairs (RarityMenu:GetChildren()) do
-							if tile:IsA("TextButton") then
-								if tile.SlotNumber.Value == NewTile.SlotNumber.Value - AmountPerRow then
-									RowStarterTile = tile
-								end
-							end
-						end
-						NewTile.Position = UDim2.new(RowStarterTile.Position.X.Scale, 0, RowStarterTile.Position.Y.Scale + 1.67, 0)
-						MoveOtherRaritiesDown(RarityMenu)
-					end
-					]]
-					
-
 ------------------<|Event Functions|>-------------------------------
+StorageMenu.Loaded.Value = false
+local storageLoadedDebounce = false
 
 local UpdateTycoonStorage = eventsFolder.GUI:WaitForChild("UpdateTycoonStorage")
-UpdateTycoonStorage.OnClientEvent:Connect(function(File, Stat, StatValue, AmountAdded, AcquiredLocation)
+UpdateTycoonStorage.OnClientEvent:Connect(function(folder, statName, statValue, amountAdded, itemType)
+	print("Updating tycoon storage", folder, statName, statValue, amountAdded, itemType)
+	
+	--folder and amountAdded appear to be now useless with cleaned up code
+	
+	if storageLoadedDebounce == false then
+		storageLoadedDebounce = true	
+		while StorageMenu.Loaded.Value == false do
+			wait(2)
+			EnsureStorageLoaded()
+		end
+	end
+	
 	local rarityName
-	if typeof(StatValue) == "string" then
-		File = string.gsub(File, "TycoonStorage", "")
-		Stat = string.gsub(Stat, "TycoonStorage", "")
+	if typeof(statValue) == "string" or typeof(statValue) == "number" then
+		--folder = string.gsub(folder, "TycoonStorage", "")
+		statName = string.gsub(statName, "TycoonStorage", "")
 	else --Bool for Discovered
 		wait(1)
-		Stat = string.gsub(Stat, "Discovered", "")
-		local itemInfo = game.ReplicatedStorage.ItemLocations:FindFirstChild(tostring(AcquiredLocation)):FindFirstChild(tostring(Stat))
+		statName = string.gsub(statName, "Discovered", "")
+		local itemInfo = game.ReplicatedStorage.InventoryItems:FindFirstChild(itemType):FindFirstChild(statName)
 		rarityName = itemInfo["GUI Info"].RarityName.Value
 	end
 	
+	repeat wait() until StorageMenu.Loaded.Value == true
+	
 	--Find tile representation of stat
 	local foundTile
-	for i,page in pairs (ItemsPreview:FindFirstChild(File):GetChildren()) do
+	for i,page in pairs (ItemsPreview.Materials:GetChildren()) do
 		if page:IsA("Frame") and string.find(page.Name, "Page") then
 			if tostring(page.Rarity.Value) == rarityName then
 				for i,tile in pairs (page:GetChildren()) do
 					if (tile:IsA("TextButton") or tile:IsA("ImageButton")) and string.find(tile.Name, "Slot") then
-						if tile.ItemName.Value == Stat then
+						if tile.ItemName.Value == statName then
 							foundTile = tile
 						end
 					end
@@ -920,13 +878,16 @@ UpdateTycoonStorage.OnClientEvent:Connect(function(File, Stat, StatValue, Amount
 		end
 	end
 	
+	print("1", statName)
 	--Update info on stat
 	if foundTile then
-		if typeof(StatValue) == "boolean" then
-			foundTile.Discovered.Value = StatValue
-			UpdateTileLock(foundTile, StatValue, rarityName)
+		print("2",statName, typeof(statValue))
+		if typeof(statValue) == "boolean" then
+			foundTile.Discovered.Value = statValue
+			UpdateTileLock(foundTile, statValue, rarityName)
 		else
-			foundTile.AmountInStorage.Value = StatValue
+			print("Updating amount in storage for ", statName)
+			foundTile.AmountInStorage.Value = statValue
 		end
 	end
 end)
