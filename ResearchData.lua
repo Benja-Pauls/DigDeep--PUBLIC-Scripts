@@ -42,7 +42,7 @@ local ResearchData = {
 				
 				["Research Length"] = 60,
 				["Material Cost"] = {
-					{RS.ItemLocations.Mineshaft.Stone, 5},
+					{RS.InventoryItems.Mining.Stone, 5},
 				},
 				["Experience Cost"] = {
 					{RS.Skills.MiningSkill, 3}
@@ -58,8 +58,8 @@ local ResearchData = {
 				
 				["Research Length"] = 15,
 				["Material Cost"] = {
-					{RS.ItemLocations.Mineshaft.Stone, 1},
-					{RS.ItemLocations.Mineshaft.Coal, 1}
+					{RS.InventoryItems.Mining.Stone, 1},
+					{RS.InventoryItems.Mining.Coal, 1}
 				},
 				["Experience Cost"] = {
 					{RS.Skills.MiningSkill, 3}
@@ -75,8 +75,8 @@ local ResearchData = {
 				
 				["Research Length"] = 108000,
 				["Material Cost"] = {
-					{RS.ItemLocations.Mineshaft.Stone, 5},
-					{RS.ItemLocations.Mineshaft["Scrap Metal"], 5}
+					{RS.InventoryItems.Mining.Stone, 5},
+					{RS.InventoryItems.Mining["Scrap Metal"], 5}
 				},
 				["Experience Cost"] = {
 					{RS.Skills.MiningSkill, 3}
@@ -92,7 +92,7 @@ local ResearchData = {
 				
 				["Research Length"] = 4500,
 				["Material Cost"] = {
-					{RS.ItemLocations.Mineshaft.Stone, 5}
+					{RS.InventoryItems.Mining.Stone, 5}
 				},
 				["Experience Cost"] = {
 					{RS.Skills.MiningSkill, 3}
@@ -108,7 +108,7 @@ local ResearchData = {
 				
 				["Research Length"] = 30,
 				["Material Cost"] = {
-					{RS.ItemLocations.Mineshaft.Stone, 5}
+					{RS.InventoryItems.Mining.Stone, 5}
 				},
 				["Experience Cost"] = {
 					{RS.Skills.MiningSkill, 3}
@@ -124,7 +124,7 @@ local ResearchData = {
 				
 				["Research Length"] = 60,
 				["Material Cost"] = {
-					{RS.ItemLocations.Mineshaft.Stone, 5}
+					{RS.InventoryItems.Mining.Stone, 5}
 				},
 				["Experience Cost"] = {
 					{RS.Skills.MiningSkill, 3}
@@ -140,7 +140,7 @@ local ResearchData = {
 				
 				["Research Length"] = 120,
 				["Material Cost"] = {
-					{RS.ItemLocations.Mineshaft.Stone, 5}
+					{RS.InventoryItems.Mining.Stone, 5}
 				},
 				["Experience Cost"] = {
 					{RS.Skills.MiningSkill, 3}
@@ -156,7 +156,7 @@ local ResearchData = {
 				
 				["Research Length"] = 300,
 				["Material Cost"] = {
-					{RS.ItemLocations.Mineshaft.Stone, 5}
+					{RS.InventoryItems.Mining.Stone, 5}
 				},
 				["Experience Cost"] = {
 					{RS.Skills.MiningSkill, 3}
@@ -172,7 +172,7 @@ local ResearchData = {
 				
 				["Research Length"] = 300,
 				["Material Cost"] = {
-					{RS.ItemLocations.Mineshaft.Stone, 5}
+					{RS.InventoryItems.Mining.Stone, 5}
 				},
 				["Experience Cost"] = {
 					{RS.Skills.MiningSkill, 3}
@@ -188,7 +188,7 @@ local ResearchData = {
 				
 				["Research Length"] = 300,
 				["Material Cost"] = {
-					{RS.ItemLocations.Mineshaft.Stone, 5}
+					{RS.InventoryItems.Mining.Stone, 5}
 				},
 				["Experience Cost"] = {
 					{RS.Skills.MiningSkill, 3}
@@ -204,7 +204,7 @@ local ResearchData = {
 				
 				["Research Length"] = 300,
 				["Material Cost"] = {
-					{RS.ItemLocations.Mineshaft.Stone, 5}
+					{RS.InventoryItems.Mining.Stone, 5}
 				},
 				["Experience Cost"] = {
 					{RS.Skills.MiningSkill, 3}
