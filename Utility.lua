@@ -3,6 +3,18 @@
 ------------------------------------------------------------------------------------------------------------------------------------------------
 local Utility = {}
 
+function Utility:GetItemInfo(statName, typeOnly)
+	for _,itemType in pairs (game.ReplicatedStorage.InventoryItems:GetChildren()) do
+		if itemType:FindFirstChild(statName) then
+			if typeOnly then
+				return itemType
+			else
+				return itemType:FindFirstChild(statName)
+			end
+		end
+	end
+end
+
 function Utility:UpdateMoneyDisplay(Player, newPlayerCash)
 	local PlayerGui = game.Players:FindFirstChild(tostring(Player)).PlayerGui
 	local MoneyDisplay = PlayerGui:WaitForChild("MoneyDisplay")
