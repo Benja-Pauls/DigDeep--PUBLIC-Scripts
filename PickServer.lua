@@ -5,7 +5,6 @@ local Tool = script.Parent
 local Player = script.Parent.Parent.Parent --Maybe set this more accordingly? SetTarget may mess up?
 
 local ReplicatedStorage = game.ReplicatedStorage
-local MineshaftItems = ReplicatedStorage.ItemLocations.Mineshaft
 local MineOre = ReplicatedStorage.Events.Utility:WaitForChild("MineOre")
 local GetBagCount = ReplicatedStorage.Events.Utility:WaitForChild("GetBagCount")
 local UpdateItemCount = ReplicatedStorage.Events.GUI:WaitForChild("UpdateItemCount")
@@ -33,14 +32,12 @@ local function FindStatValue(Table, StatName)
 	end
 end
 
-local function FindItemInfo(ItemName)
-	local ItemInformation
-	for i,location in pairs (ReplicatedStorage.ItemLocations:GetChildren()) do
-		if location:FindFirstChild(ItemName) then
-			ItemInformation = location:FindFirstChild(ItemName)
+local function FindItemInfo(itemName)
+	for _,itemType in pairs (ReplicatedStorage.InventoryItems:GetChildren()) do
+		if itemType:FindFirstChild(itemName) then
+			return itemType:FindFirstChild(itemName)
 		end
 	end	
-	return ItemInformation
 end
 
 --Start mining process, check player for any preventive measure before actually mining ore
@@ -51,14 +48,14 @@ local function StartMining()
 		repeat wait() until Player ~= nil
 		if Target then --If player hasn't stopped mining/looking at an ore
 
-			local ItemName
+			local itemName
 			if Target.Name == "Target" then --Model represents object, not Part
-				ItemName = Target.Parent.Name
+				itemName = Target.Parent.Name
 			else
-				ItemName = Target.Name
+				itemName = Target.Name
 			end
 			
-			local ItemInfo = FindItemInfo(ItemName)
+			local ItemInfo = FindItemInfo(itemName)
 			if ItemInfo then
 				local ItemCount,BagCapacity,BagType = GetBagCount:Invoke(Player, ItemInfo)
 				
