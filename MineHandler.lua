@@ -3,10 +3,8 @@
 
 ------------------------------------------------------------------------------------------------------------------------------------------------
 local PlayerStatManager = require(game.ServerScriptService:WaitForChild("PlayerStatManager"))
-local OriginalOres = game.ReplicatedStorage.ItemLocations.Mineshaft:GetChildren()
-local OriginalRegions = game.ReplicatedStorage.MineRegions:GetChildren()
-local PlayerData = game:GetService("ServerStorage"):WaitForChild("PlayerData")
-local TeleportButton = game:GetService("ReplicatedStorage").Events.GUI:WaitForChild("TeleportButton")
+local PlayerData = game.ServerStorage:WaitForChild("PlayerData")
+local TeleportButton = game.ReplicatedStorage.Events.GUI:WaitForChild("TeleportButton")
 
 --Put pickaxe functionality scripts in pickaxes
 local PickServer = script:FindFirstChild("PickServer")
@@ -21,18 +19,27 @@ for i,pickaxe in pairs (game.ReplicatedStorage.Equippable.Tools.Pickaxes:GetChil
 	PickaxeScriptClone.Disabled = false
 end
 
-local function FillObjectTables(Original, IsA, Table) --Folder Read Setup
-	for index,Object in pairs(Original) do
-		if Object:IsA(IsA) or Object:IsA("Model") then --Chang model to IsA2 or IsaExtra?
-			table.insert(Table,Object)
+--------------<|Utility Functions|>-------------------------------------------------------------------------------------------
+local Utility = require(game.ServerScriptService.Utility)
+	
+local function FillObjectTables(folder, IsA, Table) --Folder Read Setup
+	for _,item in pairs(folder) do
+		if item:IsA(IsA) or item:IsA("Model") then 
+			table.insert(Table, item)
 		end
 	end
 end
 
+
 local Ores = {}
 local Regions = {}
 
-FillObjectTables(OriginalOres, "BasePart", Ores)
+local miningItemInfo = game.ReplicatedStorage.InventoryItems.Mining:GetChildren()
+local foragingItemInfo = game.ReplicatedStorage.InventoryItems.Foraging:GetChildren()
+local OriginalRegions = game.ReplicatedStorage.MineRegions:GetChildren()
+
+FillObjectTables(miningItemInfo, "BasePart", Ores)
+FillObjectTables(foragingItemInfo, "BasePart", Ores)
 FillObjectTables(OriginalRegions, "Folder", Regions)
 
 
@@ -67,6 +74,8 @@ local function CalculateInterferingY(Bounds, y, Mining, sourceBlockDist)
 
 	return Y
 end
+
+--------------------
 
 local function NoiseAcceptable(BoundsName, sourceBlockDist, Noise, x, y, z, Ceiling, Min, Mining)
 	--If selected block is within noise bounds
@@ -233,11 +242,11 @@ local function SpawnStructures(x,y,z,Bounds,Region,sourceBlockDist)
 	local Lottery = {}
 	
 	--Randomly select region structures with bounds met, then put into roulette for spawning
-	for Index,Selection in pairs (game.ReplicatedStorage.ItemLocations.Mineshaft:GetChildren()) do
-		if Selection:FindFirstChild("SpecialStructure") and Selection:FindFirstChild("RegionSpecial").Value == tostring(Region) then
-			if Selection.SpecialStructure.Value == tostring(Bounds) then
-				local Chance = CalculateChance(y,Selection)
-				InsertIntoTable(Chance,Lottery,Index)
+	for i,item in pairs (Ores) do
+		if item:FindFirstChild("SpecialStructure") and item:FindFirstChild("RegionSpecial").Value == tostring(Region) then
+			if item.SpecialStructure.Value == tostring(Bounds) then
+				local Chance = CalculateChance(y,item)
+				InsertIntoTable(Chance,Lottery,i)
 			end
 		end
 	end
@@ -287,7 +296,7 @@ local function SpawnStructures(x,y,z,Bounds,Region,sourceBlockDist)
 				if Y then
 					if UsedPositions[PositionKey(x,Y,z)] ~= nil and UsedPositions[PositionKey(x,Y,z)] ~= false then
 						local connectedBlock = UsedPositions[PositionKey(x,Y,z)]
-						local connectedBlockInfo = game.ReplicatedStorage.ItemLocations.Mineshaft:FindFirstChild(tostring(connectedBlock))
+						local connectedBlockInfo = Utility:GetItemInfo(tostring(connectedBlock))
 						if connectedBlockInfo:FindFirstChild("SpecialStructure") then 
 							print("DESTROYING STRUCTURE")
 							Structure:Destroy()
@@ -462,31 +471,30 @@ end
 local MineOre = game.ReplicatedStorage.Events.Utility:WaitForChild("MineOre")
 local UpdateItemCount = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateItemCount")
 
-MineOre.Event:Connect(function(Player,Ore)
-	local RealMineshaftItem
-	if Ore.Name == "Target" then
-		RealMineshaftItem = game.ReplicatedStorage.ItemLocations.Mineshaft:FindFirstChild(Ore.Parent.Name)
-		Ore = Ore.Parent
+MineOre.Event:Connect(function(Player, ore)
+	local itemInfo
+	if ore.Name == "Target" then
+		itemInfo = Utility:GetItemInfo(ore.Parent.Name)
+		ore = ore.Parent
 	else
-		RealMineshaftItem = game.ReplicatedStorage.ItemLocations.Mineshaft:FindFirstChild(Ore.Name)
+		itemInfo = Utility:GetItemInfo(ore.Name)
 	end
 	
-	local OreColor = RealMineshaftItem["GUI Info"].OreColor.Value
-	local AssociatedBag = RealMineshaftItem.Bag.Value
-	local ItemType = string.gsub(AssociatedBag, "Bag", "") .. "s"
+	local associatedSkill = itemInfo.AssociatedSkill.Value
+	local itemType = string.gsub(associatedSkill, "Skill", "")
 	
-	local TypeAmount = PlayerStatManager:getItemTypeCount(Player, ItemType)
-	local MaxOreAmount = PlayerStatManager:getEquippedData(Player, AssociatedBag .. "s", "Bags") --Bag capacity
+	local itemAmount = PlayerStatManager:getItemCount(Player, itemType)
+	local maxItemAmount = PlayerStatManager:getEquippedData(Player, "MaterialBags", "Bags") --Bag capacity
 	
-	if MaxOreAmount then --Check bag again before finally breaking block
-		if TypeAmount < MaxOreAmount then
-			if Ore:FindFirstChild("Claimed") == nil then
+	if maxItemAmount  then --Check bag again before finally breaking block
+		if itemAmount < maxItemAmount  then
+			if ore:FindFirstChild("Claimed") == nil then
 				
 				local Hitbox
-				if Ore:IsA("Model") then
-					Hitbox = Ore:FindFirstChild("GenerationPosition")
+				if ore:IsA("Model") then
+					Hitbox = ore:FindFirstChild("GenerationPosition")
 				else
-					Hitbox = Ore
+					Hitbox = ore
 				end
 				local CompactPos = Vector3.new(0 + Hitbox.Position.X/7,(Hitbox.Position.Y - -5)/(-7),Hitbox.Position.Z/7)
 				
@@ -503,73 +511,75 @@ MineOre.Event:Connect(function(Player,Ore)
 				
 				if Bounds then --If structure nearby, break structure (growing from/hanging from) destroyed block
 					--local Y = CalculateInterferingY(Bounds, CompactPos.Y, nil, sourceBlockDist)--for connected structure
-					local ConnectedOre = UsedPositions[PositionKey(CompactPos.X,CompactPos.Y+sourceBlockDist,CompactPos.Z)]
+					local connectedOre = UsedPositions[PositionKey(CompactPos.X,CompactPos.Y+sourceBlockDist,CompactPos.Z)]
 					
-					if typeof(ConnectedOre) ~= "boolean" then
-						if ConnectedOre:FindFirstChild("SpecialStructure") then
-							local OrePosition
-							if ConnectedOre:IsA("Model") then
-								OrePosition = ConnectedOre.GenerationPosition.Position
+					if typeof(connectedOre) ~= "boolean" then
+						if connectedOre:FindFirstChild("SpecialStructure") then
+							local orePosition
+							if connectedOre:IsA("Model") then
+								orePosition = connectedOre.GenerationPosition.Position
 							else
-								OrePosition = ConnectedOre.Position
+								orePosition = connectedOre.Position
 							end
-							local replicatedConnectedOre = game.ReplicatedStorage.ItemLocations.Mineshaft:FindFirstChild(tostring(ConnectedOre))
-							local ConnectedOreColor = replicatedConnectedOre["GUI Info"].OreColor.Value
-							MakeDustParticles(OrePosition,ConnectedOreColor)
-							ConnectedOre:Destroy()
+							local connectedOreInfo = Utility:GetItemInfo(tostring(connectedOre))
+							local connectedOreColor = connectedOreInfo["GUI Info"].OreColor.Value
+							MakeDustParticles(orePosition, connectedOreColor)
+							connectedOre:Destroy()
 						end
 					end
 				end
 				
 				--Add Ore to inventory
-				local mined = PlayerStatManager:getStat(Player, Ore.Name)
+				local mined = PlayerStatManager:getStat(Player, ore.Name)
 				local experience = PlayerStatManager:getStat(Player, "MiningSkill")
 				--print(typeof(mined),typeof(experience))
 				if typeof(mined) == "number" and typeof(experience) == "number" then
-					
-					PlayerStatManager:ChangeStat(Player, Ore.Name, 1, "Inventory", true)
-					
-					local InitialOreExperience = RealMineshaftItem.Experience.Value
-					local AssociatedSkill = RealMineshaftItem.AssociatedSkill.Value
-					PlayerStatManager:ChangeStat(Player, AssociatedSkill, InitialOreExperience, "Experience", true)
-					
 					local PlayerDataFile = PlayerData:WaitForChild(tostring(Player.UserId))
-					local PlayerInventory = PlayerDataFile:WaitForChild("Inventory")
-					local PlayerExperience = PlayerDataFile:WaitForChild("Experience")
 					
-					local AssociatedFolder = PlayerInventory:WaitForChild(ItemType)
-					local CurrentOre = AssociatedFolder:FindFirstChild(Ore.Name)
+					local PlayerInventory = PlayerDataFile:WaitForChild("Inventory")
+					PlayerStatManager:ChangeStat(Player, ore.Name, 1, "Inventory")
+					
+					local PlayerExperience = PlayerDataFile:WaitForChild("Experience")
+					local InitialOreExperience = itemInfo.Experience.Value
+					local associatedSkill = itemInfo.AssociatedSkill.Value
+					PlayerStatManager:ChangeStat(Player, associatedSkill, InitialOreExperience, "Experience")
+					
+					local AssociatedFolder = PlayerInventory:WaitForChild(itemType)
+					local CurrentOre = AssociatedFolder:FindFirstChild(ore.Name)
 					local SkillsFolder = PlayerExperience:WaitForChild("Skills")
 					local CurrentSkill = SkillsFolder:FindFirstChild("MiningSkill")
 					
 					
 					--Change player discovered value if this is first time acquired
-					local DiscoverValue = CurrentOre:FindFirstChild(tostring(Ore) .. "Discovered")
+					local DiscoverValue = CurrentOre:FindFirstChild(tostring(ore) .. "Discovered")
 					if DiscoverValue.Value == false then
 						print("Changing " .. tostring(DiscoverValue) .. " to true")
 						DiscoverValue.Value = true
-						PlayerStatManager:ChangeStat(Player, tostring(Ore) .. "Discovered", true, tostring(AssociatedFolder))
+						PlayerStatManager:ChangeStat(Player, tostring(ore) .. "Discovered", true, tostring(AssociatedFolder))
 					end
 				else
 					warn("mined or experience cannot be saved")
 				end
 				
 				local OrePosition
-				if Ore:IsA("Model") then
-					OrePosition = Ore.GenerationPosition.Position
+				if ore:IsA("Model") then
+					OrePosition = ore.GenerationPosition.Position
 				else
-					OrePosition = Ore.Position
+					OrePosition = ore.Position
 				end
 				
-				Ore:Destroy()
+				ore:Destroy()
 				
-				MakeDustParticles(OrePosition,OreColor)
+				local oreColor = itemInfo["GUI Info"].OreColor.Value
+				MakeDustParticles(OrePosition,oreColor)
 			end
 		else
+			print("Inventory has reached capacity with current bag")
 			--Notify player that their inventory is full and they should sell/deposit their items 
 			--(Pop Up GUI: Inventory Capacity Warning)
 		end
 	else
+		print("Player does not have a bag equipped")
 		--Notify player they have no bag they can fill
 		--(Pop Up GUI: No Associated Bag Warning)
 	end
