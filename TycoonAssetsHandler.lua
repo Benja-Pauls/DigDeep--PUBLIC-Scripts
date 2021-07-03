@@ -17,11 +17,6 @@ local PlayerStatManager = require(game.ServerScriptService:FindFirstChild("Playe
 local Utility = require(game.ServerScriptService:WaitForChild("Utility"))
 
 local PurchaseObject = game:GetService("ReplicatedStorage").Events.Utility.PurchaseObject
-local UpdateInventory = game.ReplicatedStorage.Events.GUI:FindFirstChild("UpdateInventory")
-
---local TeamColor = Tycoon:WaitForChild("TeamColor").Value
---Tycoon.Essentials.Spawn.TeamColor = TeamColor
---Tycoon.Essentials.Spawn.BrickColor = TeamColor
 
 -------------------<|Utility|>---------------------------------------------------------------------------------------------------------------------------
 
@@ -69,7 +64,7 @@ end)
 ---------------------<|Giver Functions|>--------------------------------------------------------------------------------------------------------------------
 
 local function PrepGiverButton(giver)
-	debounce = false
+	local debounce = false
 	giver.Touched:connect(function(hit)
 		local player = game.Players:GetPlayerFromCharacter(hit.Parent)
 
@@ -82,7 +77,7 @@ local function PrepGiverButton(giver)
 							giver.BrickColor = BrickColor.new("Bright red")
 
 							local PlayerDataFile = PlayerDataFolder:FindFirstChild(tostring(player.UserId))
-							local PlayerCash = PlayerDataFile:FindFirstChild("Currencies"):FindFirstChild("UniversalCurrencies"):FindFirstChild("Currency")
+							local PlayerCash = PlayerDataFile:FindFirstChild("Currencies"):FindFirstChild("UniversalCurrencies"):FindFirstChild("Coins")
 							if PlayerCash ~= nil then 
 								local ListedPlayer = game.Players:FindFirstChild(tostring(player))
 								if ListedPlayer ~= nil then
@@ -91,9 +86,6 @@ local function PrepGiverButton(giver)
 									PlayerCash.Value = PlayerCash.Value + CollectibleCash.Value --add dropper cash to player cash
 
 									Utility:UpdateMoneyDisplay(hit.Parent.Name, PlayerCash.Value)
-									if CollectibleCash.Value ~= 0 then
-										UpdateInventory:FireClient(player, "Currency", "Currencies", nil, CollectibleCash.Value, "Inventory", "Money1")
-									end	
 
 									CollectibleCash.Value = 0 
 									wait(1)
