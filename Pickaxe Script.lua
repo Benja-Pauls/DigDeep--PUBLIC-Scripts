@@ -53,8 +53,9 @@ local function SelectOre(Ore)
 				ItemLabel.Visible = true
 			end
 			
-			--Ore color doesn't match no region color
-			if Ore.Color ~= game.ReplicatedStorage.ItemLocations.Mineshaft.Stone.Color then
+			--Region is recognized when ore.color is different
+			--**Change this
+			if Ore.Color ~= game.ReplicatedStorage.InventoryItems.Mining.Stone.Color then
 				
 				local GUIColor
 				local RegionName
