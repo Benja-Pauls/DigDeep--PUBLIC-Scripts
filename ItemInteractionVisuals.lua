@@ -8,7 +8,7 @@ local HRP = PlayerCharacterList:WaitForChild(tostring(Player)):WaitForChild("Hum
 local ItemInteractionGui = script.Parent
 local ItemLabel = ItemInteractionGui:WaitForChild("ItemLabel")
 local ProgressBar = ItemInteractionGui:WaitForChild("ProgressBarBillboardGui")
-local MineshaftItems = game.ReplicatedStorage.ItemLocations.Mineshaft
+local inventoryItems = game.ReplicatedStorage.InventoryItems
 
 local MoveAllBaseScreenUI = game.ReplicatedStorage.Events.GUI:WaitForChild("MoveAllBaseScreenUI")
 local ToSurfaceButton = script.Parent:WaitForChild("ToSurfaceButton")
@@ -33,20 +33,24 @@ local function CheckSelectedItem()
 		local Target = workspace.CurrentCamera.SelectedItem.Value
 		ItemInteractionGui.SelectedOre.Adornee = Target
 		
-		local RealOre
-		if Target.Name == "Target" then
-			RealOre = MineshaftItems:FindFirstChild(Target.Parent.Name)
-		else
-			RealOre = MineshaftItems:FindFirstChild(Target.Name)
+		local itemInfo
+		for _,itemType in pairs (inventoryItems:GetChildren()) do
+			if itemType:FindFirstChild(Target.Parent.Name) or itemType:FindFirstChild(Target.Name) then
+				if Target.Name == "Target" then
+					itemInfo = itemType:FindFirstChild(Target.Parent.Name)
+				else
+					itemInfo = itemType:FindFirstChild(Target.Name)
+				end
+			end
 		end
 		
-		if RealOre then
-			ItemLabel.TextColor3 = RealOre["GUI Info"].OreColor.Value
+		if itemInfo then
+			ItemLabel.TextColor3 = itemInfo["GUI Info"].OreColor.Value
 			
 			local ProgressBarClone = ProgressBar:Clone()
 			ProgressBarClone.Parent = Target
 			ProgressBarClone.Adornee = Target
-			ProgressBarClone.ProgressBar.TimeLeft.BackgroundColor3 = RealOre["GUI Info"].OreColor.Value
+			ProgressBarClone.ProgressBar.TimeLeft.BackgroundColor3 = itemInfo["GUI Info"].OreColor.Value
 			
 			while Target == workspace.CurrentCamera.SelectedItem.Value do
 				wait()
