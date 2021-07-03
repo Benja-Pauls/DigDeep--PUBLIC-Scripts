@@ -5,6 +5,8 @@ local Player = game.Players.LocalPlayer
 local PlayerGui = Player:WaitForChild("PlayerGui")
 local Tycoons = workspace:WaitForChild("Tycoons") 
 
+local GuiUtility = require(game.ReplicatedStorage:WaitForChild("GuiUtility"))
+
 local TycoonPurchaseMenu = script.Parent:WaitForChild("TycoonPurchaseMenu")
 TycoonPurchaseMenu.Visible = false
 
@@ -18,29 +20,6 @@ local PageManager = TycoonPurchaseMenu:WaitForChild("PageManager")
 PageManager.Position = UDim2.new(0.722, 0, PageManager.Position.Y.Scale - 0.150, 0)
 
 ------------------------<|Utility Functions|>---------------------------------------------------------------------------------------------------------------------
-
-local function GetItemInfo(StatName)
-	for i,location in pairs (game.ReplicatedStorage.ItemLocations:GetChildren()) do
-		for i,item in pairs (location:GetChildren()) do
-			if StatName == tostring(item) then
-				return item
-			end
-		end
-	end
-end
-
-local function GetStatImage(Stat)
-	local ImageId
-	if Stat then
-		for i,location in pairs (game.ReplicatedStorage.ItemLocations:GetChildren()) do
-			if location:FindFirstChild(tostring(Stat)) and ImageId == nil then
-				ImageId = location:FindFirstChild(tostring(Stat))["GUI Info"].StatImage.Value
-			end
-		end
-	end
-
-	return ImageId
-end
 
 local function ManageCostTextColor(Price, PlayerAmount, Slot)
 	if PlayerAmount >= Price then
@@ -59,7 +38,6 @@ local function CheckUpgrade(OriginalObject, InfoList)
 		return false
 	end
 end
-
 
 local function DestroyButtonVisuals(Button)
 	local InfoList = TycoonPurchaseMenu.InformationList
@@ -146,11 +124,11 @@ local function DisplayButtonMaterials(Button)
 					NewSlot.Position = UDim2.new(0.064, 0, 0.032, 0)
 				end
 
-				local ImageId = GetStatImage(material)
+				local ImageId = GuiUtility.GetStatImage(material)
 				NewSlot.Picture.Image = ImageId
 
-				local ItemInfo = GetItemInfo(tostring(material))
-				local Rarity = ItemInfo["GUI Info"].RarityName.Value
+				local itemInfo = GuiUtility.GetItemInfo(tostring(material))
+				local Rarity = itemInfo["GUI Info"].RarityName.Value
 
 				NewSlot.Picture.BackgroundColor3 = game.ReplicatedStorage.GuiElements.RarityColors:FindFirstChild(Rarity).TileColor.Value
 				NewSlot.Picture.BorderColor3 = game.ReplicatedStorage.GuiElements.RarityColors:FindFirstChild(Rarity).Value
