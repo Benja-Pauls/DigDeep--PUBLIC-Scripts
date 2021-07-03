@@ -1,5 +1,27 @@
 local GuiUtility = {}
 
+function GuiUtility.GetItemInfo(statName, typeOnly)
+	for _,itemType in pairs (game.ReplicatedStorage.InventoryItems:GetChildren()) do
+		if itemType:FindFirstChild(statName) then
+			if typeOnly then
+				return itemType
+			else
+				return itemType:FindFirstChild(statName)
+			end
+		end
+	end
+end
+
+function GuiUtility.GetStatImage(stat)
+	local itemInfo = GuiUtility.GetItemInfo(tostring(stat))
+
+	if itemInfo then
+		if itemInfo["GUI Info"].StatImage then
+			return itemInfo["GUI Info"].StatImage.Value
+		end
+	end
+end
+
 --------------<|Text Effects|>-------------------------------------------------------------
 
 function GuiUtility.typeWrite(guiObject, text, delayBetweenChars)
