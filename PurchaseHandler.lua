@@ -8,7 +8,6 @@ local PlayerData = game.ServerStorage:WaitForChild("PlayerData")
 
 local EventsFolder = game.ReplicatedStorage.Events
 local PurchaseObject = EventsFolder.Utility:WaitForChild("PurchaseObject")
-local UpdateInventory = EventsFolder.GUI:WaitForChild("UpdateInventory")
 
 local function GetPlayer(WantedPlayer)
 	local Players = game.Players:GetChildren()
@@ -95,7 +94,6 @@ function PurchaseTycoonObject(Table, Tycoon, Material)
 		local Player = GetPlayer(stat.Parent.Parent.Parent.Name)
 		stat.Value = stat.Value - cost
 		Utility:UpdateMoneyDisplay(Player, stat.Value)
-		UpdateInventory:FireClient(Player, "Currency", "Currencies", nil, -cost, "Inventory", "Money1")
 	end
 
 	--Position ReplicatedStorage-Object Clone to true position
@@ -135,7 +133,7 @@ PurchaseObject.OnServerEvent:Connect(function(player, target)
 
 				local PlayerDataFile = PlayerData:FindFirstChild(tostring(player.UserId))
 				if PlayerDataFile ~= nil then 
-					local PlayerCash = PlayerDataFile:FindFirstChild("Currencies"):FindFirstChild("UniversalCurrencies"):FindFirstChild("Currency")
+					local PlayerCash = PlayerDataFile:FindFirstChild("Currencies"):FindFirstChild("UniversalCurrencies"):FindFirstChild("Coins")
 					local PlayerInventory = PlayerDataFile:FindFirstChild("Inventory")
 					local PlayerStorage = PlayerDataFile:FindFirstChild("TycoonStorage")
 					local MaterialCostCheck = CheckMaterialCosts(PlayerInventory, PlayerStorage, target)
@@ -421,25 +419,24 @@ StoreFrontPurchase.OnServerEvent:Connect(function(player, NPC, Item)
 		end
 	end
 	
-	local PlayerCash = playerDataFile:FindFirstChild("Currencies"):FindFirstChild("UniversalCurrencies"):FindFirstChild("Currency")
+	local PlayerCash = playerDataFile:FindFirstChild("Currencies"):FindFirstChild("UniversalCurrencies"):FindFirstChild("Coins")
 	
 	if ItemPrice then
 		if PlayerCash.Value >= ItemPrice then
 			--Pay for Item
 			PlayerCash.Value = PlayerCash.Value - ItemPrice
 			Utility:UpdateMoneyDisplay(player, PlayerCash.Value)
-			UpdateInventory:FireClient(player, "Currency", "Currencies", nil, -ItemPrice, "Inventory", "Money1")
 			
 			local itemName = tostring(Item)
 			local itemType = tostring(Item.Parent)
 			local equipType = tostring(Item.Parent.Parent)
 			
-			if equipType ~= "ItemLocations" then
-				--Get & Equip Item
+			if equipType == "InventoryItems" then
+				PlayerStatManager:ChangeStat(player, itemName, true, equipType, itemType)
+				
+			else --Equipment
 				PlayerStatManager:ChangeStat(player, itemName, true, equipType, itemType)
 				PlayerStatManager:ChangeStat(player, "Equipped" .. itemType, itemName, equipType, itemType)
-			else
-				PlayerStatManager:ChangeStat(player, itemName, true, equipType, itemType)
 			end
 			
 			StoreFrontPurchase:FireClient(player, Item)
