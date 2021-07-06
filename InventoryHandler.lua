@@ -603,17 +603,17 @@ for i,pageDisplay in pairs (PageManager:GetChildren()) do
 	end
 end
 
-local function CreateNewMenuPage(Type, Menu, Page)
+local function CreateNewMenuPage(Type, Menu, Page, pageNumber)
 	local newPage
 	if Type == "Research" then
 		newPage = GuiElements.ResearchPage:Clone()
 	else
 		newPage = GuiElements.DataMenuPage:Clone()
 	end
-
+	
 	newPage.Visible = false
-	newPage.Name = "Page1"
 	newPage.Parent = Menu
+	newPage.Name = "Page" .. tostring(pageNumber)
 	
 	return newPage
 end
@@ -656,7 +656,7 @@ local function SeekSlotAvailability(Menu, Type, checkedPageNumber, rarityName, m
 		if Menu:findFirstChild("Page" .. tostring(checkedPageNumber + 1)) then --next page is available
 			Page = Menu:FindFirstChild("Page" .. tostring(checkedPageNumber + 1))
 		else --no next page, make a new page
-			Page = CreateNewMenuPage(Type, Menu, Page)
+			Page = CreateNewMenuPage(Type, Menu, Page, checkedPageNumber + 1)
 		end
 		PageSlotCount = 0
 		TruePosition = GetTileTruePosition(Page, PageSlotCount, maxTileAmount)
@@ -763,7 +763,7 @@ local function ManageTilePlacement(Menu, Type, rarityInfo)
 			TruePosition = pageCount*maxTileAmount + PageSlotCount
 		end
 	else --No pages in menu, make new page
-		Page = CreateNewMenuPage(Type, Menu, Page)
+		Page = CreateNewMenuPage(Type, Menu, Page, 1)
 		PageSlotCount = 0
 		TruePosition = 0
 	end
@@ -847,7 +847,7 @@ function ManageTileTruePosition(Menu, Page, affectingTile, TruePosition, maxTile
 									if Menu:FindFirstChild("Page" .. tostring(tonumber(currentPageNumber) + 1)) then
 										Page = Menu:FindFirstChild("Page" .. tostring(tonumber(currentPageNumber) + 1))
 									else --No next page, making new one
-										Page = CreateNewMenuPage(Type, Menu, Page)
+										Page = CreateNewMenuPage(Type, Menu, Page, tonumber(currentPageNumber) + 1)
 									end
 									PageSlotCount = 0
 								elseif PageSlotCount < 0 then
@@ -1286,7 +1286,7 @@ local function CountdownDifference(difference, progressBar, levelProgress, amoun
 	print(difference, progressBar, levelProgress, amountAdded, levelFinished)
 	local expBar = difference.Parent.Parent
 	
-	if expBar:FindFirstChild("TimeLeft") then
+	if expBar:FindFirstChild("TimeLeft") and amountAdded >= 1 then
 		differenceEXPAdded = differenceEXPAdded + amountAdded
 		
 		if levelProgress < lastProgressAmount or levelProgress >= 1 or levelFinished then
@@ -1663,8 +1663,8 @@ local getItemStats = eventsFolder.Utility:WaitForChild("GetItemStats")
 local UpdateInventory = eventsFolder.GUI:WaitForChild("UpdateInventory")
 UpdateInventory.OnClientEvent:Connect(function(statName, folder, value, amountAdded, Type, itemType)
 	local typeFrame = DataMenu:FindFirstChild(tostring(Type) .. "Menu")
-	local Slots
 	
+	local Slots
 	if folder then
 		if typeFrame == DataMenu.ExperienceMenu then
 			Slots = typeFrame:FindFirstChild(folder .. "Menu") or typeFrame:FindFirstChild(folder)
