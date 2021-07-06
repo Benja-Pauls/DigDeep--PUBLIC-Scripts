@@ -720,12 +720,13 @@ local tilesPerPage = 20
 function ManageStorageTiles(MenuName)
 	ItemsPreview.Visible = false
 	if ItemsPreview:FindFirstChild(MenuName) then
-		local itemMenu = ItemsPreview:FindFirstChild(MenuName) --Save if different menus for item storage
+		local itemMenu = ItemsPreview:FindFirstChild(MenuName) --Save if later different menus for item storage
 		
 		local tycoonStorageTile = game.ReplicatedStorage.GuiElements.TycoonStorageTile
 		
 		for i,itemType in pairs (game.ReplicatedStorage.InventoryItems:GetChildren()) do
 			for i,item in pairs (itemType:GetChildren()) do --make tile for every item
+				--print("Creating a storage tile for ", item)
 				local itemRarity = item["GUI Info"].RarityName.Value
 				local rarityInfo = game.ReplicatedStorage.GuiElements.RarityColors:FindFirstChild(itemRarity)
 				local orderValue = rarityInfo.Order.Value
@@ -836,10 +837,7 @@ StorageMenu.Loaded.Value = false
 local storageLoadedDebounce = false
 
 local UpdateTycoonStorage = eventsFolder.GUI:WaitForChild("UpdateTycoonStorage")
-UpdateTycoonStorage.OnClientEvent:Connect(function(folder, statName, statValue, amountAdded, itemType)
-	print("Updating tycoon storage", folder, statName, statValue, amountAdded, itemType)
-	
-	--folder and amountAdded appear to be now useless with cleaned up code
+UpdateTycoonStorage.OnClientEvent:Connect(function(statName, statValue, itemType)
 	
 	if storageLoadedDebounce == false then
 		storageLoadedDebounce = true	
@@ -848,17 +846,17 @@ UpdateTycoonStorage.OnClientEvent:Connect(function(folder, statName, statValue, 
 			EnsureStorageLoaded()
 		end
 	end
-	
-	local rarityName
+		
 	if typeof(statValue) == "string" or typeof(statValue) == "number" then
 		--folder = string.gsub(folder, "TycoonStorage", "")
 		statName = string.gsub(statName, "TycoonStorage", "")
 	else --Bool for Discovered
 		wait(1)
 		statName = string.gsub(statName, "Discovered", "")
-		local itemInfo = game.ReplicatedStorage.InventoryItems:FindFirstChild(itemType):FindFirstChild(statName)
-		rarityName = itemInfo["GUI Info"].RarityName.Value
 	end
+	
+	local itemInfo = game.ReplicatedStorage.InventoryItems:FindFirstChild(itemType):FindFirstChild(statName)
+	local rarityName = itemInfo["GUI Info"].RarityName.Value
 	
 	repeat wait() until StorageMenu.Loaded.Value == true
 	
@@ -878,15 +876,12 @@ UpdateTycoonStorage.OnClientEvent:Connect(function(folder, statName, statValue, 
 		end
 	end
 	
-	print("1", statName)
 	--Update info on stat
 	if foundTile then
-		print("2",statName, typeof(statValue))
 		if typeof(statValue) == "boolean" then
 			foundTile.Discovered.Value = statValue
 			UpdateTileLock(foundTile, statValue, rarityName)
 		else
-			print("Updating amount in storage for ", statName)
 			foundTile.AmountInStorage.Value = statValue
 		end
 	end
