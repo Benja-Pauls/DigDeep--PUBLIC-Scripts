@@ -30,6 +30,28 @@ local function FillObjectTables(folder, IsA, Table) --Folder Read Setup
 	end
 end
 
+local function ApplyOffsets(target, offsetName)
+	if target:FindFirstChild(offsetName) then
+		local offset = target:FindFirstChild(offsetName).Value
+		local x = offset.X
+		local y = offset.Y
+		local z = offset.Z
+		
+		if offsetName == "Pos Offset" then
+			target.Position = target.Position + Vector3.new(x,y,z)
+			
+			for _,childPart in pairs(target:GetChildren()) do
+				if childPart:IsA("MeshPart") or childPart:IsA("Part") then
+					childPart.Position = childPart.Position + Vector3.new(x,y,z)
+				end
+			end
+			
+		elseif offsetName == "Rot Offset" then
+			target.Parent:SetPrimaryPartCFrame(target.Parent:GetPrimaryPartCFrame()*CFrame.fromEulerAnglesXYZ(math.pi*x,math.pi*y,math.pi*z))
+		end
+	end
+end
+
 
 local Ores = {}
 local Regions = {}
@@ -135,6 +157,7 @@ local function CalculateNoise(x,y,z,Mining)
 		sourceBlockDist = -1
 		--print("TRIAL " .. tostring(calcNoiseCount) .. ": BlockBelow")
 	end
+	
 	if Bounds ~= "BlockBelow" then
 		if NoiseAcceptable("Block2Below", -2, TwoBelowNoise, x, y, z, nil, 3, Mining) then
 			--print("Block2Below")
@@ -162,6 +185,7 @@ local function CalculateNoise(x,y,z,Mining)
 		end
 		--print("TRIAL " .. tostring(calcNoiseCount) .. ": BlockAbove")
 	end
+	
 	if Bounds ~= "BlockAbove" and Bounds ~= "BlockBelow" then
 		if NoiseAcceptable("Block2Above", 2, TwoAboveNoise, x, y, z, 4, 3, Mining) then
 			--print("Block2Above")
@@ -262,27 +286,22 @@ local function SpawnStructures(x,y,z,Bounds,Region,sourceBlockDist)
 			UsedPositions[PositionKey(x,y,z)] = Structure
 
 			Structure.Parent = workspace.Mine
+			
 			if Structure:IsA("Model") then
 				Structure:SetPrimaryPartCFrame(CFrame.new(0+x*7, -5+y*(-7), 0+z*7))
 			else
 				Structure.CFrame = CFrame.new(0+x*7, -5+y*(-7), 0+z*7)
 			end
 
-			if Structure:FindFirstChild("Target") then
-				--Structure.MeshPart.CFrame = CFrame.new(0+x*7, -5+y*(-7), 0+z*7)
-
-				--Variance in strucutre spawns
-				local RotationRandom = math.random(1,3)
-				Structure.Target.Rotation = Vector3.new(0, 90*RotationRandom, 0)
-				if Structure.Target:FindFirstChild("Offset") then
-					local Offset = Structure.Target.Offset.Value
-					for i,childPart in pairs(Structure.Target:GetChildren()) do
-						if childPart:IsA("MeshPart") or childPart:IsA("Part") then
-							childPart.Position = Structure.Target.Position + Vector3.new(0,Offset.Y,0)
-						end
-					end
-					Structure.Target.Position = Structure.Target.Position + Vector3.new(0,Offset.Y,0)
-				end
+			if Structure:FindFirstChild("Target") then	
+				local target = Structure.Target
+				
+				ApplyOffsets(target, "Rot Offset")
+				ApplyOffsets(target, "Pos Offset")
+				
+				--How to get lookvector for rotation?
+				--local r = math.random(1,3)
+				--Structure:SetPrimaryPartCFrame(Structure:GetPrimaryPartCFrame() * CFrame.fromEulerAnglesXYZ(0, 0, math.rad(90*r)))
 			end
 			
 			if FinalSelection:FindFirstChild("SpecialStructure") then
@@ -650,4 +669,5 @@ local function GenerateMine()
 end
 
 GenerateMine()
+
 
