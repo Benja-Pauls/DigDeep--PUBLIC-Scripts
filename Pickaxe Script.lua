@@ -36,7 +36,7 @@ local function FindStatValue(Table, StatName)
 end
 
 local function SelectOre(Ore)
-	if Ore:IsDescendantOf(workspace.Mine) then--and (Ore.Position - script.Parent.Parent.UpperTorso.Position).Magnitude <= 7 then
+	if Ore:IsDescendantOf(workspace.Mine) and Ore.Parent.Name ~= "Target" then--and (Ore.Position - script.Parent.Parent.UpperTorso.Position).Magnitude <= 7 then
 		if (Ore.Position - HRP.Position).magnitude <= FindStatValue(toolStats["Stats"], "Swing Reach") * 6.3 then
 			
 			--CONTROLS WHAT MOUSE HAS SELECTED
