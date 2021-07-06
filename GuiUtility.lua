@@ -147,8 +147,23 @@ function GuiUtility.Display3DModels(Player, viewport, displayModel, bool, displa
 		else
 			local ParentModel = Instance.new("Model", viewport.Physics)
 			displayModel.Parent = ParentModel
-			rootPart = displayModel
+			
+			if displayModel:IsA("Model") then --Multi-part item
+				rootPart = displayModel.Target
+				
+				if displayModel:FindFirstChild("GenerationPosition") then
+					displayModel.GenerationPosition:Destroy()
+				end
+				
+			else
+				rootPart = displayModel
+			end
+			
 			displayModel = ParentModel
+		end
+		
+		if viewport:FindFirstChild("Camera") then
+			viewport.Camera:Destroy()
 		end
 		local vpCamera = Instance.new("Camera",viewport)
 
@@ -160,6 +175,13 @@ function GuiUtility.Display3DModels(Player, viewport, displayModel, bool, displa
 		local referenceAngle = Instance.new("NumberValue", rootPart)
 		referenceAngle.Name = "ReferenceAngle"
 		referenceAngle.Value = displayAngle
+		
+		if viewport.Physics:FindFirstChild("Model") then
+			local parentModel = viewport.Physics.Model
+			parentModel.PrimaryPart = rootPart
+			parentModel:SetPrimaryPartCFrame(parentModel:GetPrimaryPartCFrame()*CFrame.fromEulerAnglesXYZ(math.rad(referenceAngle.Value),0,0))
+		end
+		
 		local modelCenter, modelSize = displayModel:GetBoundingBox()	
 
 		local rotInv = (modelCenter - modelCenter.p):inverse()
@@ -260,4 +282,3 @@ end
 
 
 return GuiUtility
-
