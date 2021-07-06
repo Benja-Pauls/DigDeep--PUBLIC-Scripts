@@ -384,7 +384,7 @@ StoreFrontMenu.CurrentTile.Changed:Connect(function()
 		end))
 		
 	------Manage Stat Displays
-		if item["GUI Info"].EquipType then
+		if item["GUI Info"]:FindFirstChild("EquipType") then
 			local equipType = item["GUI Info"].EquipType.Value
 			local itemType = item["GUI Info"].ItemType.Value
 			local itemName = tostring(item)
