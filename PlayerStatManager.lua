@@ -158,7 +158,7 @@ end
 ---------------------<|High-Traffic Functions|>--------------------------------------------------------------------------------------------------------------------------------------
 
 local function UpdateGUIForFile(saveFolder, player, statName, value, overFlow)
-	print(saveFolder, player, statName, value, overFlow)
+	--print(saveFolder, player, statName, value, overFlow)
 	
 	--Problem are now out of server scripts! (Still need to check shop gui and tycoon)
 	--When done with dinner, fix the below errors having to do with displaying information after the player
@@ -208,7 +208,7 @@ local function UpdateGUIForFile(saveFolder, player, statName, value, overFlow)
 			elseif tostring(saveFolder) == "TycoonStorage" then
 				local LocationOfAcquirement = Utility:GetItemInfo(string.gsub(statName, "TycoonStorage", ""), true)
 				--print(tostring(file), statName, tostring(total), amountAdded, LocationOfAcquirement)
-				UpdateTycoonStorage:FireClient(player, tostring(itemType), statName, tostring(total), amountAdded, tostring(LocationOfAcquirement))
+				UpdateTycoonStorage:FireClient(player, statName, tostring(total), tostring(LocationOfAcquirement))
 				
 			elseif tostring(saveFolder) == "Currencies" then
 				Utility:UpdateMoneyDisplay(player, Utility:ConvertShort(total))
@@ -271,7 +271,7 @@ function PlayerStatManager:ChangeStat(player, statName, value, saveFolder, itemT
 					
 				elseif string.find(statName, "Discovered") then
 					local acquiredLocation = Utility:GetItemInfo(string.gsub(statName, "Discovered", ""), true)
-					UpdateTycoonStorage:FireClient(player, tostring(saveFolder), statName, value, nil, tostring(acquiredLocation))
+					UpdateTycoonStorage:FireClient(player, statName, value, tostring(acquiredLocation))
 					
 				end
 			end
@@ -436,12 +436,12 @@ function LoadPlayerData(PlayerDataFile, data, JoinedPlayer)
 			local ItemDiscovery = CreateSaveReference(Item, tostring(Item) .. "Discovered", "BoolValue")
 			local SavedDiscoverValue = CheckSaveData(data[tostring(ItemDiscovery)])
 			ImportSaveData(data, SavedDiscoverValue, Item, ItemDiscovery)
-			UpdateTycoonStorage:FireClient(JoinedPlayer, AssociatedFolder.Name, tostring(Item) .. "Discovered", data[tostring(ItemDiscovery)], nil, tostring(itemType))
+			UpdateTycoonStorage:FireClient(JoinedPlayer, tostring(Item) .. "Discovered", data[tostring(ItemDiscovery)], tostring(itemType))
 			
 			local TycoonStorageItem = CreateSaveReference(AssociatedItemStorage, "TycoonStorage" .. tostring(item), "NumberValue")
 			local SavedTycoonStorageValue = CheckSaveData(data[tostring(TycoonStorageItem)])
 			ImportSaveData(data, SavedTycoonStorageValue, AssociatedItemStorage, TycoonStorageItem)
-			UpdateTycoonStorage:FireClient(JoinedPlayer, AssociatedItemStorage.Name, tostring(TycoonStorageItem), tostring(data[tostring(TycoonStorageItem)]), nil, tostring(itemType))   
+			UpdateTycoonStorage:FireClient(JoinedPlayer, tostring(TycoonStorageItem), tostring(data[tostring(TycoonStorageItem)]), tostring(itemType))   
 		end	
 	end
 	
