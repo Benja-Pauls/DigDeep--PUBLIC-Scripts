@@ -15,20 +15,28 @@ local ResearchData = {
 	
 	["Research"] = {
 		
-		["Equipment Improvements"] = {
-			["Research Type Name"] = "Equipment Research"
+		["Shop Improvements"] = {
+			["Research Type Name"] = "Shop Research",
 			
-			--Shop keepers could check player every time they interact if they have completed research
-			--for any of their items requiring research...
-			
-			--However, that could be inefficient, especially in local script, so possibly have server script handle
-			--these changes every time and send out UpdateStoreFront event?
-			----Could have previous boughts sent with UpdateStoreFront, but TycoonComputerHandler may have to handle
-			----updating storefronts with new items, changing a saved value and making a new "tile" in the storefront
-			----where you can buy the new item. With that value that is then saved, that will be referenced when they
-			----join the game again
-			
-			
+			[1] = {
+				["Research Name"] = "Bio-Glow Pickaxe",
+				["Research Image"] = "",
+				["Rarity"] = "Rare",
+				["Description"] = "If you find some glowing mushrooms, our scientists may be able to analyze their structure and form a pickaxe from the glowing cells",
+				
+				["Research Length"] = 10,
+				["Material Cost"] = {
+					{RS.InventoryItems.Foraging["Glowing Mushroom"], 5},
+				},
+				["Experience Cost"] = {
+					{RS.Experience.Skills.MiningSkill, 3},
+					{RS.Experience.Skills.ForagingSkill, 1},
+				},
+				["Dependencies"] = {}
+				
+				
+			}
+				
 		},
 
 		["Tycoon Improvements"] = {
@@ -45,7 +53,7 @@ local ResearchData = {
 					{RS.InventoryItems.Mining.Stone, 5},
 				},
 				["Experience Cost"] = {
-					{RS.Skills.MiningSkill, 3}
+					{RS.Experience.Skills.MiningSkill, 3}
 				},
 				["Dependencies"] = {"More Efficient Fuel Cells"}
 			},
@@ -62,7 +70,7 @@ local ResearchData = {
 					{RS.InventoryItems.Mining.Coal, 1}
 				},
 				["Experience Cost"] = {
-					{RS.Skills.MiningSkill, 3}
+					{RS.Experience.Skills.MiningSkill, 3}
 				},
 				["Dependencies"] = {"Fuel Cells7"}
 			},
@@ -79,7 +87,7 @@ local ResearchData = {
 					{RS.InventoryItems.Mining["Scrap Metal"], 5}
 				},
 				["Experience Cost"] = {
-					{RS.Skills.MiningSkill, 3}
+					{RS.Experience.Skills.MiningSkill, 3}
 				},
 				["Dependencies"] = {}
 			},
@@ -95,7 +103,7 @@ local ResearchData = {
 					{RS.InventoryItems.Mining.Stone, 5}
 				},
 				["Experience Cost"] = {
-					{RS.Skills.MiningSkill, 3}
+					{RS.Experience.Skills.MiningSkill, 3}
 				},
 				["Dependencies"] = {}
 			},
@@ -111,7 +119,7 @@ local ResearchData = {
 					{RS.InventoryItems.Mining.Stone, 5}
 				},
 				["Experience Cost"] = {
-					{RS.Skills.MiningSkill, 3}
+					{RS.Experience.Skills.MiningSkill, 3}
 				},
 				["Dependencies"] = {}
 			},
@@ -127,7 +135,7 @@ local ResearchData = {
 					{RS.InventoryItems.Mining.Stone, 5}
 				},
 				["Experience Cost"] = {
-					{RS.Skills.MiningSkill, 3}
+					{RS.Experience.Skills.MiningSkill, 3}
 				},
 				["Dependencies"] = {}
 			},
@@ -143,7 +151,7 @@ local ResearchData = {
 					{RS.InventoryItems.Mining.Stone, 5}
 				},
 				["Experience Cost"] = {
-					{RS.Skills.MiningSkill, 3}
+					{RS.Experience.Skills.MiningSkill, 3}
 				},
 				["Dependencies"] = {}
 			},
@@ -159,7 +167,7 @@ local ResearchData = {
 					{RS.InventoryItems.Mining.Stone, 5}
 				},
 				["Experience Cost"] = {
-					{RS.Skills.MiningSkill, 3}
+					{RS.Experience.Skills.MiningSkill, 3}
 				},
 				["Dependencies"] = {}
 			},
@@ -175,7 +183,7 @@ local ResearchData = {
 					{RS.InventoryItems.Mining.Stone, 5}
 				},
 				["Experience Cost"] = {
-					{RS.Skills.MiningSkill, 3}
+					{RS.Experience.Skills.MiningSkill, 3}
 				},
 				["Dependencies"] = {}
 			},
@@ -191,7 +199,7 @@ local ResearchData = {
 					{RS.InventoryItems.Mining.Stone, 5}
 				},
 				["Experience Cost"] = {
-					{RS.Skills.MiningSkill, 3}
+					{RS.Experience.Skills.MiningSkill, 3}
 				},
 				["Dependencies"] = {}
 			},
@@ -207,7 +215,7 @@ local ResearchData = {
 					{RS.InventoryItems.Mining.Stone, 5}
 				},
 				["Experience Cost"] = {
-					{RS.Skills.MiningSkill, 3}
+					{RS.Experience.Skills.MiningSkill, 3}
 				},
 				["Dependencies"] = {}
 			}
