@@ -40,14 +40,12 @@ local NPCData = {
 			--Player responses with shop keeper? (label as conversations?)
 		},
 		
-		["Items"] = { --Sort by type (Rarity = ItemType)
+		["Items"] = { --item, cost, costType, requiredResearch
 			{RS.Equippable.Bags.MaterialBags["Beginner Bag"], 55, "Coins"},
 			{RS.Equippable.Bags.MaterialBags["Advanced Bag"], 100, "Coins"},
-			--{RS.Equippable.Bags.PlantBags["Beginner Plant Bag"], 4},
-			--{RS.Equippable.Bags.PlantBags["Advanced Plant Bag"], 10},
 			{RS.Equippable.Tools.Pickaxes.Pickaxe, 5, "Coins"},
 			{RS.Equippable.Tools.Pickaxes["Orange Pickaxe"], 15, "Coins"},
-			{RS.Equippable.Tools.Pickaxes["Glow Pickaxe"], 1200, "Coins"}
+			{RS.Equippable.Tools.Pickaxes["Glow Pickaxe"], 1200, "Coins", "Bio-Glow Pickaxe"}
 		}	
 	},	
 	
