@@ -17,12 +17,12 @@ RegionLabel.Visible = false
 CoordLabel.Visible = false
 ToSurfaceButton.Visible = false
 
-local getEquipmentStats = game.ReplicatedStorage.Events.Utility:WaitForChild("GetItemStats")
+local getItemStatTable = game.ReplicatedStorage.Events.Utility:WaitForChild("GetItemStatTable")
 
 local equipType = script.Parent["GUI Info"].EquipType.Value
 local itemType = script.Parent["GUI Info"].ItemType.Value
 local itemName = tostring(script.Parent)
-local toolStats = getEquipmentStats:InvokeServer("Equipment", equipType, itemType, itemName)
+local toolStats = getItemStatTable:InvokeServer("Equipment", equipType, itemType, itemName)
 
 local Equipped = false
 local Active = false
