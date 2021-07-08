@@ -90,6 +90,7 @@ local function PressGUIButton(button, newPosition, newSize, moveType)
 			else
 				opposingMoveType = "neutral"
 			end
+			
 			if CurrentTweens[tostring(button.Parent) .. tostring(button) .. opposingMoveType] then
 				local opposingTween = CurrentTweens[tostring(button.Parent) .. tostring(button) .. opposingMoveType]
 				opposingTween:Pause()
@@ -117,6 +118,9 @@ function GuiUtility.SetUpPressableButton(button, scaleChange)
 	local pressSize = UDim2.new(neutralSize.X.Scale, 0, neutralSize.Y.Scale - scaleChange, 0)
 
 	button.MouseButton1Down:Connect(function()
+		PressGUIButton(button, pressPosition, pressSize, "press")
+	end)
+	button.Activated:Connect(function()
 		PressGUIButton(button, pressPosition, pressSize, "press")
 	end)
 	button.MouseLeave:Connect(function()
@@ -253,11 +257,11 @@ function GuiUtility.CommitPageChange(changedToPage, delayAmount)
 	changedToPage.ZIndex += 1
 	changedToPage.Visible = true
 	changedToPage:TweenPosition(UDim2.new(0,0,0,0), "Out", "Quint", delayAmount)
-	wait(.25)
+	wait(delayAmount)
 
 	--Manage Page Invisibility
-	for i,page in pairs (changedToPage.Parent:GetChildren()) do
-		if page:IsA("Frame") then
+	for _,page in pairs (changedToPage.Parent:GetChildren()) do
+		if page:IsA("Frame") and string.match(page.Name, "Page") then
 			if page ~= changedToPage then
 				page.Visible = false
 			else
@@ -268,7 +272,7 @@ function GuiUtility.CommitPageChange(changedToPage, delayAmount)
 	end
 	changedToPage.ZIndex -= 1
 	
-	return false
+	return false --for page debounce
 end
 
 function GuiUtility.ManageTilePlacement()
