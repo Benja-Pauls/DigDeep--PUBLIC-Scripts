@@ -3,27 +3,33 @@
 -------------------------------------------------------------------------------------------------------------------------------------------------
 local PlayerStatManager = {}
 
-local tycoons = game.Workspace:WaitForChild("Tycoons"):GetChildren()
+local tycoons = game.Workspace:WaitForChild("Tycoons"):GetChildren() --utilize as a load before getting player data?
 
 local PlayerData = game.ServerStorage:FindFirstChild("PlayerData")
 local Utility = require(game.ServerScriptService.Utility)
 local equipmentData = require(game.ServerStorage.EquipmentData)
 local itemData = require(game.ServerStorage.ItemData)
 
-local EventsFolder = game.ReplicatedStorage.Events
-local UpdateInventory = EventsFolder.GUI:WaitForChild("UpdateInventory")
-local UpdateTycoonStorage = EventsFolder.GUI:WaitForChild("UpdateTycoonStorage")
-local UpdatePlayerMenu = EventsFolder.GUI:WaitForChild("UpdatePlayerMenu")
-local UpdateEquippedItem = EventsFolder.GUI:WaitForChild("UpdateEquippedItem")
-local UpdateItemCount = EventsFolder.GUI:WaitForChild("UpdateItemCount")
-local UpdateResearch = EventsFolder.GUI:WaitForChild("UpdateResearch")
+-----<|Events/Remote Functions|>--     (key of event order)
+local eventsFolder = game.ReplicatedStorage.Events
 
-local GetBagCount = EventsFolder.Utility:WaitForChild("GetBagCount")
-local SellItem = EventsFolder.Utility:WaitForChild("SellItem")
-local DepositInventory = EventsFolder.Utility:WaitForChild("DepositInventory")
-local CheckResearchDepends = EventsFolder.Utility:WaitForChild("CheckResearchDepends")
+local UpdateInventory = eventsFolder.GUI:WaitForChild("UpdateInventory")
+local UpdateTycoonStorage = eventsFolder.GUI:WaitForChild("UpdateTycoonStorage")
+local UpdatePlayerMenu = eventsFolder.GUI:WaitForChild("UpdatePlayerMenu")
+local UpdateItemCount = eventsFolder.GUI:WaitForChild("UpdateItemCount")
+local UpdateResearch = eventsFolder.GUI:WaitForChild("UpdateResearch")
+local UpdateEquippedItem = eventsFolder.GUI:WaitForChild("UpdateEquippedItem")
 
-local HandleDropMaterialsEvent = EventsFolder.Tycoon:WaitForChild("HandleDropMaterials")
+local getItemStatTable = eventsFolder.Utility:WaitForChild("GetItemStatTable")
+local GetItemCountSum = eventsFolder.Utility:WaitForChild("GetItemCountSum")
+local GetBagCount = eventsFolder.Utility:WaitForChild("GetBagCount")
+local GetCurrentSkillLevel = eventsFolder.Utility:WaitForChild("GetCurrentSkillLevel")
+local SellItem = eventsFolder.Utility:WaitForChild("SellItem")
+local DepositInventory = eventsFolder.Utility:WaitForChild("DepositInventory")
+local CheckResearchDepends = eventsFolder.Utility:WaitForChild("CheckResearchDepends")
+local CheckPlayerStat = eventsFolder.Utility:WaitForChild("CheckPlayerStat")
+
+local HandleDropMaterialsEvent = eventsFolder.Tycoon:WaitForChild("HandleDropMaterials")
 
 -------------------------<|Set Up Game|>--------------------------------------------------------------------------------------------------------------------------------------
 local DataStoreService = game:GetService("DataStoreService") 
@@ -77,18 +83,6 @@ end)
 local sessionData = {}
 
 --------------------------<|Utility Functions|>----------------------------------------------------------------------------------------------------------------------------------
-
-GetBagCount.OnInvoke = function(Player, itemInfo)
-	local itemType = string.gsub(itemInfo.AssociatedSkill.Value, "Skill", "")
-	local amount = PlayerStatManager:getItemCount(Player)
-	local maxAmount = PlayerStatManager:getEquippedData(Player, itemInfo.Bag.Value .. "s", "Bags")
-	
-	if amount and maxAmount then
-		return amount,maxAmount,itemType .. "s"
-	else
-		return amount,nil,itemType .. "s"
-	end
-end
 
 local function CheckSaveData(Save)
 	if not Save then
@@ -225,7 +219,7 @@ function PlayerStatManager:ChangeStat(player, statName, value, saveFolder, itemT
 	local playerUserId = game.Players:FindFirstChild(tostring(player)).UserId
 	local playerDataFile = PlayerData:WaitForChild(tostring(playerUserId))
 	
-	print(player, statName, value, saveFolder, itemType, special, overFlow)
+	print(player, statName, value, saveFolder, itemType, sessionData[playerUserId][statName])
 	--print(typeof(sessionData[playerUserId][statName]),typeof(value),statName,sessionData[playerUserId][statName])	
 	
 	assert(typeof(sessionData[playerUserId][statName]) == typeof(value), tostring(player) .. "'s saved value types don't match")
@@ -258,8 +252,17 @@ function PlayerStatManager:ChangeStat(player, statName, value, saveFolder, itemT
 		
 		--Research saves exact value, not += value
 		if saveFolder == "Research" then
-			if playerDataFile:FindFirstChild(saveFolder):FindFirstChild(statName) then
-				playerDataFile:FindFirstChild(saveFolder):FindFirstChild(statName).Value = sessionData[playerUserId][statName] 
+			if itemType then
+				if playerDataFile.Research:FindFirstChild(itemType) then
+					local researchFolder = playerDataFile.Research:FindFirstChild(itemType)
+
+					if researchFolder:FindFirstChild(statName) then
+						researchFolder:FindFirstChild(statName).Value = sessionData[playerUserId][statName]
+					end
+				end
+				
+			elseif playerDataFile.Research:FindFirstChild(statName) then
+				playerDataFile.Research:FindFirstChild(statName).Value = sessionData[playerUserId][statName]
 			end
 		end
 
@@ -318,7 +321,7 @@ function FindPlayerData(JoinedPlayer)
 	end)
 	
 	if success then
-		wait(5) --Allow tycoon to be categorized
+		wait(5) --Allow tycoon to be categorized (change for all internet speeds)
 		if data then --load data
 			print("DataStore was Accessed for " .. JoinedPlayer.Name .. " (" .. tostring(JoinedPlayer.UserId) .. ")")
 			sessionData[playerUserId] = data
@@ -341,6 +344,7 @@ end
 
 function LoadPlayerData(PlayerDataFile, data, JoinedPlayer)
 	print("Loading " .. tostring(JoinedPlayer) .. "'s data")
+	
 	local playerUserId = game.Players:FindFirstChild(tostring(JoinedPlayer)).UserId
 	local DataMenu = JoinedPlayer.PlayerGui:WaitForChild("DataMenu"):WaitForChild("DataMenu")
 	
@@ -351,8 +355,7 @@ function LoadPlayerData(PlayerDataFile, data, JoinedPlayer)
 	local PlayerResearch = CreateSaveReference(PlayerDataFile, "Research", "Folder")
 	local RealResearch = require(game.ServerStorage.ResearchData)
 	
-	local PlayerExperience = CreateSaveReference(PlayerDataFile, "Experience", "Folder") --Skills, Stats, Reputation
-	local SkillsFolder = CreateSaveReference(PlayerExperience, "Skills", "Folder")
+	local PlayerExperience = CreateSaveReference(PlayerDataFile, "Experience", "Folder") --Skills, ArcadeLevels, Reputation, Stats?
 	
 	local PlayerStatItems = CreateSaveReference(PlayerDataFile, "Player", "Folder")
 	local EquippedItems = CreateSaveReference(PlayerStatItems, "CurrentlyEquipped", "Folder")
@@ -370,7 +373,7 @@ function LoadPlayerData(PlayerDataFile, data, JoinedPlayer)
 	local UsedCount = 0
 	
 	local ResearchTable = RealResearch["Research"]
-	for i,researchType in pairs (ResearchTable) do
+	for _,researchType in pairs (ResearchTable) do
 		local ResearchTypeName = researchType["Research Type Name"]
 		local ResearchTypeFolder = CreateSaveReference(PlayerResearch, ResearchTypeName, "Folder")
 		
@@ -409,19 +412,23 @@ function LoadPlayerData(PlayerDataFile, data, JoinedPlayer)
 	PlayerStatManager:ChangeStat(JoinedPlayer, "ResearchersUsed", UsedCount, "Research")
 	
 	--Once new experience folder is available, make for all experience folders (Skills and Reputation)
-	local RealSkills = game.ReplicatedStorage:WaitForChild("Skills")
-	for i,skill in pairs (RealSkills:GetChildren()) do
-		local Skill = CreateSaveReference(SkillsFolder, tostring(skill), "NumberValue")
-		local SavedValue = CheckSaveData(data[tostring(skill)])
-		ImportSaveData(data, SavedValue, SkillsFolder, Skill)
-		
-		--Make acquired skill tiles
-		UpdateInventory:FireClient(JoinedPlayer, tostring(Skill), SkillsFolder.Name, tostring(data[tostring(Skill)]), nil, "Experience", "Skills")
+	local experienceFolder = game.ReplicatedStorage:WaitForChild("Experience")
+	for _,expType in pairs (experienceFolder:GetChildren()) do
+		local expSaveFolder = CreateSaveReference(PlayerExperience, tostring(expType), "Folder")
+		for _,expInfo in pairs (expType:GetChildren()) do
+			local exp = CreateSaveReference(expSaveFolder, tostring(expInfo), "NumberValue")
+			local savedValue = CheckSaveData(data[tostring(expInfo)])
+			ImportSaveData(data, savedValue, expSaveFolder, exp)
+			
+			--Create exp tiles with value > 0
+			local expName = tostring(exp)
+			UpdateInventory:FireClient(JoinedPlayer, expName, expSaveFolder.Name, tostring(data[expName]), nil, "Experience", expSaveFolder.Name)
+		end
 	end
 
-	--All Locations' Item Data
-	for i,itemType in pairs (game.ReplicatedStorage.InventoryItems:GetChildren()) do
-		for i,item in pairs (itemType:GetChildren()) do
+	--All Inventory Item Data
+	for _,itemType in pairs (game.ReplicatedStorage.InventoryItems:GetChildren()) do
+		for _,item in pairs (itemType:GetChildren()) do
 			local associatedSkill = item.AssociatedSkill.Value
 			local ItemType = string.gsub(item.AssociatedSkill.Value, "Skill", "")
 
@@ -542,11 +549,15 @@ function PlayerStatManager:getPlayerData(player)
 	return sessionData[playerUserId]
 end 
 
-function PlayerStatManager:getStat(player, statName) --Stat Check
+function PlayerStatManager:getStat(player, statName) --Check Stat Value
 	local playerUserId = game.Players:FindFirstChild(tostring(player)).UserId
 	
 	if sessionData[playerUserId] then
-		return sessionData[playerUserId][statName]
+		--if sessionData[playerUserId][statName] ~= nil then
+			return sessionData[playerUserId][statName]
+		--else
+			--warn(player, " tried accessing data that does not exist.")
+		--end
 	else
 		warn(player," does not have save data! Trying again...") --possibly kick player from game and tell to try again
 		wait(2)
@@ -624,8 +635,7 @@ end
 
 -----------------------------<|Stat-Handling Remote Events/Functions|>------------------------------------------------------------------------------------------
 
-local getItemStats = EventsFolder.Utility:WaitForChild("GetItemStats")
-function getItemStats.OnServerInvoke(player, dataType, equipType, itemType, itemName)
+function getItemStatTable.OnServerInvoke(player, dataType, equipType, itemType, itemName)
 	local dataModule = require(game.ServerStorage:FindFirstChild(dataType .. "Data"))
 
 	local itemInfo
@@ -643,7 +653,58 @@ function getItemStats.OnServerInvoke(player, dataType, equipType, itemType, item
 	end
 end
 
-local SellItem = EventsFolder.Utility:WaitForChild("SellItem")
+GetBagCount.OnInvoke = function(Player, itemInfo)
+	if itemInfo then
+		if itemInfo:FindFirstChild("AssociatedSkill") then
+			local itemType = string.gsub(itemInfo.AssociatedSkill.Value, "Skill", "")
+			local amount = PlayerStatManager:getItemCount(Player)
+			local maxAmount = PlayerStatManager:getEquippedData(Player, itemInfo.Bag.Value .. "s", "Bags")
+
+			if amount and maxAmount then
+				return amount,maxAmount,itemType .. "s"
+			else
+				return amount,nil,itemType .. "s"
+			end
+		end
+	end
+end
+
+function GetItemCountSum.OnServerInvoke(player, statName)
+	local playerUserId = player.UserId
+	local InventoryAmount = sessionData[playerUserId][statName]
+	local StorageAmount = sessionData[playerUserId]["TycoonStorage" .. statName]
+
+	if InventoryAmount and StorageAmount then
+		return InventoryAmount + StorageAmount
+	else
+		warn("InventoryAmount or StorageAmount does not exist for ", player, statName)
+	end
+end
+
+function GetCurrentSkillLevel.OnServerInvoke(player, skillInfo)
+	local playerUserId = player.UserId
+	if sessionData[playerUserId][tostring(skillInfo)] then
+		local expAmount = sessionData[playerUserId][tostring(skillInfo)]
+
+		--This function exists seperately from CheckPlayerStat since exp is saved as a sum, and the server must check
+		--which level is associated with how much exp the player has
+
+		local highestLevel
+		for _,level in pairs (skillInfo.Levels:GetChildren()) do
+			if level.Value <= expAmount then
+				if highestLevel then
+					if level.Value > highestLevel.Value then
+						highestLevel = level
+					end
+				else
+					highestLevel = level
+				end
+			end
+		end
+		return tonumber(highestLevel.Name)
+	end
+end
+
 SellItem.OnServerEvent:Connect(function(Player, Menu, item, Percentage)--, Amount)
 	if Percentage >= 0 and Percentage <= 1 then
 		local playerUserId = game.Players:FindFirstChild(tostring(Player)).UserId
@@ -689,35 +750,6 @@ DepositInventory.OnServerEvent:Connect(function(Player)
 	return true
 end)
 
-local GetItemCountSum = EventsFolder.Utility:WaitForChild("GetItemCountSum")
-function GetItemCountSum.OnServerInvoke(Player, StatName)
-	local PlayerUserId = Player.UserId
-	local InventoryAmount = sessionData[PlayerUserId][StatName]
-	local StorageAmount = sessionData[PlayerUserId]["TycoonStorage" .. StatName]
-	
-	return InventoryAmount + StorageAmount
-end
-
-local GetCurrentSkillLevel = EventsFolder.Utility:WaitForChild("GetCurrentSkillLevel")
-function GetCurrentSkillLevel.OnServerInvoke(Player, SkillInfo)
-	local PlayerUserId = Player.UserId
-	local ExpAmount = sessionData[PlayerUserId][tostring(SkillInfo)]
-	
-	local HighestLevel
-	for i,level in pairs (SkillInfo.Levels:GetChildren()) do
-		if level.Value <= ExpAmount then
-			if HighestLevel then
-				if level.Value > HighestLevel.Value then
-					HighestLevel = level
-				end
-			else
-				HighestLevel = level
-			end
-		end
-	end
-	return tonumber(HighestLevel.Name)
-end
-
 function CheckResearchDepends.OnServerInvoke(Player, ResearchData)
 	local Dependencies = ResearchData["Dependencies"]
 	
@@ -732,6 +764,10 @@ function CheckResearchDepends.OnServerInvoke(Player, ResearchData)
 	if DependenciesMet == #Dependencies then
 		return true
 	end
+end
+
+function CheckPlayerStat.OnServerInvoke(Player, statName)
+	return PlayerStatManager:getStat(Player, statName)
 end
 
 --Fires when player equips new item (must be saved for when they join back)
@@ -762,7 +798,6 @@ UpdateEquippedItem.OnServerEvent:Connect(function(Player, EquipType, ItemType, N
 	end
 end)
 
-local HandleDropMaterialsEvent = EventsFolder.Tycoon:WaitForChild("HandleDropMaterials")
 local function HandleDropMaterials(Tycoon, Drop) --Update Tycoon Storage for drop's worth
 	local Player = Tycoon:FindFirstChild("Owner").Value
 	local playerUserId = game.Players:FindFirstChild(tostring(Player)).UserId
