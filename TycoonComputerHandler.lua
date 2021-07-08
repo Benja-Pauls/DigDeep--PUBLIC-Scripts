@@ -24,6 +24,7 @@ local LocalLoadTycoon = eventsFolder.Tycoon:WaitForChild("LocalLoadTycoon")
 local MoveAllBaseScreenUI = eventsFolder.GUI:WaitForChild("MoveAllBaseScreenUI")
 local GetItemCountSum = eventsFolder.Utility:WaitForChild("GetItemCountSum")
 local GetCurrentSkillLevel = eventsFolder.Utility:WaitForChild("GetCurrentSkillLevel")
+local CheckPlayerStat = eventsFolder.Utility:WaitForChild("CheckPlayerStat")
 
 local ComputerIsOn = false
 local CurrentStorage
@@ -83,8 +84,7 @@ local function EnsureStorageLoaded()
 			end
 		end
 	end
-	
-	print("Ensuring storage is loaded before inputting values... ", tileCount, trueItemCount)
+
 	if trueItemCount == tileCount then
 		ComputerScreen.StorageMenu.Loaded.Value = true
 	end
@@ -1057,33 +1057,33 @@ local function ColorTileRarity(Tile, RarityInfo)
 	RarityInfo.RarityGradient:Clone().Parent = Tile.RarityFrame
 end
 
-local function InsertTileInfo(Menu, Tile, ResearchData, ResearchType, FinishTime, StatTable)
-	if StatTable == nil then --Available and Previous Research
-		Tile.ResearchTile.Visible = true
-		Tile.CostTile.Visible = false
-		local ResearchTile = Tile.ResearchTile
+local function InsertTileInfo(menu, tile, researchData, researchType, finishTime, statTable)
+	if statTable == nil then --Available and Previous Research
+		tile.ResearchTile.Visible = true
+		tile.CostTile.Visible = false
+		local researchTile = tile.ResearchTile
 		
-		ResearchTile.ResearchName.Text = ResearchData["Research Name"]
-		ResearchTile.ResearchType.Text = ResearchType
-		ColorTileRarity(ResearchTile, Tile.Rarity.Value)
+		researchTile.ResearchName.Text = researchData["Research Name"]
+		researchTile.ResearchType.Text = researchType
+		ColorTileRarity(researchTile, tile.Rarity.Value)
 		
-		if FinishTime then
-			ResearchTile.ResearchTime.Visible = false
-			ResearchTile.ResearchType.Visible = false
-			ResearchTile.TimerBar.Visible = true
-			ResearchTile.TimerSymbol.Visible = true
-			ManageTileTimer(ResearchTile, ResearchData, FinishTime)
+		if finishTime then
+			researchTile.ResearchTime.Visible = false
+			researchTile.ResearchType.Visible = false
+			researchTile.TimerBar.Visible = true
+			researchTile.TimerSymbol.Visible = true
+			ManageTileTimer(researchTile, researchData, finishTime)
 		else
-			ResearchTile.TimerBar.Visible = false
-			ResearchTile.TimerSymbol.Visible = false
-			ResearchTile.ResearchTime.Visible = true
-			ResearchTile.ResearchType.Visible = true
-			ResearchTile.ResearchTime.Text = toDHMS(ResearchData["Research Length"], true)
+			researchTile.TimerBar.Visible = false
+			researchTile.TimerSymbol.Visible = false
+			researchTile.ResearchTime.Visible = true
+			researchTile.ResearchType.Visible = true
+			researchTile.ResearchTime.Text = toDHMS(researchData["Research Length"], true)
 		end
 		
-		if Menu ~= PreviousResearch then
+		if menu ~= PreviousResearch then
 			local TileDebounce = false
-			Tile.Activated:Connect(function()
+			tile.Activated:Connect(function()
 				if TileDebounce == false then
 					TileDebounce = true
 
@@ -1105,12 +1105,12 @@ local function InsertTileInfo(Menu, Tile, ResearchData, ResearchType, FinishTime
 					end
 
 					--Insert experience and material costs into cost list
-					for i,expRequire in pairs (ResearchData["Experience Cost"]) do
-						ManageResearchTile(CostList, ResearchData, ResearchType, nil, expRequire)
+					for i,expRequire in pairs (researchData["Experience Cost"]) do
+						ManageResearchTile(CostList, researchData, researchType, nil, expRequire)
 					end
 					
-					for i,matRequire in pairs (ResearchData["Material Cost"]) do
-						ManageResearchTile(CostList, ResearchData, ResearchType, nil, matRequire)
+					for i,matRequire in pairs (researchData["Material Cost"]) do
+						ManageResearchTile(CostList, researchData, researchType, nil, matRequire)
 					end
 					
 					CostList.Visible = true
@@ -1128,26 +1128,26 @@ local function InsertTileInfo(Menu, Tile, ResearchData, ResearchType, FinishTime
 					Taskbar.PreviousResearchButton.Visible = false
 					Taskbar.PreviousResearchButton.Active = false
 					
-					local NameCharacterCount = string.len(ResearchData["Research Name"])
+					local NameCharacterCount = string.len(researchData["Research Name"])
 					if NameCharacterCount > 20 then
-						local ShortResearchName = string.sub(ResearchData["Research Name"], 1, 20) .. "..."
+						local ShortResearchName = string.sub(researchData["Research Name"], 1, 20) .. "..."
 						InfoMenu.ResearchName.Text = ShortResearchName
 					else
-						InfoMenu.ResearchName.Text = ResearchData["Research Name"]
+						InfoMenu.ResearchName.Text = researchData["Research Name"]
 					end
 					
-					InfoMenu.DisplayImage.Image = ResearchData["Research Image"]
-					InfoMenu.ResearchType.Text = ResearchType
-					InfoMenu.ResearchTime.Text = toDHMS(ResearchData["Research Length"], true)
+					InfoMenu.DisplayImage.Image = researchData["Research Image"]
+					InfoMenu.ResearchType.Text = researchType
+					InfoMenu.ResearchTime.Text = toDHMS(researchData["Research Length"], true)
 					
 					--change size of description box based on character count
-					--local NameCharacterCount = string.len(ResearchData["Description"])
-					--local NewYScale = math.ceil(NameCharacterCount/37)*.069
-					--InfoMenu.Description.Size = UDim2.new(InfoMenu.Description.Size.X.Scale, 0, NewYScale, 0)
-					InfoMenu.ItemInfo.TextLabel.Text = ResearchData["Description"]
+					local NameCharacterCount = string.len(researchData["Description"])
+					local NewYScale = math.ceil(NameCharacterCount/37)*.069
+					InfoMenu.Description.Size = UDim2.new(InfoMenu.Description.Size.X.Scale, 0, NewYScale, 0)
+					InfoMenu.Description.Text = researchData["Description"]
 					
-					InfoMenu.Rarity.Text = ResearchData["Rarity"]
-					local RarityInfo = game.ReplicatedStorage.GuiElements.RarityColors:FindFirstChild(ResearchData["Rarity"])
+					InfoMenu.Rarity.Text = researchData["Rarity"]
+					local RarityInfo = game.ReplicatedStorage.GuiElements.RarityColors:FindFirstChild(researchData["Rarity"])
 					InfoMenu.RarityFrame.BackgroundColor3 = RarityInfo.TileColor.Value
 					InfoMenu.RarityFrame.BorderColor3 = RarityInfo.Value
 					InfoMenu.DisplayImage.BackgroundColor3 = RarityInfo.TileColor.Value
@@ -1170,37 +1170,39 @@ local function InsertTileInfo(Menu, Tile, ResearchData, ResearchType, FinishTime
 			end)
 		end
 	else --Material Tile
-		Tile.ResearchTile.Visible = false
-		Tile.CostTile.Visible = true
-		local CostTile = Tile.CostTile
+		tile.ResearchTile.Visible = false
+		tile.CostTile.Visible = true
+		local CostTile = tile.CostTile
 		
-		local StatInfo = StatTable[1]
-		local StatAmount = StatTable[2]
-		local Discovered = false
+		local StatInfo = statTable[1]
+		local StatAmount = statTable[2]
+		local discovered = false
 		
-		local StatType
+		local statType
 		if StatInfo:FindFirstChild("Levels") then --ExpRequirement
-			StatType = tostring(StatInfo.Parent)
+			statType = tostring(StatInfo.Parent)
 			StatAmount = "Level " .. tostring(StatAmount) 
-			Discovered = true
+			discovered = true
 			
 			local PlayerLevel = GetCurrentSkillLevel:InvokeServer(StatInfo)
-			ChangeCostColor(CostTile, PlayerLevel, StatTable[2])
+			ChangeCostColor(CostTile, PlayerLevel, statTable[2])
 		else
-			StatType = string.gsub(StatInfo.Bag.Value, "Bag", "") .. "s"
-
-			local RarityName = tostring(Tile.Rarity.Value)
-			Discovered = ItemsPreview:FindFirstChild(StatType):FindFirstChild(RarityName):WaitForChild(tostring(StatInfo)).Discovered.Value
+			statType = string.gsub(StatInfo.AssociatedSkill.Value, "Skill", "")
+			--local rarityName = tostring(tile.Rarity.Value)
+			--local storagetile = SeekStorageTile(statType, RarityName, tostring(StatInfo))
+			--Discovered = ItemsPreview:FindFirstChild(statType):FindFirstChild(RarityName):WaitForChild(tostring(StatInfo)).Discovered.Value
+			
+			discovered = CheckPlayerStat:InvokeServer(tostring(StatInfo) .. "Discovered")
 			
 			local PlayerItemCount = GetItemCountSum:InvokeServer(tostring(StatInfo))
 			ChangeCostColor(CostTile, PlayerItemCount, StatAmount)
 			StatAmount = GuiUtility.ConvertShort(StatAmount) --simplify for display
 		end
-		CostTile.StatType.Text = StatType
+		CostTile.StatType.Text = statType
 		CostTile.ResearchCost.Text = StatAmount
-		ColorTileRarity(CostTile, Tile.Rarity.Value)
+		ColorTileRarity(CostTile, tile.Rarity.Value)
 
-		if not Discovered then
+		if not discovered then
 			CostTile.StatName.Text = "[UnDiscovered]" 
 			CostTile.StatName.TextColor3 = Color3.fromRGB(204, 204, 204)
 			CostTile.DisplayImage.Image = "rbxassetid://6741669069" --lock icon
@@ -1211,7 +1213,8 @@ local function InsertTileInfo(Menu, Tile, ResearchData, ResearchType, FinishTime
 			
 			--local TileDebounce = false
 			--Tile.Activated:Connect(function()
-				--Select item in storage menu and display storage menu
+				--Select item in storage menu and display storage menu display of item?
+				--**Maybe a warning menu popup that says "Are you sure you would like to see this item in storage?"
 			--end)
 		end
 
