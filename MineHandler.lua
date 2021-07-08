@@ -560,7 +560,6 @@ MineOre.Event:Connect(function(Player, ore)
 					
 					local PlayerExperience = PlayerDataFile:WaitForChild("Experience")
 					local InitialOreExperience = itemInfo.Experience.Value
-					local associatedSkill = itemInfo.AssociatedSkill.Value
 					PlayerStatManager:ChangeStat(Player, associatedSkill, InitialOreExperience, "Experience")
 					
 					local AssociatedFolder = PlayerInventory:WaitForChild(itemType)
