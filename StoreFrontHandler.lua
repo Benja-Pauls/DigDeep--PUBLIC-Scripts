@@ -8,15 +8,17 @@ local GuiElements = game.ReplicatedStorage.GuiElements
 
 local StoreFrontGui = script.Parent
 local StoreFrontMenu = StoreFrontGui.StoreFrontMenu
+
 local ProductsDisplay = StoreFrontMenu.ProductsDisplay
 local ItemStatView = StoreFrontMenu.ItemStatView
 
 local UpdateStoreFront = EventsFolder.GUI:WaitForChild("UpdateStoreFront")
 local MoveAllBaseScreenUI = EventsFolder.GUI:WaitForChild("MoveAllBaseScreenUI")
 local StoreFrontPurchase = EventsFolder.Utility:WaitForChild("StoreFrontPurchase")
+local CheckPlayerStat = EventsFolder.Utility:WaitForChild("CheckPlayerStat")
 
-if StoreFrontGui.StoreFrontMenu.Visible == true then
-	StoreFrontGui.StoreFrontMenu.Visible = false
+if StoreFrontMenu.Visible == true then
+	StoreFrontMenu.Visible = false
 end
 
 local Character = game.Workspace.Players:WaitForChild(tostring(Player))
@@ -30,7 +32,7 @@ local SoundEffects = require(game.ReplicatedStorage:WaitForChild("SoundEffects")
 local StarterGui = game:GetService("StarterGui")
 
 local function DisplayStoreFrontGUI(bool)
-	StoreFrontMenu.Visible = bool
+	StoreFrontMenu.Visible = bool --temporarily here since closing tweens are not finished
 	
 	if bool == true then --Display
 		StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false)
@@ -71,7 +73,7 @@ local function DisplayStoreFrontGUI(bool)
 		StoreFrontMenu.CurrentTile.Value = nil
 		
 		--Delete products in display
-		for i,product in pairs (ProductsDisplay:GetChildren()) do
+		for _,product in pairs (ProductsDisplay:GetChildren()) do
 			product:Destroy()
 		end
 		
@@ -342,7 +344,7 @@ StoreFrontMenu.SecondaryPreviousSlot.Activated:Connect(function()
 end)
 
 -------------------------<|Tile Management Functions|>-----------------------------------------------------------------------------------------
-local getItemStats = EventsFolder.Utility:WaitForChild("GetItemStats")
+local getItemStatTable = EventsFolder.Utility:WaitForChild("GetItemStatTable")
 
 local staticPurchImage = "rbxassetid://7032450616"
 local hoverPurchImage = "rbxassetid://7032454116"
@@ -388,7 +390,7 @@ StoreFrontMenu.CurrentTile.Changed:Connect(function()
 			local equipType = item["GUI Info"].EquipType.Value
 			local itemType = item["GUI Info"].ItemType.Value
 			local itemName = tostring(item)
-			local itemStats = getItemStats:InvokeServer("Equipment", equipType, itemType, itemName)
+			local itemStats = getItemStatTable:InvokeServer("Equipment", equipType, itemType, itemName)
 			
 			for stat = 1,#itemStats["Stats"],1 do
 				local Stat = itemStats["Stats"][stat]
@@ -730,6 +732,7 @@ end)
 ---------------------<|StoreFront Events|>----------------------------------------------------------------------------------------------------
 
 UpdateStoreFront.OnClientEvent:Connect(function(shopKeeper, shopData, AlreadyPurchased)
+	
 	if StoreFrontGui.Open.Value == false then
 		StoreFrontGui.InteractedShop.Value = shopKeeper
 		StoreFrontGui.Open.Value = true
@@ -759,32 +762,37 @@ UpdateStoreFront.OnClientEvent:Connect(function(shopKeeper, shopData, AlreadyPur
 		end))
 		
 		--Hide players that are nearby until the player exits the store front
-		--Other player touches radius part turns invisible
-		--Player reappears no longer touching radius part: left radpart or radpart was deleted
-		
+		--Check magnitude of nearby players? 
 		
 		local Items = shopData["Items"]
 		for item = 1,#Items,1 do
 			
-			--Items[item][1] = ReplicatedStorage Item
-			--Items[item][2] = Price
-			
-			local ItemAlreadyPurchased = false
+			local itemAlreadyPurchased = false
 			for i = 1,#AlreadyPurchased,1 do
 				local PurchasedItem = AlreadyPurchased[i]
 				
 				--Ensure all info of already purchased item is true
 				if PurchasedItem.Parent == Items[item][1].Parent then
 					if AlreadyPurchased[i] == Items[item][1] then
-						ItemAlreadyPurchased = true
+						itemAlreadyPurchased = true
 					end
 				end
 			end
-			
-			--later also check for not already purchased items IF THEY HAVE BEEN RESEARCHED
-			--(if something has been already purchased it is known it must be visible in the shop already)
-			
-			InsertProductTile(shopData, Items[item], ItemAlreadyPurchased)	
+
+			if itemAlreadyPurchased == true then
+				InsertProductTile(shopData, Items[item], itemAlreadyPurchased)
+			else
+				if Items[item][4] then
+					local requiredResearchName = Items[item][4]
+					local researchCompleted = CheckPlayerStat:InvokeServer(requiredResearchName)
+					
+					if researchCompleted then
+						InsertProductTile(shopData, Items[item], itemAlreadyPurchased)
+					end
+				else
+					InsertProductTile(shopData, Items[item], itemAlreadyPurchased)
+				end
+			end
 		end
 		
 		StoreFrontMenu.CurrentTile.Value = ProductsDisplay.Slot1
