@@ -330,7 +330,7 @@ CompleteResearch.OnServerEvent:Connect(function(player, ResearchName, ResearchTy
 	local CompletionHistory = PlayerStatManager:getStat(player, ResearchName)
 	local FinishTime = PlayerStatManager:getStat(player, ResearchName .. "FinishTime")
 	
-	if PurchaseHistory and os.time() >= FinishTime then
+	if PurchaseHistory == true and os.time() >= FinishTime then
 		if not CompletionHistory then
 			local TypeTableName = string.gsub(ResearchType, "Research", "") .. "Improvements"
 			local ResearchTypeTable = AllResearchData["Research"][TypeTableName]
@@ -345,7 +345,7 @@ CompleteResearch.OnServerEvent:Connect(function(player, ResearchName, ResearchTy
 			if ResearchData then
 				local UsedResearchSlots = PlayerStatManager:getStat(player, "ResearchersUsed")
 				PlayerStatManager:ChangeStat(player, "ResearchersUsed", UsedResearchSlots - 1, "Research")
-				PlayerStatManager:ChangeStat(player, ResearchName, true, "Research")
+				PlayerStatManager:ChangeStat(player, ResearchName, true, "Research", ResearchType)
 				
 				local PlayerDataFile = PlayerData:FindFirstChild(tostring(player.UserId))
 				if ResearchType == "Tycoon Research" then
@@ -355,14 +355,15 @@ CompleteResearch.OnServerEvent:Connect(function(player, ResearchName, ResearchTy
 						local ResearchReference = Instance.new("Model")
 						ResearchReference.Name = ResearchName
 						ResearchReference.Parent = OwnedTycoon.CompletedResearch
-						--Otherwise, when player loads tycoon, research will be inserted
+						--New research is inserted this way, but PlayerStatManager inserts references on load
 					end
 					
+					--[[
 					CompleteResearch:FireClient(player, ResearchData)
 					UpdateResearch:FireClient(player, ResearchData, ResearchType, true, true)
 					
 					local NewResearchUnlocks = CheckResearchUnlocks(player, ResearchName)
-					if #NewResearchUnlocks > 0 then --Unlock now unlocked research
+					if #NewResearchUnlocks > 0 then --Just finished research caused another research to unlock
 						for r = 1,#NewResearchUnlocks,1 do
 							if r%2 == 0 then --even
 								local ResearchData = NewResearchUnlocks[r]
@@ -372,9 +373,35 @@ CompleteResearch.OnServerEvent:Connect(function(player, ResearchName, ResearchTy
 							end
 						end
 					end
-				else
-					print("Different type of reserach than tycoon")
-					print("Where should other research type dependencies be checked?")
+					]]
+				--else
+					--print("Different type of reserach than tycoon")
+					--print("Where should other research type dependencies be checked?")
+					
+					--Check this research type the same way as the bottom of tycoon research, just no need to create
+					--a physical reference for buttons to start appearing
+					
+					
+					--Honestly, all research types should just check the player's save file to see if they have purchased
+					--all the dependencies rather than checking physics objects
+					
+					--Also, the shop research did not update to say true (that I completed it)
+					--so ensure that this code also does that and doesn't only wait for the autosave to do something
+				end
+				
+				CompleteResearch:FireClient(player, ResearchData)
+				UpdateResearch:FireClient(player, ResearchData, ResearchType, true, true)
+
+				local NewResearchUnlocks = CheckResearchUnlocks(player, ResearchName)
+				if #NewResearchUnlocks > 0 then --Just finished research caused another research to unlock
+					for r = 1,#NewResearchUnlocks,1 do
+						if r%2 == 0 then --even
+							local ResearchData = NewResearchUnlocks[r]
+							local ResearchType = NewResearchUnlocks[r-1]
+
+							UpdateResearch:FireClient(player, ResearchData, ResearchType, false, false)
+						end
+					end
 				end
 			end
 		else
@@ -402,7 +429,7 @@ StoreFrontInteract.OnServerEvent:Connect(function(player, NPC)
 		end
 	end
 	
-	print("AlreadyPurchased",AlreadyPurchased)
+	print("AlreadyPurchased",AlreadyPurchased,player)
 	
 	UpdateStoreFront:FireClient(player, NPC, shopData, AlreadyPurchased)
 end)
