@@ -133,7 +133,6 @@ OpenDataMenuButton.Activated:Connect(function()
 		DataMenu.Visible = false
 		DataMenu.Position = UDim2.new(0.159, 0, 0.141, 0)
 		PageManager.Visible = false
-		DataMenu.ItemViewer.Visible = false
 		
 		DataMenu.TopTabBar.CloseMenu.Active = false
 		OpenDataMenuButton.Active = true
@@ -148,7 +147,6 @@ DataMenu.TopTabBar.CloseMenu.Activated:Connect(function()
 	DataMenu.Visible = false
 	DataMenu.Position = UDim2.new(0.159, 0, 0.141, 0)
 	PageManager.Visible = false
-	DataMenu.ItemViewer.Visible = false
 
 	OpenDataMenuButton.Active = true
 end)
@@ -164,16 +162,23 @@ MoveAllBaseScreenUI.Event:Connect(function(ChangeTo)
 end)
 
 --------------<|Utility Functions|>-----------------------------------------------------------------------------
-local ItemViewerMenu = DataMenu.ItemViewer
 local inventoryQuickViewMenu = DataMenu.InventoryMenu.QuickViewMenu.QuickViewMenu
 local equipmentQuickViewMenu = DataMenu.PlayerMenu.QuickViewMenu.QuickViewMenu
-ItemViewerMenu.ItemViewerClosed.Value = true
 
-local function EnableOnlyButtonMenu(buttonMenu, bool)
-	for i,button in pairs (buttonMenu:GetDescendants()) do
-		if button:IsA("ImageButton") or button:IsA("TextButton") then
-			button.Active = bool
-			button.Selectable = bool
+local function EnableOnlyButtonMenu(buttonMenu, bool, descendantsSeek)
+	if descendantsSeek then
+		for i,button in pairs (buttonMenu:GetDescendants()) do
+			if button:IsA("ImageButton") or button:IsA("TextButton") then
+				button.Active = bool
+				button.Selectable = bool
+			end
+		end
+	else
+		for i,button in pairs (buttonMenu:GetChildren()) do
+			if button:IsA("ImageButton") or button:IsA("TextButton") then
+				button.Active = bool
+				button.Selectable = bool
+			end
 		end
 	end
 end
@@ -204,6 +209,8 @@ function ReadyMenuButtons(Menu)
 				local associatedMenuName = button:FindFirstChild("Menu").Value
 				local ButtonMenu = Menu:FindFirstChild(associatedMenuName)
 				
+				print("Menu:",Menu, " ButtonMenu:",ButtonMenu)
+				
 				--First Time Default Menu Setup
 				if ButtonMenu.Name ~= "PlayerMenu" then
 					ButtonMenu.Visible = false
@@ -212,6 +219,10 @@ function ReadyMenuButtons(Menu)
 					ButtonMenu.EmptyNotifier.Visible = false
 					ButtonMenu.QuickViewMenu.Visible = false
 					--UpdateBagDisplays(Menu, ButtonMenu)		
+				end
+				
+				if ButtonMenu:FindFirstChild("FirstSeeMenu") then
+					ButtonMenu.Visible = true
 				end
 				
 				button.Activated:Connect(function()
@@ -232,11 +243,11 @@ function ReadyMenuButtons(Menu)
 					--Enable only current menu's buttons
 					for i,menu in pairs (DataMenu:GetChildren()) do
 						if string.find(menu.Name, "Menu") and menu:IsA("Frame") then
-							EnableOnlyButtonMenu(menu, false)
+							EnableOnlyButtonMenu(menu, false, true)
 						end
 					end
-					EnableOnlyButtonMenu(ButtonMenu, true)
-
+					EnableOnlyButtonMenu(ButtonMenu, true, true)
+					
 					if tostring(ButtonMenu) == "InventoryMenu" then
 						ButtonMenu.EmptyNotifier.Visible = false
 						
@@ -271,6 +282,7 @@ function ReadyMenuButtons(Menu)
 						else
 							ButtonMenu.EmptyNotifier.Visible = true
 						end
+						
 					elseif tostring(ButtonMenu) == "PlayerMenu" then
 						ButtonMenu.EmptyNotifier.Visible = false
 						PageManager.FullBottomDisplay.Visible = false
@@ -278,6 +290,35 @@ function ReadyMenuButtons(Menu)
 						
 						ButtonMenu.QuickViewMenu.Visible = false
 						ButtonMenu.PlayerInfo.Visible = true
+						
+					elseif tostring(ButtonMenu) == "ExperienceMenu" then
+						local skillsMenu = ButtonMenu.SkillsMenu
+						for _,menu in pairs (DataMenu.ExperienceMenu:GetChildren()) do
+							if menu:IsA("Frame") then
+								if string.match(menu.Name, "Menu") and menu ~= skillsMenu then
+									menu.Visible = false
+								else
+									menu.Visible = true
+								end
+							end
+						end
+						
+						ButtonMenu.SideButtonBar.BackgroundColor3 = ButtonMenu.SkillsMenuButton.Color.Value
+						
+						PageManager.Menu.Value = skillsMenu
+						local PageCount = GetHighPage(skillsMenu)
+						if PageCount > 0 then
+							PageManager.Visible = true
+							PageManager.FullBottomDisplay.Visible = true
+							PageManager.PartialBottomDisplay.Visible = false
+
+							if skillsMenu:FindFirstChild("Page1") then
+								pageDebounce = true
+								pageDebounce = GuiUtility.CommitPageChange(skillsMenu.Page1, 0.25)
+							end
+						else
+							Menu.EmptyNotifier.Visible = true
+						end
 					end
 					
 					if tostring(Menu) == "PlayerMenu" then
@@ -299,14 +340,47 @@ function ReadyMenuButtons(Menu)
 								pageDebounce = GuiUtility.CommitPageChange(ButtonMenu.Page1, 0.25)
 							end
 						else
-							DataMenu.PlayerMenu.EmptyNotifier.Visible = true
+							Menu.EmptyNotifier.Visible = true
+						end
+						
+					elseif tostring(Menu) == "ExperienceMenu" then
+						EnableOnlyButtonMenu(Menu, true, false)
+						GuiUtility.SetUpPressableButton(button, 0.005)
+						
+						Menu.SideButtonBar.Visible = true
+						Menu.SideButtonBar.BackgroundColor3 = button.Color.Value
+						
+						local menuName = string.gsub(tostring(button), "MenuButton", "")
+						if DataMenu.ExperienceMenu:FindFirstChild(menuName) then
+							for _,menu in pairs (DataMenu.ExperienceMenu:GetChildren()) do
+								if menu:IsA("Frame") then
+									if string.match(menu.Name, "Menu") and menu ~= ButtonMenu then
+										menu.Visible = false
+									else
+										menu.Visible = true
+									end
+								end
+							end
+							
+							PageManager.Menu.Value = ButtonMenu
+							local PageCount = GetHighPage(ButtonMenu)
+							if PageCount > 0 then
+								PageManager.Visible = true
+								PageManager.FullBottomDisplay.Visible = true
+								PageManager.PartialBottomDisplay.Visible = false
+
+								if ButtonMenu:FindFirstChild("Page1") then
+									pageDebounce = true
+									pageDebounce = GuiUtility.CommitPageChange(ButtonMenu.Page1, 0.25)
+								end
+							else
+								Menu.EmptyNotifier.Visible = true
+							end
 						end
 					end
 					
-					DataMenu.ItemViewer.Visible = false
-					ItemViewerMenu.ItemViewerClosed.Value = true
 					PageManager.CurrentPage.Value = 1
-
+					
 					if ButtonPresses[button] == 0 then
 						ButtonPresses[button] = 1
 						ReadyMenuButtons(ButtonMenu)
@@ -323,14 +397,13 @@ function ReadyMenuButtons(Menu)
 end
 
 GuiUtility.Reset3DObject(Player, PlayerViewport, PlayerModel, 178)
-GuiUtility.Reset3DObject(Player, DataMenu.ItemViewer.ItemImage)
 GuiUtility.Reset3DObject(Player, equipmentQuickViewMenu.ItemImage)
 GuiUtility.Reset3DObject(Player, inventoryQuickViewMenu.ItemImage)
 
 function CleanupMenuTabs(Menu)
 	--Prep Default Menu
 	if Menu.Name == "DataMenu" or Menu.Name == "PlayerMenu" then
-		for i,gui in pairs (DataMenu.PlayerMenu:GetChildren()) do
+		for _,gui in pairs (DataMenu.PlayerMenu:GetChildren()) do
 			gui.Visible = false
 			
 			if gui:IsA("ImageButton") then
@@ -341,18 +414,21 @@ function CleanupMenuTabs(Menu)
 		DataMenu.PlayerMenu.PlayerInfo.Visible = true
 	end
 	
-	for i,button in pairs(Menu:GetChildren()) do
+	for _,button in pairs(Menu:GetChildren()) do
 		if (button:IsA("TextButton") or button:IsA("ImageButton")) and button:FindFirstChild("Menu") then
 			local AssociatedMenuName = button:FindFirstChild("Menu").Value
 			local ButtonMenu = Menu:FindFirstChild(AssociatedMenuName)
-			
-			print(Menu, ButtonMenu)
 			
 			ButtonMenu.Visible = false
 			if Menu == DataMenu.InventoryMenu then
 				DataMenu.InventoryMenu.SelectedBagInfo.Visible = false
 			end
 		end
+	end
+	
+	if Menu.Name == "ExperienceMenu" then
+		Menu.SkillsMenu.Visible = true
+		Menu.SideButtonBar.Visible = true
 	end
 end
 
@@ -666,7 +742,7 @@ local function SeekSlotAvailability(Menu, Type, checkedPageNumber, rarityName, m
 end
 
 local function FindNearbyRarity(Menu, rarityInfo, orderValue, direction)
-	if orderValue + direction ~= 0 and orderValue + direction < #rarityInfo.Parent:GetChildren() then
+	if orderValue + direction ~= -1 and orderValue + direction < #rarityInfo.Parent:GetChildren() then
 		local checkedRarityName
 		for i,rarity in pairs (rarityInfo.Parent:GetChildren()) do
 			if rarity:IsA("Color3Value") and checkedRarityName == nil then
@@ -675,7 +751,7 @@ local function FindNearbyRarity(Menu, rarityInfo, orderValue, direction)
 				end
 			end
 		end
-
+		
 		local highPage = GetHighPage(Menu, checkedRarityName)
 		--print("44444444444444 Checking if ", checkedRarityName, " is in ", Menu, " rarity high page is ", highPage)
 
@@ -710,6 +786,7 @@ local function ManageTilePlacement(Menu, Type, rarityInfo)
 		rarityName = rarityInfo.Name
 		
 		if Type == "Research" then
+			print("Research Tile")
 			maxTileAmount = 5
 		else
 			maxTileAmount = 12 --Inventory was 18
@@ -876,8 +953,8 @@ function ManageTileTruePosition(Menu, Page, affectingTile, TruePosition, maxTile
 								
 								if Type == "Experience" or Type == "Research" then --straight down insertion
 									if Type == "Experience" then
-										tile.Position = UDim2.new(0.028,0,0.037+((PageSlotCount)*0.24),0)
-										tile.Size = UDim2.new(0.944, 0, 0.2, 0)
+										tile.Position = UDim2.new(0.023,0,0.023+((PageSlotCount)*0.215),0)
+										tile.Size = UDim2.new(0.952, 0, 0.2, 0)
 									else
 										tile.Position = UDim2.new(0.05, 0, 0.054+0.173*PageSlotCount, 0)
 										tile.Size = UDim2.new(0.9, 0, 0.14, 0)
@@ -896,13 +973,6 @@ function ManageTileTruePosition(Menu, Page, affectingTile, TruePosition, maxTile
 		end
 	end
 end
-
-DataMenu.ItemViewer.BackButton.Activated:Connect(function()
-	if DataMenu.ItemViewer.Visible == true then
-		DataMenu.ItemViewer.Visible = false
-		ItemViewerMenu.ItemViewerClosed.Value = true
-	end
-end)
 
 local DepositInventory = eventsFolder.Utility:WaitForChild("DepositInventory")
 DepositInventory.OnClientEvent:Connect(function()
@@ -960,7 +1030,6 @@ local function InsertItemViewerInfo(tile, statMenu, Type, statName, StatInfo, va
 		statMenu.ItemImage.Image = StatInfo["GUI Info"].StatImage.Value
 		
 		statMenu.ItemWorth.Visible = true
-		statMenu.EquipButton.Visible = false
 		
 	else --Equipment
 		statMenu.EquipType.Value = Type
@@ -1019,9 +1088,23 @@ local function InsertTileInfo(Type, tile, statName, Value, itemType, tileAlready
 		tile.PressedImage = rarityInfo.TileImages.PressedRarityTile.Value
 		
 	elseif Type == "Experience" then
-		statMenu = ItemViewerMenu
-		statInfo = game.ReplicatedStorage:FindFirstChild(tostring(itemType)):FindFirstChild(statName .. "Skill")
+		statMenu = DataMenu.ExperienceMenu.ExpInfoViewer
+		
+		local statInfo
+		local expTypeFolder = game.ReplicatedStorage.Experience:FindFirstChild(itemType)
+		for _,expStat in pairs (expTypeFolder:GetChildren()) do
+			if string.match(tostring(expStat), statName) then
+				statInfo = expStat
+			end
+		end
 		tile.DisplayName.Text = statName
+		
+		local expMenuButton = DataMenu.ExperienceMenu:FindFirstChild(itemType .. "MenuButton")
+		if expMenuButton then
+			tile.Image = expMenuButton.TileStaticImage.Value
+			tile.HoverImage = expMenuButton.TileHoverImage.Value
+			expMenuButton.Color.UIGradient:Clone().Parent = tile.ProgressBar.Progress
+		end
 		
 		local CurrentLevel = 0
 		--Move into Levels value where the value is how many levels, no for in pairs, just 1,amount,1 loop
@@ -1065,8 +1148,7 @@ local function InsertTileInfo(Type, tile, statName, Value, itemType, tileAlready
 	--ItemViewerMenu GUI Management
 	if tileAlreadyPresent == nil then
 		tile.Activated:Connect(function()
-			if ItemViewerMenu.ItemViewerClosed.Value == true and Type == "Experience" then
-				ItemViewerMenu.ItemViewerClosed.Value = false 
+			if Type == "Experience" then
 				InsertItemViewerInfo(tile, statMenu, Type, statName, statInfo, Value, itemType)
 			else
 				InsertItemViewerInfo(tile, statMenu, Type, statName, statInfo, Value, itemType)
@@ -1136,22 +1218,6 @@ local SearchBars = {
 for i,searchBar in pairs (SearchBars) do
 	GuiUtility.ManageSearchVisual(searchBar.SearchInput)
 end
-
---Was used to disable inventory tiles with ItemViewerOpened, possibly use with exp/journal tiles
---[[
-ItemViewerMenu.ItemViewerClosed.Changed:Connect(function(bool)
-	for i,page in pairs (DataMenu.InventoryMenu.MaterialsMenu:GetChildren()) do
-		if page:IsA("Frame") and string.find(page.Name, "Page") then
-			for i,tile in pairs (page:GetChildren()) do
-				tile.Active = bool
-				tile.Selectable = bool
-			end
-		end
-	end
-	
-	PageManager.FullBottomDisplay.Visible = bool
-end)
-]]
 
 
 --------------------<|Material PopUp Functions|>-------------------------------------------------------------------------------------------------------------------
@@ -1410,7 +1476,7 @@ local function InsertNewEXPBar(statName, expAmount, currentLevel, nextLevel, pop
 	
 	newExpBar:TweenPosition(UDim2.new(.98, 0, newExpBar.Position.Y.Scale - .1, 0), "Out", "Quint", .5)
 	
-	local skillInfo = game.ReplicatedStorage:FindFirstChild("Skills"):FindFirstChild(tostring(statName) .. "Skill")
+	local skillInfo = game.ReplicatedStorage.Experience.Skills:FindFirstChild(tostring(statName) .. "Skill")
 	local progressBar = expPopUpGui.ExperienceBar.ProgressBar
 	local CurrentLevelEXP = skillInfo.Levels:FindFirstChild(tostring(currentLevel))
 	local levelProgress = tonumber(expAmount - CurrentLevelEXP.Value) / tonumber(nextLevel.Value - CurrentLevelEXP.Value)
@@ -1425,7 +1491,7 @@ local function InsertNewEXPBar(statName, expAmount, currentLevel, nextLevel, pop
 end
 
 local function ManageEXPPopUp(statName, expAmount, amountAdded)
-	local skillInfo = game.ReplicatedStorage.Skills:FindFirstChild(statName .. "Skill")
+	local skillInfo = game.ReplicatedStorage.Experience.Skills:FindFirstChild(statName .. "Skill")
 	local currentLevel,nextLevel = FindStatLevel(skillInfo, expAmount)
 	
 	if amountAdded ~= nil then
@@ -1658,7 +1724,7 @@ end)
 
 
 -------------------------------------<High-Traffic Events>-------------------------------------------------------------------------------------------------------------
-local getItemStats = eventsFolder.Utility:WaitForChild("GetItemStats")
+local getItemStatTable = eventsFolder.Utility:WaitForChild("GetItemStatTable")
 
 local UpdateInventory = eventsFolder.GUI:WaitForChild("UpdateInventory")
 UpdateInventory.OnClientEvent:Connect(function(statName, folder, value, amountAdded, Type, itemType)
@@ -1698,17 +1764,17 @@ UpdatePlayerMenu.OnClientEvent:Connect(function(EquipType, ItemType, Item)
 	local AssociatedButton = PlayerMenu:FindFirstChild(ItemType)
 	
 	if EquipType == "Bags" then
-		local itemStats = getItemStats:InvokeServer("Equipment", EquipType, ItemType, Item) 
+		local itemStats = getItemStatTable:InvokeServer("Equipment", EquipType, ItemType, Item) 
 		ManageTiles(Item, AssociatedMenu, itemStats, EquipType, ItemType)
 	else
-		local itemStats = getItemStats:InvokeServer("Equipment", EquipType, ItemType, Item)
+		local itemStats = getItemStatTable:InvokeServer("Equipment", EquipType, ItemType, Item)
 		ManageTiles(Item, AssociatedMenu, itemStats, EquipType, ItemType)
 	end
 	
 	--Update Default Menu (Equipped) Item Pictures
-	if Item == AssociatedButton.CurrentlyEquipped.Value then
-		AssociatedButton.Image = itemInfo["GUI Info"].StatImage.Value
-	end
+	--if Item == AssociatedButton.CurrentlyEquipped.Value then
+		--AssociatedButton.Image = itemInfo["GUI Info"].StatImage.Value
+	--end
 end)
 
 local UpdateItemCount = eventsFolder.GUI:WaitForChild("UpdateItemCount")
