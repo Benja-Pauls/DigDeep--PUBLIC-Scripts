@@ -2,7 +2,7 @@
 --Use as a safe space to store any research data, referred to only by PurchaseHandler and PlayerStatManager
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 local RS = game.ReplicatedStorage
-
+local experienceData = require(game.ServerStorage.ExperienceData)
 --Hour: 3600
 --4 Hours: 14400
 --6 Hours: 21600
@@ -29,8 +29,8 @@ local ResearchData = {
 					{RS.InventoryItems.Foraging["Glowing Mushroom"], 5},
 				},
 				["Experience Cost"] = {
-					{RS.Experience.Skills.MiningSkill, 3},
-					{RS.Experience.Skills.ForagingSkill, 1},
+					{experienceData["Skills"]["Mining Skill"], 3},
+					{experienceData["Skills"]["Foraging Skill"], 1}
 				},
 				["Dependencies"] = {}
 				
@@ -53,7 +53,7 @@ local ResearchData = {
 					{RS.InventoryItems.Mining.Stone, 5},
 				},
 				["Experience Cost"] = {
-					{RS.Experience.Skills.MiningSkill, 3}
+					{experienceData["Skills"]["Mining Skill"], 3}
 				},
 				["Dependencies"] = {"More Efficient Fuel Cells"}
 			},
@@ -70,7 +70,7 @@ local ResearchData = {
 					{RS.InventoryItems.Mining.Coal, 1}
 				},
 				["Experience Cost"] = {
-					{RS.Experience.Skills.MiningSkill, 3}
+					{experienceData["Skills"]["Mining Skill"], 3}
 				},
 				["Dependencies"] = {"Fuel Cells7"}
 			},
@@ -87,7 +87,7 @@ local ResearchData = {
 					{RS.InventoryItems.Mining["Scrap Metal"], 5}
 				},
 				["Experience Cost"] = {
-					{RS.Experience.Skills.MiningSkill, 3}
+					{experienceData["Skills"]["Mining Skill"], 3}
 				},
 				["Dependencies"] = {}
 			},
@@ -103,7 +103,7 @@ local ResearchData = {
 					{RS.InventoryItems.Mining.Stone, 5}
 				},
 				["Experience Cost"] = {
-					{RS.Experience.Skills.MiningSkill, 3}
+					{experienceData["Skills"]["Mining Skill"], 3}
 				},
 				["Dependencies"] = {}
 			},
@@ -119,7 +119,7 @@ local ResearchData = {
 					{RS.InventoryItems.Mining.Stone, 5}
 				},
 				["Experience Cost"] = {
-					{RS.Experience.Skills.MiningSkill, 3}
+					{experienceData["Skills"]["Mining Skill"], 3}
 				},
 				["Dependencies"] = {}
 			},
@@ -135,7 +135,7 @@ local ResearchData = {
 					{RS.InventoryItems.Mining.Stone, 5}
 				},
 				["Experience Cost"] = {
-					{RS.Experience.Skills.MiningSkill, 3}
+					{experienceData["Skills"]["Mining Skill"], 3}
 				},
 				["Dependencies"] = {}
 			},
@@ -151,7 +151,7 @@ local ResearchData = {
 					{RS.InventoryItems.Mining.Stone, 5}
 				},
 				["Experience Cost"] = {
-					{RS.Experience.Skills.MiningSkill, 3}
+					{experienceData["Skills"]["Mining Skill"], 3}
 				},
 				["Dependencies"] = {}
 			},
@@ -167,7 +167,7 @@ local ResearchData = {
 					{RS.InventoryItems.Mining.Stone, 5}
 				},
 				["Experience Cost"] = {
-					{RS.Experience.Skills.MiningSkill, 3}
+					{experienceData["Skills"]["Mining Skill"], 3}
 				},
 				["Dependencies"] = {}
 			},
@@ -183,7 +183,7 @@ local ResearchData = {
 					{RS.InventoryItems.Mining.Stone, 5}
 				},
 				["Experience Cost"] = {
-					{RS.Experience.Skills.MiningSkill, 3}
+					{experienceData["Skills"]["Mining Skill"], 3}
 				},
 				["Dependencies"] = {}
 			},
@@ -199,7 +199,7 @@ local ResearchData = {
 					{RS.InventoryItems.Mining.Stone, 5}
 				},
 				["Experience Cost"] = {
-					{RS.Experience.Skills.MiningSkill, 3}
+					{experienceData["Skills"]["Mining Skill"], 3}
 				},
 				["Dependencies"] = {}
 			},
@@ -215,7 +215,7 @@ local ResearchData = {
 					{RS.InventoryItems.Mining.Stone, 5}
 				},
 				["Experience Cost"] = {
-					{RS.Experience.Skills.MiningSkill, 3}
+					{experienceData["Skills"]["Mining Skill"], 3}
 				},
 				["Dependencies"] = {}
 			}
