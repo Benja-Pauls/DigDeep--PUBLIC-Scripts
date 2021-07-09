@@ -353,13 +353,14 @@ function LoadPlayerData(PlayerDataFile, data, JoinedPlayer)
 	local TycoonStorage = CreateSaveReference(PlayerDataFile, "TycoonStorage", "Folder")	
 	
 	local PlayerResearch = CreateSaveReference(PlayerDataFile, "Research", "Folder")
-	local RealResearch = require(game.ServerStorage.ResearchData)
+	local researchData = require(game.ServerStorage.ResearchData)
 	
-	local PlayerExperience = CreateSaveReference(PlayerDataFile, "Experience", "Folder") --Skills, ArcadeLevels, Reputation, Stats?
+	local PlayerExperience = CreateSaveReference(PlayerDataFile, "Experience", "Folder")
+	local experienceData = require(game.ServerStorage.ExperienceData)
 	
 	local PlayerStatItems = CreateSaveReference(PlayerDataFile, "Player", "Folder")
 	local EquippedItems = CreateSaveReference(PlayerStatItems, "CurrentlyEquipped", "Folder")
-	
+	 
 	
 	local ResearchersAvailable = CreateSaveReference(PlayerResearch, "ResearchersAvailable", "NumberValue")
 	local SavedResearchers = CheckSaveData(data["ResearchersAvailable"])
@@ -372,8 +373,8 @@ function LoadPlayerData(PlayerDataFile, data, JoinedPlayer)
 	ImportSaveData(data, SavedResearcherUsage, PlayerResearch, ResearchersUsed)
 	local UsedCount = 0
 	
-	local ResearchTable = RealResearch["Research"]
-	for _,researchType in pairs (ResearchTable) do
+	local researchTable = researchData["Research"]
+	for _,researchType in pairs (researchTable) do
 		local ResearchTypeName = researchType["Research Type Name"]
 		local ResearchTypeFolder = CreateSaveReference(PlayerResearch, ResearchTypeName, "Folder")
 		
@@ -412,17 +413,23 @@ function LoadPlayerData(PlayerDataFile, data, JoinedPlayer)
 	PlayerStatManager:ChangeStat(JoinedPlayer, "ResearchersUsed", UsedCount, "Research")
 	
 	--Once new experience folder is available, make for all experience folders (Skills and Reputation)
-	local experienceFolder = game.ReplicatedStorage:WaitForChild("Experience")
-	for _,expType in pairs (experienceFolder:GetChildren()) do
-		local expSaveFolder = CreateSaveReference(PlayerExperience, tostring(expType), "Folder")
-		for _,expInfo in pairs (expType:GetChildren()) do
-			local exp = CreateSaveReference(expSaveFolder, tostring(expInfo), "NumberValue")
-			local savedValue = CheckSaveData(data[tostring(expInfo)])
-			ImportSaveData(data, savedValue, expSaveFolder, exp)
+	--local experienceFolder = game.ReplicatedStorage:WaitForChild("Experience")
+	for _,expType in pairs (experienceData) do
+		if expType["StatTypeName"] then
+			local expTypeName = expType["StatTypeName"]
+			local expSaveFolder = CreateSaveReference(PlayerExperience, expTypeName, "Folder")
 			
-			--Create exp tiles with value > 0
-			local expName = tostring(exp)
-			UpdateInventory:FireClient(JoinedPlayer, expName, expSaveFolder.Name, tostring(data[expName]), nil, "Experience", expSaveFolder.Name)
+			for _,expInfo in pairs (expType) do
+				if expInfo["StatName"] then
+					local expName = expInfo["StatName"]
+					local exp = CreateSaveReference(expSaveFolder, expName, "NumberValue")
+					local savedValue = CheckSaveData(data[expName])
+					ImportSaveData(data, savedValue, expSaveFolder, exp)
+					
+					--Create exp tiles with value > 0
+					UpdateInventory:FireClient(JoinedPlayer, expName, expTypeName, tostring(data[expName]), nil, "Experience", expTypeName)
+				end
+			end
 		end
 	end
 
@@ -430,7 +437,7 @@ function LoadPlayerData(PlayerDataFile, data, JoinedPlayer)
 	for _,itemType in pairs (game.ReplicatedStorage.InventoryItems:GetChildren()) do
 		for _,item in pairs (itemType:GetChildren()) do
 			local associatedSkill = item.AssociatedSkill.Value
-			local ItemType = string.gsub(item.AssociatedSkill.Value, "Skill", "")
+			local ItemType = string.gsub(item.AssociatedSkill.Value, " Skill", "")
 
 			local AssociatedFolder = FindAssociatedFolder(PlayerInventory, ItemType, tostring(item))
 			local AssociatedItemStorage = FindAssociatedFolder(TycoonStorage, "TycoonStorage" .. ItemType, "TycoonStorage" .. tostring(item))
@@ -637,7 +644,9 @@ end
 
 function getItemStatTable.OnServerInvoke(player, dataType, equipType, itemType, itemName)
 	local dataModule = require(game.ServerStorage:FindFirstChild(dataType .. "Data"))
-
+	
+	--print(dataModule, dataType, itemType, itemName)
+	
 	local itemInfo
 	if dataType == "Equipment" then
 		itemInfo = dataModule[equipType][itemType][itemName]
@@ -649,14 +658,14 @@ function getItemStatTable.OnServerInvoke(player, dataType, equipType, itemType, 
 		local cloneInfo = Utility:CloneTable(itemInfo)
 		return cloneInfo
 	else
-		warn(player, " is exploiting. Trying to grab false equipmentStats")
+		warn(player, " is exploiting: Trying to grab nil DataStatTables")
 	end
 end
 
 GetBagCount.OnInvoke = function(Player, itemInfo)
 	if itemInfo then
 		if itemInfo:FindFirstChild("AssociatedSkill") then
-			local itemType = string.gsub(itemInfo.AssociatedSkill.Value, "Skill", "")
+			local itemType = string.gsub(itemInfo.AssociatedSkill.Value, " Skill", "")
 			local amount = PlayerStatManager:getItemCount(Player)
 			local maxAmount = PlayerStatManager:getEquippedData(Player, itemInfo.Bag.Value .. "s", "Bags")
 
