@@ -1187,7 +1187,7 @@ local function InsertTileInfo(menu, tile, researchData, researchType, finishTime
 			local PlayerLevel = GetCurrentSkillLevel:InvokeServer(StatInfo)
 			ChangeCostColor(CostTile, PlayerLevel, statTable[2])
 		else
-			statType = string.gsub(StatInfo.AssociatedSkill.Value, "Skill", "")
+			statType = string.gsub(StatInfo.AssociatedSkill.Value, " Skill", "")
 			--local rarityName = tostring(tile.Rarity.Value)
 			--local storagetile = SeekStorageTile(statType, RarityName, tostring(StatInfo))
 			--Discovered = ItemsPreview:FindFirstChild(statType):FindFirstChild(RarityName):WaitForChild(tostring(StatInfo)).Discovered.Value
@@ -1208,7 +1208,7 @@ local function InsertTileInfo(menu, tile, researchData, researchType, finishTime
 			CostTile.DisplayImage.Image = "rbxassetid://6741669069" --lock icon
 			CostTile.DisplayImage.BackgroundColor3 = Color3.fromRGB(5, 16, 29)
 		else
-			CostTile.StatName.Text = string.gsub(tostring(StatInfo), "Skill", "")
+			CostTile.StatName.Text = string.gsub(tostring(StatInfo), " Skill", "")
 			CostTile.DisplayImage.Image = StatInfo["GUI Info"].StatImage.Value
 			
 			--local TileDebounce = false
