@@ -500,7 +500,7 @@ MineOre.Event:Connect(function(Player, ore)
 	end
 	
 	local associatedSkill = itemInfo.AssociatedSkill.Value
-	local itemType = string.gsub(associatedSkill, "Skill", "")
+	local itemType = string.gsub(associatedSkill, " Skill", "")
 	
 	local itemAmount = PlayerStatManager:getItemCount(Player, itemType)
 	local maxItemAmount = PlayerStatManager:getEquippedData(Player, "MaterialBags", "Bags") --Bag capacity
@@ -550,7 +550,7 @@ MineOre.Event:Connect(function(Player, ore)
 				
 				--Add Ore to inventory
 				local mined = PlayerStatManager:getStat(Player, ore.Name)
-				local experience = PlayerStatManager:getStat(Player, "MiningSkill")
+				local experience = PlayerStatManager:getStat(Player, "Mining Skill")
 				--print(typeof(mined),typeof(experience))
 				if typeof(mined) == "number" and typeof(experience) == "number" then
 					local PlayerDataFile = PlayerData:WaitForChild(tostring(Player.UserId))
@@ -565,7 +565,7 @@ MineOre.Event:Connect(function(Player, ore)
 					local AssociatedFolder = PlayerInventory:WaitForChild(itemType)
 					local CurrentOre = AssociatedFolder:FindFirstChild(ore.Name)
 					local SkillsFolder = PlayerExperience:WaitForChild("Skills")
-					local CurrentSkill = SkillsFolder:FindFirstChild("MiningSkill")
+					local CurrentSkill = SkillsFolder:FindFirstChild("Mining Skill")
 					
 					
 					--Change player discovered value if this is first time acquired
@@ -668,5 +668,4 @@ local function GenerateMine()
 end
 
 GenerateMine()
-
 
