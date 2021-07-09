@@ -12,7 +12,19 @@ local DataMenu = script.Parent.DataMenu
 local GuiElements = game.ReplicatedStorage.GuiElements
 local PageManager = DataMenu.PageManager
 
+-----------<|Remote Events/Functions|>--
 local eventsFolder = game.ReplicatedStorage.Events
+
+local MoveAllBaseScreenUI = eventsFolder.GUI:WaitForChild("MoveAllBaseScreenUI")
+local ManageTilePlacementFunction = eventsFolder.GUI:FindFirstChild("ManageTilePlacement")
+local UpdateEquippedItem = eventsFolder.GUI:WaitForChild("UpdateEquippedItem")
+local UpdateInventory = eventsFolder.GUI:WaitForChild("UpdateInventory")
+local UpdatePlayerMenu = eventsFolder.GUI:WaitForChild("UpdatePlayerMenu")
+local UpdateItemCount = eventsFolder.GUI:WaitForChild("UpdateItemCount")
+
+local DepositInventory = eventsFolder.Utility:WaitForChild("DepositInventory")
+local getItemStatTable = eventsFolder.Utility:WaitForChild("GetItemStatTable")
+----------------------------------------
 
 local GuiUtility = require(game.ReplicatedStorage:FindFirstChild("GuiUtility"))
 
@@ -99,7 +111,6 @@ OpenDataMenuButton.Activated:Connect(function()
 		--Manage Tabs
 		if InventoryOpens == 0 then
 			InventoryOpens = 1
-			DataMenu.InventoryMenu.SelectedBagInfo.Visible = false
 			ReadyMenuButtons(DataMenu)
 			ReadyMenuButtons(DataMenu.PlayerMenu) --Prep menu buttons on default screen
 		else
@@ -151,7 +162,21 @@ DataMenu.TopTabBar.CloseMenu.Activated:Connect(function()
 	OpenDataMenuButton.Active = true
 end)
 
-local MoveAllBaseScreenUI = eventsFolder.GUI:WaitForChild("MoveAllBaseScreenUI")
+DataMenu.SelectedBagInfo.Position = UDim2.new(0, 0, 0.94, 0)
+local bagBarTweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+local bagBarOutTween = TweenService:Create(DataMenu.SelectedBagInfo, bagBarTweenInfo, {Position = UDim2.new(0, 0, 1.045, 0)})
+local bagBarInTween = TweenService:Create(DataMenu.SelectedBagInfo, bagBarTweenInfo, {Position = UDim2.new(0, 0, 0.94, 0)})
+DataMenu.InventoryMenu:GetPropertyChangedSignal("Visible"):Connect(function()
+	local bool = DataMenu.InventoryMenu.Visible
+	if bool == true then
+		bagBarOutTween:Pause()
+		bagBarOutTween:Play()
+	else
+		bagBarInTween:Pause()
+		bagBarInTween:Play()
+	end
+end)
+
 MoveAllBaseScreenUI.Event:Connect(function(ChangeTo)
 	DataMenu.Visible = false
 	if ChangeTo == "Hide" then
@@ -196,8 +221,24 @@ local function ResetRarityTiles(Menu)
 	end
 end
 
-local ButtonPresses = {}
 local pageDebounce = false
+local function SetupPageChange(menu, emptyNotifier, fullBool, partialBool)
+	PageManager.Menu.Value = menu
+	local PageCount = GetHighPage(menu)
+	if PageCount > 0 then
+		PageManager.Visible = true
+		PageManager.FullBottomDisplay.Visible = fullBool
+		PageManager.PartialBottomDisplay.Visible = partialBool
+		if menu:FindFirstChild("Page1") then
+			pageDebounce = true
+			pageDebounce = GuiUtility.CommitPageChange(menu.Page1, 0.25)
+		end
+	else
+		emptyNotifier.Visible = true
+	end
+end
+
+local ButtonPresses = {}
 local MenuAcceptance = true
 function ReadyMenuButtons(Menu)
 	
@@ -233,8 +274,10 @@ function ReadyMenuButtons(Menu)
 					
 					for i,v in pairs (ButtonMenu.Parent:GetChildren()) do
 						if v:IsA("Frame") and not v:FindFirstChild("Menu") then
-							if tostring(v) ~= "TopTabBar" and tostring(v) ~= "AccentBorder" then
+							if tostring(v) ~= "TopTabBar" and tostring(v) ~= "AccentBorder" and tostring(v) ~= "SelectedBagInfo" then
 								v.Visible = false
+							else
+								v.Visible = true
 							end
 						end
 					end
@@ -259,29 +302,13 @@ function ReadyMenuButtons(Menu)
 						local itemCount = MaterialsMenu:GetAttribute("ItemCount")
 						
 						if bagCapacity and itemCount then
-							ButtonMenu.SelectedBagInfo.BagAmount.Text = tostring(itemCount) .. "/" .. tostring(bagCapacity)
-							ButtonMenu.SelectedBagInfo.FillProgress.Size = UDim2.new(itemCount/bagCapacity, 0, 1, 0)
-							ButtonMenu.SelectedBagInfo.BagType.Value = string.gsub(tostring(ButtonMenu), "Menu", "")
-							ButtonMenu.SelectedBagInfo.Visible = true
-						else
-							ButtonMenu.SelectedBagInfo.Visible = false
+							DataMenu.SelectedBagInfo.BagAmount.Text = tostring(itemCount) .. "/" .. tostring(bagCapacity)
+							DataMenu.SelectedBagInfo.FillProgress.Size = UDim2.new(itemCount/bagCapacity, 0, 1, 0)
+							DataMenu.SelectedBagInfo.BagType.Value = string.gsub(tostring(ButtonMenu), "Menu", "")
 						end
 						
 						ResetRarityTiles(ButtonMenu.MaterialsMenu)
-						
-						PageManager.Menu.Value = MaterialsMenu
-						local PageCount = GetHighPage(MaterialsMenu)
-						if PageCount > 0 then
-							PageManager.Visible = true
-							--PageManager.FullBottomDisplay.Visible = true
-							PageManager.PartialBottomDisplay.Visible = true
-							if MaterialsMenu:FindFirstChild("Page1") then
-								pageDebounce = true
-								pageDebounce = GuiUtility.CommitPageChange(MaterialsMenu.Page1, 0.25)
-							end
-						else
-							ButtonMenu.EmptyNotifier.Visible = true
-						end
+						SetupPageChange(MaterialsMenu, ButtonMenu.EmptyNotifier, false, true)
 						
 					elseif tostring(ButtonMenu) == "PlayerMenu" then
 						ButtonMenu.EmptyNotifier.Visible = false
@@ -304,22 +331,15 @@ function ReadyMenuButtons(Menu)
 						end
 						
 						ButtonMenu.SideButtonBar.BackgroundColor3 = ButtonMenu.SkillsMenuButton.Color.Value
-						
-						PageManager.Menu.Value = skillsMenu
-						local PageCount = GetHighPage(skillsMenu)
-						if PageCount > 0 then
-							PageManager.Visible = true
-							PageManager.FullBottomDisplay.Visible = true
-							PageManager.PartialBottomDisplay.Visible = false
-
-							if skillsMenu:FindFirstChild("Page1") then
-								pageDebounce = true
-								pageDebounce = GuiUtility.CommitPageChange(skillsMenu.Page1, 0.25)
+						for _,page in pairs (skillsMenu:GetChildren()) do
+							if page:IsA("Frame") and string.match(page.Name, "Page") then
+								page.BackgroundColor3 = ButtonMenu.SkillsMenuButton.Color.AccentColor.Value
 							end
-						else
-							Menu.EmptyNotifier.Visible = true
 						end
+						
+						SetupPageChange(skillsMenu, ButtonMenu.EmptyNotifier, true, false)
 					end
+					
 					
 					if tostring(Menu) == "PlayerMenu" then
 						Menu.QuickViewMenu.Visible = true
@@ -328,20 +348,7 @@ function ReadyMenuButtons(Menu)
 						
 						--print("Menu == PlayerMenu", ButtonMenu)
 						ResetRarityTiles(ButtonMenu)
-						
-						PageManager.Menu.Value = ButtonMenu
-						local PageCount = GetHighPage(ButtonMenu)
-						if PageCount > 0 then
-							PageManager.Visible = true
-							PageManager.FullBottomDisplay.Visible = false
-							PageManager.PartialBottomDisplay.Visible = true
-							if ButtonMenu:FindFirstChild("Page1") then
-								pageDebounce = true
-								pageDebounce = GuiUtility.CommitPageChange(ButtonMenu.Page1, 0.25)
-							end
-						else
-							Menu.EmptyNotifier.Visible = true
-						end
+						SetupPageChange(ButtonMenu, Menu.EmptyNotifier, false, true)
 						
 					elseif tostring(Menu) == "ExperienceMenu" then
 						EnableOnlyButtonMenu(Menu, true, false)
@@ -349,6 +356,12 @@ function ReadyMenuButtons(Menu)
 						
 						Menu.SideButtonBar.Visible = true
 						Menu.SideButtonBar.BackgroundColor3 = button.Color.Value
+						for _,page in pairs (ButtonMenu:GetChildren()) do
+							if page:IsA("Frame") and string.match(page.Name, "Page") then
+								page.BackgroundColor3 = button.Color.AccentColor.Value
+							end
+						end
+						Menu.ExpInfoViewerMenu.Visible = false
 						
 						local menuName = string.gsub(tostring(button), "MenuButton", "")
 						if DataMenu.ExperienceMenu:FindFirstChild(menuName) then
@@ -362,20 +375,7 @@ function ReadyMenuButtons(Menu)
 								end
 							end
 							
-							PageManager.Menu.Value = ButtonMenu
-							local PageCount = GetHighPage(ButtonMenu)
-							if PageCount > 0 then
-								PageManager.Visible = true
-								PageManager.FullBottomDisplay.Visible = true
-								PageManager.PartialBottomDisplay.Visible = false
-
-								if ButtonMenu:FindFirstChild("Page1") then
-									pageDebounce = true
-									pageDebounce = GuiUtility.CommitPageChange(ButtonMenu.Page1, 0.25)
-								end
-							else
-								Menu.EmptyNotifier.Visible = true
-							end
+							SetupPageChange(ButtonMenu, Menu.EmptyNotifier, true, false)
 						end
 					end
 					
@@ -420,9 +420,6 @@ function CleanupMenuTabs(Menu)
 			local ButtonMenu = Menu:FindFirstChild(AssociatedMenuName)
 			
 			ButtonMenu.Visible = false
-			if Menu == DataMenu.InventoryMenu then
-				DataMenu.InventoryMenu.SelectedBagInfo.Visible = false
-			end
 		end
 	end
 	
@@ -486,20 +483,38 @@ local function GetStatImage(StatInfo)
 	return ImageId
 end
 
-local function FindStatLevel(StatInfo, EXPValue)
-	local CurrentLevel = 0
-	for i,level in pairs (StatInfo.Levels:GetChildren()) do
-		if tonumber(EXPValue) >= level.Value and tonumber(level.Name) > CurrentLevel then
-			CurrentLevel = tonumber(level.Name)
+local function GetLevelInfo(statInfo, level)
+	
+	if statInfo["Levels"] then
+		if statInfo["Levels"][level] then
+			return
 		end
 	end
-	local NextLevel
-	if StatInfo.Levels:FindFirstChild(tostring(CurrentLevel + 1)) then
-		NextLevel = StatInfo.Levels:FindFirstChild(tostring(CurrentLevel + 1))
-	else
-		NextLevel = StatInfo.Levels:FindFirstChild(tostring(CurrentLevel))
+end
+
+local function FindStatLevel(statInfo, expValue)
+	local currentLevel = 0
+	
+	if statInfo["Levels"] then
+		for l = 1,#statInfo["Levels"],1 do
+			if statInfo["Levels"][l] then
+				local levelInfo = statInfo["Levels"][l]
+				
+				if tonumber(expValue) >= levelInfo["Exp Requirement"] and l > currentLevel then
+					currentLevel = l
+				end
+			end
+		end
 	end
-	return CurrentLevel,NextLevel
+	
+	local nextLevel
+	if statInfo["Levels"][currentLevel + 1] then
+		nextLevel = currentLevel + 1
+	else
+		nextLevel = currentLevel
+	end
+	
+	return currentLevel,nextLevel
 end
 
 local mouse = Player:GetMouse()
@@ -596,28 +611,6 @@ function GetHighPage(Menu, rarityName) --Find page for rarity tile OR max page c
 	
 	return highPage
 end
-
---[[
-function CommitPageChange(Page)
-	Page.ZIndex += 1
-	Page.Visible = true
-	Page:TweenPosition(UDim2.new(0,0,0,0), "Out", "Quint", .25)
-	wait(.25)
-	
-	--Manage Page Invisibility
-	for i,page in pairs (Page.Parent:GetChildren()) do
-		if page:IsA("Frame") then
-			if page ~= Page then
-				page.Visible = false
-			else
-				page.Visible = true
-			end
-		end
-	end
-	Page.ZIndex -= 1
-	PageDebounce = false
-end
-]]
 
 local function StartPageChange(pageChange)
 	if pageDebounce == false then
@@ -766,6 +759,7 @@ local function FindNearbyRarity(Menu, rarityInfo, orderValue, direction)
 end
 
 local function ManageTilePlacement(Menu, Type, rarityInfo)
+	
 	--PAGE SORTING STRATEGY: (Same as research tiles)
 	--if 0 pages, make the first page
 	--Otherwise, look for pages with rarity in them
@@ -867,8 +861,6 @@ local function ManageTilePlacement(Menu, Type, rarityInfo)
 	
 	return newTile
 end
-
-local ManageTilePlacementFunction = eventsFolder.GUI:FindFirstChild("ManageTilePlacement")
 ManageTilePlacementFunction.OnInvoke = ManageTilePlacement
 
 local function GetTileSlotCount(Page, tileTruePosition, affectingTile, Change)
@@ -974,7 +966,6 @@ function ManageTileTruePosition(Menu, Page, affectingTile, TruePosition, maxTile
 	end
 end
 
-local DepositInventory = eventsFolder.Utility:WaitForChild("DepositInventory")
 DepositInventory.OnClientEvent:Connect(function()
 	for i,menu in pairs (DataMenu.InventoryMenu:GetChildren()) do
 		if menu:IsA("Frame") then
@@ -1008,34 +999,43 @@ local function ManageEquipButton(currentlyEquipped, statName, Equip)
 	equipButton.Visible = true
 end
 
-local function InsertItemViewerInfo(tile, statMenu, Type, statName, StatInfo, value, itemType)
+local function InsertItemViewerInfo(tile, statMenu, Type, statName, statInfo, value, itemType)
 	
 	--**Value is useless in every instance except for stat bar appearance (inventory and experience amounts don't
 	--update, they only update to the value they were first created with for the tile.Activated)
 	
 	if Type == "Inventory" then
-		local rarityName = StatInfo["GUI Info"].RarityName.Value
+		local rarityName = statInfo["GUI Info"].RarityName.Value
 		local rarity = GuiElements.RarityColors:FindFirstChild(rarityName)
 		statMenu.ItemImage.BackgroundColor3 = rarity.TileColor.Value
 		statMenu.ItemImageBorder.BackgroundColor3 = rarity.Value
 		
 		statMenu.ItemAmount.Text = tile.Amount.Text
-		statMenu.ItemWorth.Text = tostring(StatInfo.CurrencyValue.Value)
+		statMenu.ItemWorth.Text = tostring(statInfo.CurrencyValue.Value)
 
-		GuiUtility.Display3DModels(Player, statMenu.ItemImage, StatInfo:Clone(), true, StatInfo["GUI Info"].DisplayAngle.Value)
+		GuiUtility.Display3DModels(Player, statMenu.ItemImage, statInfo:Clone(), true, statInfo["GUI Info"].DisplayAngle.Value)
 		
 	elseif Type == "Experience" then
-		statMenu.ItemRarity.Text = ""
-		statMenu.ItemAmount.Text = "Total EXP: " .. tostring(value)
-		statMenu.ItemImage.Image = StatInfo["GUI Info"].StatImage.Value
+		--statMenu.ItemRarity.Text = ""
+		--statMenu.ItemAmount.Text = "Total EXP: " .. tostring(value)
+		statMenu.ItemImage.Image = statInfo["StatImage"]
+		statMenu.ItemName.Text = statInfo["StatName"]
 		
-		statMenu.ItemWorth.Visible = true
+		--local associatedMenuButton = DataMenu.ExperienceMenu:FindFirstChild(itemType .. "MenuButton")
+		--statMenu.BackButton.BackgroundColor3 = associatedMenuButton.Color.Value
+		
+		--Fill out the LevelRewards frame here
+		
+		
+		
+		
+		
 		
 	else --Equipment
 		statMenu.EquipType.Value = Type
 		statMenu.ItemType.Value = itemType
 		
-		local rarityName = StatInfo["GUI Info"].RarityName.Value
+		local rarityName = statInfo["GUI Info"].RarityName.Value
 		local rarity = GuiElements.RarityColors:FindFirstChild(rarityName)
 		statMenu.ItemImage.BackgroundColor3 = rarity.TileColor.Value
 		statMenu.ItemImageBorder.BackgroundColor3 = rarity.Value
@@ -1045,10 +1045,10 @@ local function InsertItemViewerInfo(tile, statMenu, Type, statName, StatInfo, va
 			
 		--local ItemModel = game.ReplicatedStorage.Equippable:FindFirstChild(Type):FindFirstChild(AcquiredLocation):FindFirstChild(Stat)
 		
-		if StatInfo:FindFirstChild("Handle") then
-			GuiUtility.Display3DModels(Player, statMenu.ItemImage, StatInfo.Handle:Clone(), true, StatInfo["GUI Info"].DisplayAngle.Value)
+		if statInfo:FindFirstChild("Handle") then
+			GuiUtility.Display3DModels(Player, statMenu.ItemImage, statInfo.Handle:Clone(), true, statInfo["GUI Info"].DisplayAngle.Value)
 		else
-			GuiUtility.Display3DModels(Player, statMenu.ItemImage, GuiElements:FindFirstChild("3DObjectPlaceholder"):Clone(), true, StatInfo["GUI Info"].DisplayAngle.Value)
+			GuiUtility.Display3DModels(Player, statMenu.ItemImage, GuiElements:FindFirstChild("3DObjectPlaceholder"):Clone(), true, statInfo["GUI Info"].DisplayAngle.Value)
 		end
 	end
 	
@@ -1066,7 +1066,7 @@ local function InsertItemViewerInfo(tile, statMenu, Type, statName, StatInfo, va
 end
 
 local previousTile
-local function InsertTileInfo(Type, tile, statName, Value, itemType, tileAlreadyPresent)
+local function InsertTileInfo(Type, tile, statName, value, itemType, tileAlreadyPresent)
 	tile.StatName.Value = statName
 
 	local statInfo
@@ -1075,10 +1075,10 @@ local function InsertTileInfo(Type, tile, statName, Value, itemType, tileAlready
 		statMenu = inventoryQuickViewMenu
 		statInfo = game.ReplicatedStorage.InventoryItems:FindFirstChild(itemType):FindFirstChild(statName)
 		tile.Picture.Image = GetStatImage(statInfo)
-		tile.Amount.Text = tostring(Value)
+		tile.Amount.Text = tostring(value)
 		
 		if statName == statMenu.ItemName.Text then --Menu is currently open
-			statMenu.ItemAmount.Text = tostring(Value)
+			statMenu.ItemAmount.Text = tostring(value)
 		end
 		
 		--Do Rarity Imaging
@@ -1088,49 +1088,31 @@ local function InsertTileInfo(Type, tile, statName, Value, itemType, tileAlready
 		tile.PressedImage = rarityInfo.TileImages.PressedRarityTile.Value
 		
 	elseif Type == "Experience" then
-		statMenu = DataMenu.ExperienceMenu.ExpInfoViewer
-		
-		local statInfo
-		local expTypeFolder = game.ReplicatedStorage.Experience:FindFirstChild(itemType)
-		for _,expStat in pairs (expTypeFolder:GetChildren()) do
-			if string.match(tostring(expStat), statName) then
-				statInfo = expStat
-			end
-		end
-		tile.DisplayName.Text = statName
-		
+		statMenu = DataMenu.ExperienceMenu.ExpInfoViewerMenu
+
 		local expMenuButton = DataMenu.ExperienceMenu:FindFirstChild(itemType .. "MenuButton")
 		if expMenuButton then
 			tile.Image = expMenuButton.TileStaticImage.Value
 			tile.HoverImage = expMenuButton.TileHoverImage.Value
 			expMenuButton.Color.UIGradient:Clone().Parent = tile.ProgressBar.Progress
 		end
+			
+		statInfo = getItemStatTable:InvokeServer("Experience", nil, itemType, statName)
+		local currentLevel,nextLevel = FindStatLevel(statInfo, value)
+		local currentLevelInfo = statInfo["Levels"][currentLevel]
+		local nextLevelInfo = statInfo["Levels"][nextLevel]
 		
-		local CurrentLevel = 0
-		--Move into Levels value where the value is how many levels, no for in pairs, just 1,amount,1 loop
-		for i,level in pairs (statInfo.Levels:GetChildren()) do
-			if Value >= level.Value and tonumber(level.Name) > CurrentLevel then
-				CurrentLevel = tonumber(level.Name)
-			end
-		end
-
-		local NextLevel
-		if statInfo.Levels:FindFirstChild(tostring(CurrentLevel + 1)) then
-			NextLevel = statInfo.Levels:FindFirstChild(tostring(CurrentLevel + 1))
-			tile.NextLevel.Text = tostring(NextLevel)
-		else
-			NextLevel = statInfo.Levels:FindFirstChild(tostring(CurrentLevel))
-			tile.NextLevel.Text = "*"
-		end
+		tile.DisplayName.Text = statName
+		tile.Picture.Image = statInfo["StatImage"]
+		tile.CurrentLevel.Text = tostring(currentLevel)
+		tile.NextLevel.Text = tostring(nextLevel)
 		
-		local CurrentLevelEXP = statInfo.Levels:FindFirstChild(tostring(CurrentLevel))
 		local ProgressBar = tile.ProgressBar
-		ProgressBar.Current.Text = tostring(Value - CurrentLevelEXP.Value)
-		ProgressBar.Total.Text = tostring(NextLevel.Value - CurrentLevelEXP.Value)
-		tile.CurrentLevel.Text = tostring(CurrentLevel)
+		ProgressBar.Current.Text = tostring(value - currentLevelInfo["Exp Requirement"])
+		ProgressBar.Total.Text = tostring(nextLevelInfo["Exp Requirement"] - currentLevelInfo["Exp Requirement"])
 		
-		local Percentage = tonumber(Value - CurrentLevelEXP.Value) / tonumber(NextLevel.Value - CurrentLevelEXP.Value)
-		ProgressBar.Progress.Size = UDim2.new(Percentage, 0, 1, 0)
+		local percentage = tonumber(value - currentLevelInfo["Exp Requirement"]) / tonumber(nextLevelInfo["Exp Requirement"] - currentLevelInfo["Exp Requirement"])
+		ProgressBar.Progress.Size = UDim2.new(percentage, 0, 1, 0)
 		
 	else
 		statMenu = equipmentQuickViewMenu
@@ -1149,9 +1131,9 @@ local function InsertTileInfo(Type, tile, statName, Value, itemType, tileAlready
 	if tileAlreadyPresent == nil then
 		tile.Activated:Connect(function()
 			if Type == "Experience" then
-				InsertItemViewerInfo(tile, statMenu, Type, statName, statInfo, Value, itemType)
+				InsertItemViewerInfo(tile, statMenu, Type, statName, statInfo, value, itemType)
 			else
-				InsertItemViewerInfo(tile, statMenu, Type, statName, statInfo, Value, itemType)
+				InsertItemViewerInfo(tile, statMenu, Type, statName, statInfo, value, itemType)
 				local rarityInfo = tile.Rarity.Value
 				local newTileImage = rarityInfo.TileImages.SelectedRarityTile.Value
 				
@@ -1420,12 +1402,13 @@ local function ShowEXPChange(currentLevel, nextLevel, skillInfo, expAmount, amou
 	experienceBar.CurrentLevel.Text = tostring(currentLevel)
 	experienceBar.NextLevel.Text = tostring(nextLevel)
 	
-	local currentLevelMax = skillInfo.Levels:FindFirstChild(tostring(currentLevel))
+	local currentLevelInfo = skillInfo["Levels"][currentLevel]
+	local nextLevelInfo = skillInfo["Levels"][nextLevel]
 	local progressBar = experienceBar.ProgressBar
 	
+	local levelProgress = tonumber(expAmount - currentLevelInfo["Exp Requirement"]) / tonumber(nextLevelInfo["Exp Requirement"] - currentLevelInfo["Exp Requirement"])
 	if progressBar:FindFirstChild("EXPDifference") then --Difference Bar Check
 		local difference = progressBar.EXPDifference
-		local levelProgress = tonumber(expAmount - currentLevelMax.Value) / tonumber(nextLevel.Value - currentLevelMax.Value)
 		
 		if levelProgress < lastProgressAmount then
 			difference:TweenSize(UDim2.new(0, 276, 0, 30), "Out", "Quint", .2)
@@ -1449,14 +1432,13 @@ local function ShowEXPChange(currentLevel, nextLevel, skillInfo, expAmount, amou
 		local timeLeftValue = Instance.new("IntValue", difference)
 		timeLeftValue.Name = "TimeLeft"	
 		
-		local levelProgress = tonumber(expAmount - currentLevelMax.Value) / tonumber(nextLevel.Value - currentLevelMax.Value)
 		difference:TweenSize(UDim2.new(0, 276*levelProgress, 0, 30), "Out", "Quint", .2)
 		
 		CountdownDifference(difference, progressBar.Progress, levelProgress, levelProgress, amountAdded)
 	end
 end
 
-local function InsertNewEXPBar(statName, expAmount, currentLevel, nextLevel, popUpAlreadyExists)
+local function InsertNewEXPBar(skillInfo, statName, expAmount, currentLevel, nextLevel, popUpAlreadyExists)
 	
 	if popUpAlreadyExists then
 		local oldExpPopUp = expPopUpGui.ExperienceBar
@@ -1476,10 +1458,12 @@ local function InsertNewEXPBar(statName, expAmount, currentLevel, nextLevel, pop
 	
 	newExpBar:TweenPosition(UDim2.new(.98, 0, newExpBar.Position.Y.Scale - .1, 0), "Out", "Quint", .5)
 	
-	local skillInfo = game.ReplicatedStorage.Experience.Skills:FindFirstChild(tostring(statName) .. "Skill")
 	local progressBar = expPopUpGui.ExperienceBar.ProgressBar
-	local CurrentLevelEXP = skillInfo.Levels:FindFirstChild(tostring(currentLevel))
-	local levelProgress = tonumber(expAmount - CurrentLevelEXP.Value) / tonumber(nextLevel.Value - CurrentLevelEXP.Value)
+	
+	local currentLevelInfo = skillInfo["Levels"][currentLevel]
+	local nextLevelInfo = skillInfo["Levels"][nextLevel]
+	local levelProgress = tonumber(expAmount - currentLevelInfo["Exp Requirement"]) / tonumber(nextLevelInfo["Exp Requirement"] - currentLevelInfo["Exp Requirement"])
+	
 	progressBar.Progress.Size = UDim2.new(0, 276*levelProgress, 0, 30)
 	CountdownPopUp(expPopUpGui, newExpBar, 12, .45, 0, 0, .9) --Start Countdown
 	
@@ -1491,25 +1475,24 @@ local function InsertNewEXPBar(statName, expAmount, currentLevel, nextLevel, pop
 end
 
 local function ManageEXPPopUp(statName, expAmount, amountAdded)
-	local skillInfo = game.ReplicatedStorage.Experience.Skills:FindFirstChild(statName .. "Skill")
-	local currentLevel,nextLevel = FindStatLevel(skillInfo, expAmount)
+	local skillInfo = getItemStatTable:InvokeServer("Experience", nil, "Skills", statName)
+	local simpleStatName = string.gsub(statName, " Skill", "")
+
+	local currentLevel, nextLevel = FindStatLevel(skillInfo, expAmount)
 	
-	if amountAdded ~= nil then
-		if #expPopUpGui:GetChildren() ~= 0 then
-			if expPopUpGui.ExperienceBar.NamePlate.DisplayName.Text == statName then --Old Exp Bar
-				ShowEXPChange(currentLevel, nextLevel, skillInfo, expAmount, amountAdded)
-				CountdownPopUp(expPopUpGui, expPopUpGui.ExperienceBar, 12, .5, 0, 0, .9)
-				
-			else
-				InsertNewEXPBar(statName, expAmount, currentLevel, nextLevel, true)
-			end
+	if #expPopUpGui:GetChildren() ~= 0 then
+		if expPopUpGui.ExperienceBar.NamePlate.DisplayName.Text == simpleStatName then --Old Exp Bar
+			ShowEXPChange(currentLevel, nextLevel, skillInfo, expAmount, amountAdded)
+			CountdownPopUp(expPopUpGui, expPopUpGui.ExperienceBar, 12, .5, 0, 0, .9)
 			
 		else
-			InsertNewEXPBar(statName, expAmount, currentLevel, nextLevel)
-			ShowEXPChange(currentLevel, nextLevel, skillInfo, expAmount, amountAdded)
+			InsertNewEXPBar(skillInfo, simpleStatName, expAmount, currentLevel, nextLevel, true)
 		end
+		
+	else
+		InsertNewEXPBar(skillInfo, simpleStatName, expAmount, currentLevel, nextLevel)
+		ShowEXPChange(currentLevel, nextLevel, skillInfo, expAmount, amountAdded)
 	end
-	
 end
 
 -------------------------<|Bag Information GUI Functions|>----------------------------------------------------------------------------------------------------------
@@ -1555,7 +1538,6 @@ local PlayerInfo = PlayerMenu.PlayerInfo
 local thumbType = Enum.ThumbnailType.HeadShot
 local thumbSize = Enum.ThumbnailSize.Size420x420
 local PlayerProfilePicture = game.Players:GetUserThumbnailAsync(PlayerUserId, thumbType, thumbSize)
-local UpdateEquippedItem = eventsFolder.GUI.UpdateEquippedItem
 
 PlayerInfo.PlayerThumbnail.Image = PlayerProfilePicture
 PlayerInfo.PlayerName.Text = tostring(Player)
@@ -1724,9 +1706,7 @@ end)
 
 
 -------------------------------------<High-Traffic Events>-------------------------------------------------------------------------------------------------------------
-local getItemStatTable = eventsFolder.Utility:WaitForChild("GetItemStatTable")
 
-local UpdateInventory = eventsFolder.GUI:WaitForChild("UpdateInventory")
 UpdateInventory.OnClientEvent:Connect(function(statName, folder, value, amountAdded, Type, itemType)
 	local typeFrame = DataMenu:FindFirstChild(tostring(Type) .. "Menu")
 	
@@ -1745,11 +1725,13 @@ UpdateInventory.OnClientEvent:Connect(function(statName, folder, value, amountAd
 		ManageMaterialPopups(statName, itemType, amountAdded) 
 
 	elseif Type == "Experience" then 
-		if string.find(statName, "Skill") then
-			statName = string.gsub(statName, "Skill", "") --Remove "Skill" from string
-		end
+		--if string.find(statName, "Skill") then
+			--statName = string.gsub(statName, "Skill", "") --Remove "Skill" from string
+		--end
 		
-		ManageEXPPopUp(statName, value, amountAdded)
+		if amountAdded ~= nil and amountAdded ~= 0 then
+			ManageEXPPopUp(statName, value, amountAdded)
+		end
 	end
 	
 	if tonumber(value) ~= 0 then
@@ -1757,7 +1739,6 @@ UpdateInventory.OnClientEvent:Connect(function(statName, folder, value, amountAd
 	end
 end)
 
-local UpdatePlayerMenu = eventsFolder.GUI:WaitForChild("UpdatePlayerMenu")
 UpdatePlayerMenu.OnClientEvent:Connect(function(EquipType, ItemType, Item)
 	local itemInfo = game.ReplicatedStorage.Equippable:FindFirstChild(EquipType):FindFirstChild(ItemType):FindFirstChild(Item)
 	local AssociatedMenu = PlayerMenu:FindFirstChild(ItemType .. "Menu")
@@ -1777,7 +1758,6 @@ UpdatePlayerMenu.OnClientEvent:Connect(function(EquipType, ItemType, Item)
 	--end
 end)
 
-local UpdateItemCount = eventsFolder.GUI:WaitForChild("UpdateItemCount")
 UpdateItemCount.OnClientEvent:Connect(function(ItemTypeCount, BagCapacity, BagType, DepositedInventory)
 	if ItemTypeCount < 0 then
 		ItemTypeCount = 0
