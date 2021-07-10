@@ -78,35 +78,41 @@ end
 -------------<|Tween Functions|>------------------------------------------------------
 local TweenService = game:GetService("TweenService")
 
-
-local CurrentTweens = {}
+local buttonDebounces = {}
+local currentTweens = {}
 local function PressGUIButton(button, newPosition, newSize, moveType)
 	if button.Visible == true then
-		if button.Position ~= newPosition and button.Size ~= newSize then
+		if buttonDebounces[button.Parent.Name .. button.Name] == false then
+			buttonDebounces[button.Parent.Name .. button.Name] = true
+			
+			if button.Position ~= newPosition and button.Size ~= newSize then
 
-			local opposingMoveType
-			if moveType == "neutral" then
-				opposingMoveType = "press"
-			else
-				opposingMoveType = "neutral"
+				local opposingMoveType
+				if moveType == "neutral" then
+					opposingMoveType = "press"
+				else
+					opposingMoveType = "neutral"
+				end
+				
+				if currentTweens[tostring(button.Parent) .. tostring(button) .. opposingMoveType] then
+					local opposingTween = currentTweens[tostring(button.Parent) .. tostring(button) .. opposingMoveType]
+					opposingTween:Pause()
+				end
+
+				if currentTweens[tostring(button.Parent) .. tostring(button) .. moveType] then
+					local tween = currentTweens[tostring(button.Parent) .. tostring(button) .. moveType]
+					tween:Pause()
+					tween:Play()
+				else
+					local tweenInfo = TweenInfo.new(0.15, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+					local tween = TweenService:Create(button, tweenInfo, {Position = newPosition, Size = newSize})
+
+					tween:Play()
+					currentTweens[tostring(button.Parent) .. tostring(button) .. moveType] = tween
+				end
 			end
 			
-			if CurrentTweens[tostring(button.Parent) .. tostring(button) .. opposingMoveType] then
-				local opposingTween = CurrentTweens[tostring(button.Parent) .. tostring(button) .. opposingMoveType]
-				opposingTween:Pause()
-			end
-
-			if CurrentTweens[tostring(button.Parent) .. tostring(button) .. moveType] then
-				local tween = CurrentTweens[tostring(button.Parent) .. tostring(button) .. moveType]
-				tween:Pause()
-				tween:Play()
-			else
-				local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
-				local tween = TweenService:Create(button, tweenInfo, {Position = newPosition, Size = newSize})
-
-				tween:Play()
-				CurrentTweens[tostring(button.Parent) .. tostring(button) .. moveType] = tween
-			end
+			buttonDebounces[button.Parent.Name .. button.Name] = false
 		end
 	end
 end
@@ -116,17 +122,16 @@ function GuiUtility.SetUpPressableButton(button, scaleChange)
 	local neutralSize = button.Size
 	local pressPosition = UDim2.new(neutralPosition.X.Scale, 0, neutralPosition.Y.Scale + (scaleChange + scaleChange*.2), 0)
 	local pressSize = UDim2.new(neutralSize.X.Scale, 0, neutralSize.Y.Scale - scaleChange, 0)
-
+	
+	buttonDebounces[button.Parent.Name .. button.Name] = false
+	
 	button.MouseButton1Down:Connect(function()
 		PressGUIButton(button, pressPosition, pressSize, "press")
 	end)
 	button.Activated:Connect(function()
-		PressGUIButton(button, pressPosition, pressSize, "press")
-	end)
-	button.MouseLeave:Connect(function()
 		PressGUIButton(button, neutralPosition, neutralSize, "neutral")
 	end)
-	button.MouseButton1Up:Connect(function()
+	button.MouseLeave:Connect(function()
 		PressGUIButton(button, neutralPosition, neutralSize, "neutral")
 	end)
 end
@@ -286,3 +291,4 @@ end
 
 
 return GuiUtility
+
