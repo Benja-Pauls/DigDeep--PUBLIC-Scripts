@@ -163,16 +163,17 @@ DataMenu.TopTabBar.CloseMenu.Activated:Connect(function()
 end)
 
 DataMenu.SelectedBagInfo.Position = UDim2.new(0, 0, 0.94, 0)
-local bagBarTweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+local bagBarTweenInfo = TweenInfo.new(0.4, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
 local bagBarOutTween = TweenService:Create(DataMenu.SelectedBagInfo, bagBarTweenInfo, {Position = UDim2.new(0, 0, 1.045, 0)})
 local bagBarInTween = TweenService:Create(DataMenu.SelectedBagInfo, bagBarTweenInfo, {Position = UDim2.new(0, 0, 0.94, 0)})
 DataMenu.InventoryMenu:GetPropertyChangedSignal("Visible"):Connect(function()
 	local bool = DataMenu.InventoryMenu.Visible
+	
+	bagBarOutTween:Pause()
+	bagBarInTween:Pause()
 	if bool == true then
-		bagBarOutTween:Pause()
 		bagBarOutTween:Play()
 	else
-		bagBarInTween:Pause()
 		bagBarInTween:Play()
 	end
 end)
@@ -226,6 +227,8 @@ local function SetupPageChange(menu, emptyNotifier, fullBool, partialBool)
 	PageManager.Menu.Value = menu
 	local PageCount = GetHighPage(menu)
 	if PageCount > 0 then
+		emptyNotifier.Visible = false
+		
 		PageManager.Visible = true
 		PageManager.FullBottomDisplay.Visible = fullBool
 		PageManager.PartialBottomDisplay.Visible = partialBool
@@ -352,7 +355,6 @@ function ReadyMenuButtons(Menu)
 						
 					elseif tostring(Menu) == "ExperienceMenu" then
 						EnableOnlyButtonMenu(Menu, true, false)
-						GuiUtility.SetUpPressableButton(button, 0.005)
 						
 						Menu.SideButtonBar.Visible = true
 						Menu.SideButtonBar.BackgroundColor3 = button.Color.Value
@@ -1016,18 +1018,23 @@ local function InsertItemViewerInfo(tile, statMenu, Type, statName, statInfo, va
 		GuiUtility.Display3DModels(Player, statMenu.ItemImage, statInfo:Clone(), true, statInfo["GUI Info"].DisplayAngle.Value)
 		
 	elseif Type == "Experience" then
-		--statMenu.ItemRarity.Text = ""
 		--statMenu.ItemAmount.Text = "Total EXP: " .. tostring(value)
 		statMenu.ItemImage.Image = statInfo["StatImage"]
 		statMenu.ItemName.Text = statInfo["StatName"]
+		statMenu.TotalExp.Text = 'Total Exp: <font color="#FFFFFF">' .. value .. '</font>'
 		
-		--local associatedMenuButton = DataMenu.ExperienceMenu:FindFirstChild(itemType .. "MenuButton")
-		--statMenu.BackButton.BackgroundColor3 = associatedMenuButton.Color.Value
+		statMenu.CurrentLevel.Text = tile.CurrentLevel.Text
+		statMenu.NextLevel.Text = tile.NextLevel.Text
+
+		local progressBar = tile.ProgressBar:Clone()
+		if statMenu:FindFirstChild("ProgressBar") then
+			statMenu.ProgressBar:Destroy()
+		end
+		progressBar.Parent = statMenu
+		progressBar.Position = UDim2.new(0.34, 0, 0.241, 0)
+		progressBar.Size = UDim2.new(0.562, 0, 0.109, 0)
 		
-		--Fill out the LevelRewards frame here
-		
-		
-		
+		--Put code here for how rewards are entered into the LevelRewards frame
 		
 		
 		
@@ -1131,6 +1138,7 @@ local function InsertTileInfo(Type, tile, statName, value, itemType, tileAlready
 	if tileAlreadyPresent == nil then
 		tile.Activated:Connect(function()
 			if Type == "Experience" then
+				DataMenu.PageManager.Visible = false
 				InsertItemViewerInfo(tile, statMenu, Type, statName, statInfo, value, itemType)
 			else
 				InsertItemViewerInfo(tile, statMenu, Type, statName, statInfo, value, itemType)
@@ -1492,6 +1500,12 @@ local function ManageEXPPopUp(statName, expAmount, amountAdded)
 	else
 		InsertNewEXPBar(skillInfo, simpleStatName, expAmount, currentLevel, nextLevel)
 		ShowEXPChange(currentLevel, nextLevel, skillInfo, expAmount, amountAdded)
+	end
+end
+
+for _,button in pairs (DataMenu.ExperienceMenu:GetChildren()) do
+	if button:IsA("ImageButton") and string.match(button.Name, "MenuButton") then
+		GuiUtility.SetUpPressableButton(button, 0.005)
 	end
 end
 
