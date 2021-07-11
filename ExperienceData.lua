@@ -24,7 +24,9 @@ local ExperienceData = {
 				[3] = {
 					["Level Name"] = "Apprentice",
 					["Exp Requirement"] = 25,
-					["Rewards"] = {}
+					["Rewards"] = {
+						[1] = "asdf",
+					}
 				},
 				[4] = {	
 					["Level Name"] = "Miner",
@@ -34,7 +36,11 @@ local ExperienceData = {
 				[5] = {
 					["Level Name"] = "Geologist",
 					["Exp Requirement"] = 250,
-					["Rewards"] = {}
+					["Rewards"] = {
+						[1] = "asdf",
+						[2] = "asdf2",
+						[3] = "asdf3"
+					}
 				},
 				[6] = {	
 					["Level Name"] = "",
@@ -155,3 +161,4 @@ local ExperienceData = {
 
 
 return ExperienceData
+
