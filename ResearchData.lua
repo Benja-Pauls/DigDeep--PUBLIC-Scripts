@@ -2,7 +2,10 @@
 --Use as a safe space to store any research data, referred to only by PurchaseHandler and PlayerStatManager
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 local RS = game.ReplicatedStorage
+
 local experienceData = require(game.ServerStorage.ExperienceData)
+local utility = require(game.ServerScriptService.Utility)
+
 --Hour: 3600
 --4 Hours: 14400
 --6 Hours: 21600
@@ -29,8 +32,8 @@ local ResearchData = {
 					{RS.InventoryItems.Foraging["Glowing Mushroom"], 5},
 				},
 				["Experience Cost"] = {
-					{experienceData["Skills"]["Mining Skill"], 3},
-					{experienceData["Skills"]["Foraging Skill"], 1}
+					{experienceData["Skills"]["Mining Skill"], 5},
+					{experienceData["Skills"]["Foraging Skill"], 2}
 				},
 				["Dependencies"] = {}
 				
@@ -237,6 +240,53 @@ local ResearchData = {
 
 	
 }
+
+--Input researches that have exp requirements as notifiers in experience data
+for _,researchType in pairs (ResearchData["Research"]) do
+	for r = 1,#researchType,1 do
+		if researchType[r] then
+			local researchInfo = researchType[r]
+			local expCostCount = #researchInfo["Experience Cost"]
+
+			if expCostCount > 0 then
+				for e = 1,expCostCount,1 do
+					local statInfo = researchInfo["Experience Cost"][e][1]
+					local levelRequired = researchInfo["Experience Cost"][e][2]
+
+					local levelInfo = statInfo["Levels"][levelRequired]
+					local expRewardTable = levelInfo["Rewards"]
+					
+					if #expRewardTable > 0 then
+						local newRewardNumber = #expRewardTable+1
+						if expRewardTable[#expRewardTable]["Research List"] == nil then
+							expRewardTable[newRewardNumber] = {}
+							expRewardTable[newRewardNumber]["Research List"] = {}
+						else
+							newRewardNumber -= 1
+						end
+						
+						local researchList = expRewardTable[newRewardNumber]["Research List"]
+						researchList[#researchList+1] = researchInfo["Research Name"]
+					else
+						expRewardTable[1] = {}
+						expRewardTable[1]["Research List"] = {}
+						
+						local researchList = expRewardTable[1]["Research List"]
+						researchList[1] = researchInfo["Research Name"]
+					end
+					
+					--**Cloning the researchInfo tables appears to slow the player down a lot
+					--**TycoonStorage reached >20% Activity! Why?
+				end
+			end
+		end
+	end	
+end
+print("Done putting all information from researchData into experienceData")
+print(experienceData)
+print(ResearchData)
+
+
 
 --Research must have...
 --What it does, Trigger, Time, Next (multiple dependencies), material cost, lvl cost
