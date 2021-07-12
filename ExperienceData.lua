@@ -25,7 +25,7 @@ local ExperienceData = {
 					["Level Name"] = "Apprentice",
 					["Exp Requirement"] = 25,
 					["Rewards"] = {
-						[1] = "asdf",
+						[1] = {"Item", RS.InventoryItems.Mining.Coal, 20}
 					}
 				},
 				[4] = {	
@@ -37,9 +37,8 @@ local ExperienceData = {
 					["Level Name"] = "Geologist",
 					["Exp Requirement"] = 250,
 					["Rewards"] = {
-						[1] = "asdf",
-						[2] = "asdf2",
-						[3] = "asdf3"
+						[1] = {"Item", RS.InventoryItems.Mining.Bismuth, 10},
+						[2] = {"Equipment", RS.Equippable.Tools.Pickaxes["Exp Reward Pickaxe"]},
 					}
 				},
 				[6] = {	
@@ -156,6 +155,7 @@ local ExperienceData = {
 	
 	
 }
+
 
 
 
