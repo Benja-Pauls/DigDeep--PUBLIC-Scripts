@@ -1,6 +1,9 @@
 --One Module Script to reference every equipment value in the game across all scripts
 --Server scripts require this script while local scripts use the GetItemStats remote function with checks in PlayerStatManager before returning cloned item info
 
+--One Module Script to reference every equipment value in the game across all scripts
+--Server scripts require this script while local scripts use the GetItemStatTable remote function with checks in PlayerStatManager before returning cloned item info
+
 local RS = game.ReplicatedStorage
 
 local EquipmentData = {
@@ -21,6 +24,21 @@ local EquipmentData = {
 					["EquipmentTypeImage"] = {"rbxassetid://6893434091", "Badge"}
 				},
 				["referenceObject"] = RS.Equippable.Tools.Pickaxes["Glow Pickaxe"]
+			},
+			
+			["Exp Reward Pickaxe"] = {
+				["Stats"] = {
+					{"Dig Power", 6},
+					{"Mining Delay", 0.5},
+					{"Swing Reach", 4}	
+				},
+				["Images"] = { --ImageId, Type = (Where it will be placed) (no index 2 means no display of stat in tile or ItemViewer)
+					["Dig PowerImage"] = {"rbxassetid://6471867379", "StatBar"},
+					["Mining DelayImage"] = {"rbxassetid://6471867379", "StatBar"},
+					["Swing ReachImage"] = {"rbxassetid://6471867379", "StatBar"},
+					["EquipmentTypeImage"] = {"rbxassetid://6893434091", "Badge"}
+				},
+				["referenceObject"] = RS.Equippable.Tools.Pickaxes["Exp Reward Pickaxe"]
 			},
 			
 			["Orange Pickaxe"] = {
@@ -103,3 +121,4 @@ local EquipmentData = {
 
 
 return EquipmentData
+
