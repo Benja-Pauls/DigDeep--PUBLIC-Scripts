@@ -1279,16 +1279,10 @@ function ManageResearchTile(Menu, ResearchData, ResearchType, FinishTime, StatTa
 			end
 			
 			local ProgressBar = NewTile.ResearchTile.TimerBar.ProgressBar
-			ProgressBar.CompleteResearch.MouseEnter:Connect(function()
-				HoverSound:Play()
-			end)
 			ProgressBar.CompleteResearch.Activated:Connect(function()
 				CompleteResearch:FireServer(ResearchData["Research Name"], ResearchType)
 			end)
-			
-			ProgressBar.SkipTime.MouseEnter:Connect(function()
-				HoverSound:Play()
-			end)
+
 			ProgressBar.SkipTime.Activated:Connect(function()
 				--Current based off CoC gem calculations
 				--<1h = 16.296x
