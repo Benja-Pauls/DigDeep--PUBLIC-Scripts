@@ -960,40 +960,6 @@ end
 
 ------------------------<|Time Management|>-----------------------------
 
-local function toDHMS(Sec, TileTimePreview)
-	local Days = math.floor(Sec/(24*3600))
-	local Hours = math.floor(Sec%(24 * 3600) / 3600)
-	local Minutes = math.floor(Sec/60%60)
-	local Seconds = Sec%60
-	
-	local TimeTable = {Days, "d", Hours, "h", Minutes, "m",Seconds, "s"}
-	local FormatString = ""
-	local Display1
-	local Display2
-	local Display3
-	for i,t in pairs (TimeTable) do
-		if type(t) == "number" and t ~= 0 then
-			local LetterRefernece = TimeTable[i+1]
-			if Display1 == nil then
-				FormatString = FormatString .. "%01i" .. LetterRefernece
-				Display1 = t
-			elseif Display2 == nil then
-				FormatString = FormatString .. " %01i" .. LetterRefernece
-				Display2 = t
-			elseif Display3 == nil and TileTimePreview then --Preview is more exact
-				FormatString = FormatString .. " %01i" .. LetterRefernece
-				Display3 = t
-			end
-		end
-	end
-
-	if Display1 then
-		return string.format(FormatString, Display1, Display2, Display3)
-	else
-		return string.format("%01is", 0)
-	end
-end
-
 local function ManageTileTimer(Tile, ResearchData, FinishTime)
 	local ProgressBar = Tile.TimerBar.ProgressBar
 	ProgressBar.SkipTime.Visible = true
@@ -1009,7 +975,7 @@ local function ManageTileTimer(Tile, ResearchData, FinishTime)
 				local RoundedPercentage = math.ceil(100 * (1 - (SecondsLeft / ResearchData["Research Length"])))
 				local PercentFinished = RoundedPercentage/100
 						
-				ProgressBar.Timer.Text = toDHMS(SecondsLeft)
+				ProgressBar.Timer.Text = GuiUtility.ToDHMS(SecondsLeft)
 				ProgressBar.Progress:TweenSize(UDim2.new(PercentFinished, 0, 1, 0), "Out", "Quint", 0.8)
 
 				local GemCost = CalculateGemCost(FinishTime)
@@ -1078,7 +1044,7 @@ local function InsertTileInfo(menu, tile, researchData, researchType, finishTime
 			researchTile.TimerSymbol.Visible = false
 			researchTile.ResearchTime.Visible = true
 			researchTile.ResearchType.Visible = true
-			researchTile.ResearchTime.Text = toDHMS(researchData["Research Length"], true)
+			researchTile.ResearchTime.Text = GuiUtility.ToDHMS(researchData["Research Length"], true)
 		end
 		
 		if menu ~= PreviousResearch then
@@ -1138,7 +1104,7 @@ local function InsertTileInfo(menu, tile, researchData, researchType, finishTime
 					
 					InfoMenu.DisplayImage.Image = researchData["Research Image"]
 					InfoMenu.ResearchType.Text = researchType
-					InfoMenu.ResearchTime.Text = toDHMS(researchData["Research Length"], true)
+					InfoMenu.ResearchTime.Text = GuiUtility.ToDHMS(researchData["Research Length"], true)
 					
 					--change size of description box based on character count
 					local NameCharacterCount = string.len(researchData["Description"])
