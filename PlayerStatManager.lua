@@ -371,8 +371,8 @@ function LoadPlayerData(PlayerDataFile, data, JoinedPlayer)
 	local ResearchersUsed = CreateSaveReference(PlayerResearch, "ResearchersUsed", "NumberValue")
 	local SavedResearcherUsage = CheckSaveData(data["ResearchersUsed"])
 	ImportSaveData(data, SavedResearcherUsage, PlayerResearch, ResearchersUsed)
-	local UsedCount = 0
 	
+	local UsedCount = 0
 	local researchTable = researchData["Research"]
 	for _,researchType in pairs (researchTable) do
 		local ResearchTypeName = researchType["Research Type Name"]
@@ -556,15 +556,20 @@ function PlayerStatManager:getPlayerData(player)
 	return sessionData[playerUserId]
 end 
 
-function PlayerStatManager:getStat(player, statName) --Check Stat Value
+function PlayerStatManager:getStat(player, statName, boolCheck) --Check Stat Value
 	local playerUserId = game.Players:FindFirstChild(tostring(player)).UserId
-	
+
 	if sessionData[playerUserId] then
-		--if sessionData[playerUserId][statName] ~= nil then
+		if boolCheck then
+			if typeof(sessionData[playerUserId][statName]) == "boolean" then
+				return (sessionData[playerUserId][statName])
+			else
+				warn(player, "could be exploiting")
+			end
+		else
 			return sessionData[playerUserId][statName]
-		--else
-			--warn(player, " tried accessing data that does not exist.")
-		--end
+		end
+		
 	else
 		warn(player," does not have save data! Trying again...") --possibly kick player from game and tell to try again
 		wait(2)
@@ -645,11 +650,21 @@ end
 function getItemStatTable.OnServerInvoke(player, dataType, equipType, itemType, itemName)
 	local dataModule = require(game.ServerStorage:FindFirstChild(dataType .. "Data"))
 	
-	--print(dataModule, dataType, itemType, itemName)
-	
 	local itemInfo
 	if dataType == "Equipment" then
 		itemInfo = dataModule[equipType][itemType][itemName]
+		
+	elseif dataType == "Research" then
+		local researchTypeInfo = dataModule["Research"][itemType]
+		
+		for r = 1,#researchTypeInfo,1 do
+			local researchInfo = researchTypeInfo[r]
+			
+			if researchInfo["Research Name"] == itemName then
+				itemInfo = researchInfo
+			end
+		end
+		
 	else
 		itemInfo = dataModule[itemType][itemName]
 	end
@@ -658,7 +673,7 @@ function getItemStatTable.OnServerInvoke(player, dataType, equipType, itemType, 
 		local cloneInfo = Utility:CloneTable(itemInfo)
 		return cloneInfo
 	else
-		warn(player, " is exploiting: Trying to grab nil DataStatTables")
+		warn(player, " is possibly exploiting: Trying to grab nil DataStatTables")
 	end
 end
 
@@ -759,24 +774,29 @@ DepositInventory.OnServerEvent:Connect(function(Player)
 	return true
 end)
 
-function CheckResearchDepends.OnServerInvoke(Player, ResearchData)
-	local Dependencies = ResearchData["Dependencies"]
-	
-	local DependenciesMet = 0
-	for i,dependency in pairs (Dependencies) do
-		local ResearchCompleted = PlayerStatManager:getStat(Player, dependency)
-		if ResearchCompleted then
-			DependenciesMet += 1
+function CheckResearchDepends.OnServerInvoke(player, researchData)
+	if researchData["Dependencies"] then
+		
+		local Dependencies = researchData["Dependencies"]
+		
+		local DependenciesMet = 0
+		for i,dependency in pairs (Dependencies) do
+			local ResearchCompleted = PlayerStatManager:getStat(player, dependency)
+			if ResearchCompleted then
+				DependenciesMet += 1
+			end
 		end
-	end
-	
-	if DependenciesMet == #Dependencies then
-		return true
+		
+		if DependenciesMet == #Dependencies then
+			return true
+		end
+	else
+		warn(player, "is exploiting")
 	end
 end
 
-function CheckPlayerStat.OnServerInvoke(Player, statName)
-	return PlayerStatManager:getStat(Player, statName)
+function CheckPlayerStat.OnServerInvoke(player, statName)
+	return PlayerStatManager:getStat(player, statName, true)
 end
 
 --Fires when player equips new item (must be saved for when they join back)
