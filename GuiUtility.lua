@@ -75,6 +75,41 @@ function GuiUtility.SlotCountToXY(PageSlotCount, tilesPerRow)
 	return columnValue, rowValue
 end
 
+function GuiUtility.ToDHMS(sec, tileTimePreview)
+	local Days = math.floor(sec/(24*3600))
+	local Hours = math.floor(sec%(24 * 3600) / 3600)
+	local Minutes = math.floor(sec/60%60)
+	local Seconds = sec%60
+
+	local TimeTable = {Days, "d", Hours, "h", Minutes, "m",Seconds, "s"}
+	local FormatString = ""
+	
+	local Display1
+	local Display2
+	local Display3
+	for i,t in pairs (TimeTable) do
+		if type(t) == "number" and t ~= 0 then
+			local LetterRefernece = TimeTable[i+1]
+			if Display1 == nil then
+				FormatString = FormatString .. "%01i" .. LetterRefernece
+				Display1 = t
+			elseif Display2 == nil then
+				FormatString = FormatString .. " %01i" .. LetterRefernece
+				Display2 = t
+			elseif Display3 == nil and tileTimePreview then --Preview is more exact
+				FormatString = FormatString .. " %01i" .. LetterRefernece
+				Display3 = t
+			end
+		end
+	end
+
+	if Display1 then
+		return string.format(FormatString, Display1, Display2, Display3)
+	else
+		return string.format("%01is", 0)
+	end
+end
+
 -------------<|Tween Functions|>------------------------------------------------------
 local TweenService = game:GetService("TweenService")
 
