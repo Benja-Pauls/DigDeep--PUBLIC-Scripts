@@ -25,7 +25,7 @@ local ResearchData = {
 				["Research Name"] = "Bio-Glow Pickaxe",
 				["Research Image"] = "",
 				["Rarity"] = "Rare",
-				["Description"] = "If you find some glowing mushrooms, our scientists may be able to analyze their structure and form a pickaxe from the glowing cells",
+				["Description"] = "If you find some glowing mushrooms, our scientists may be able to analyze their structure and form alloys from the glowing cells",
 				
 				["Research Length"] = 10,
 				["Material Cost"] = {
@@ -62,7 +62,7 @@ local ResearchData = {
 			},
 			
 			[2] = {
-				["Research Name"] = "More Efficient Fuel Cells",
+				["Research Name"] = "Better Fuel Cells",
 				["Research Image"] = "",
 				["Rarity"] = "Uncommon",
 				["Description"] = "",
@@ -243,6 +243,8 @@ local ResearchData = {
 
 --Input researches that have exp requirements as notifiers in experience data
 for _,researchType in pairs (ResearchData["Research"]) do
+	local researchTypeName = researchType["Research Type Name"]
+	
 	for r = 1,#researchType,1 do
 		if researchType[r] then
 			local researchInfo = researchType[r]
@@ -266,16 +268,24 @@ for _,researchType in pairs (ResearchData["Research"]) do
 						end
 						
 						local researchList = expRewardTable[newRewardNumber]["Research List"]
-						researchList[#researchList+1] = researchInfo["Research Name"]
+						researchList[#researchList+1] = {
+								["Research Image"] = researchInfo["Research Image"],
+								["Research Name"] = researchInfo["Research Name"],
+								["Research Type"] = researchTypeName
+							}
 					else
 						expRewardTable[1] = {}
 						expRewardTable[1]["Research List"] = {}
 						
 						local researchList = expRewardTable[1]["Research List"]
-						researchList[1] = researchInfo["Research Name"]
+						researchList[1] = {
+							["Research Image"] = researchInfo["Research Image"],
+							["Research Name"] = researchInfo["Research Name"],
+							["Research Type"] = researchTypeName
+						}
 					end
 					
-					--**Cloning the researchInfo tables appears to slow the player down a lot
+					--**Cloning the researchInfo tables directly to exp appears to slow the client down a lot
 					--**TycoonStorage reached >20% Activity! Why?
 				end
 			end
