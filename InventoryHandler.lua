@@ -22,7 +22,9 @@ local UpdateInventory = eventsFolder.GUI:WaitForChild("UpdateInventory")
 local UpdatePlayerMenu = eventsFolder.GUI:WaitForChild("UpdatePlayerMenu")
 local UpdateItemCount = eventsFolder.GUI:WaitForChild("UpdateItemCount")
 
+local CheckResearchDepends = eventsFolder.Utility:WaitForChild("CheckResearchDepends")
 local DepositInventory = eventsFolder.Utility:WaitForChild("DepositInventory")
+local GetItemCountSum = eventsFolder.Utility:WaitForChild("GetItemCountSum")
 local getItemStatTable = eventsFolder.Utility:WaitForChild("GetItemStatTable")
 ----------------------------------------
 
@@ -993,6 +995,107 @@ DepositInventory.OnClientEvent:Connect(function()
 	end
 end)
 
+local researchRewardViewer = DataMenu.ExperienceMenu.ExpInfoViewerMenu.ResearchRewardViewer
+local rrPageManager = researchRewardViewer.PageManager
+local rewardPageDebounce = false
+
+local function ChangeResearchRewardPage(newPagePos, currentPagePos, previousPageNumber)
+	if previousPageNumber then
+		local newPageNumber = rrPageManager.CurrentPage.Value
+		local newPage = researchRewardViewer.RewardPages:FindFirstChild("Page" .. tostring(newPageNumber))
+		local currentPage = researchRewardViewer.RewardPages:FindFirstChild("Page" .. tostring(previousPageNumber))
+
+		newPage.ZIndex += 1
+		newPage.Position = UDim2.new(0, 0, newPagePos, 0)
+		newPage.Visible = true
+
+		newPage:TweenPosition(UDim2.new(0, 0, 0, 0), "Out", "Quint", 0.3)
+		currentPage:TweenPosition(UDim2.new(0, 0, currentPagePos, 0), "Out", "Quint", 0.3)
+		rrPageManager.CurrentPage.Value = newPageNumber
+
+		wait(0.3)
+		newPage.ZIndex -= 1
+		currentPage.Visible = false
+		currentPage.Position = UDim2.new(0, 0, 0, 0)
+	else
+		local currentPage = currentPagePos
+		currentPage:TweenPosition(UDim2.new(0, 0, 0.03*newPagePos, 0), "Out", "Quint", 0.1)
+		wait(0.1)
+		currentPage:TweenPosition(UDim2.new(0, 0, 0, 0), "Out", "Bounce", 0.25)
+		wait(0.25)
+	end
+	
+	rewardPageDebounce = false
+end
+
+researchRewardViewer.PageManager.NextPage.Activated:Connect(function()
+	if rewardPageDebounce == false then
+		rewardPageDebounce = true
+		
+		local currentPageNumber = rrPageManager.CurrentPage.Value
+		local pageCount = #researchRewardViewer.RewardPages:GetChildren()
+		
+		if pageCount > 1 then
+			if rrPageManager.CurrentPage.Value + 1 > pageCount then
+				rrPageManager.CurrentPage.Value = 1
+			else
+				rrPageManager.CurrentPage.Value += 1
+			end
+			
+			ChangeResearchRewardPage(1, -1, currentPageNumber)
+		else
+			local currentPage = researchRewardViewer.RewardPages:FindFirstChild("Page" .. tostring(currentPageNumber))
+			ChangeResearchRewardPage(1, currentPage)
+		end
+	end
+end)
+
+researchRewardViewer.PageManager.PreviousPage.Activated:Connect(function()
+	if rewardPageDebounce == false then
+		rewardPageDebounce = true
+		
+		local currentPageNumber = rrPageManager.CurrentPage.Value
+		local pageCount = #researchRewardViewer.RewardPages:GetChildren()
+		
+		if pageCount > 1 then
+			if rrPageManager.CurrentPage.Value - 1 <= 0 then
+				rrPageManager.CurrentPage.Value = pageCount
+			else
+				rrPageManager.CurrentPage.Value -= 1
+			end
+			
+			ChangeResearchRewardPage(-1, 1, currentPageNumber)
+		else
+			local currentPage = researchRewardViewer.RewardPages:FindFirstChild("Page" .. tostring(currentPageNumber))
+			ChangeResearchRewardPage(-1, currentPage)
+		end
+	end
+end)
+
+researchRewardViewer.ExitButton.Activated:Connect(function()
+	if researchRewardViewer.InfoMenuOpen.Value == true then
+		researchRewardViewer.ResearchInfoViewer.Visible = false
+		researchRewardViewer.RewardPages.Visible = true
+	else
+		researchRewardViewer.Visible = false
+		researchRewardViewer.RewardPages.Visible = true
+		researchRewardViewer.ResearchInfoViewer.Visible = false
+		for _,rewardTile in pairs (researchRewardViewer.RewardPages:GetChildren()) do
+			rewardTile:Destroy()
+		end
+	end
+end)
+
+local expInfoViewerMenu = DataMenu.ExperienceMenu.ExpInfoViewerMenu
+local itemRewardViewer = expInfoViewerMenu.ItemRewardViewer
+itemRewardViewer.ExitButton.Activated:Connect(function()
+	itemRewardViewer.Visible = false
+end)
+
+local equipmentRewardViewer = expInfoViewerMenu.EquipmentRewardViewer
+equipmentRewardViewer.ExitButton.Activated:Connect(function()
+	equipmentRewardViewer.Visible = false
+end)
 
 --------------<|GUI Information Display Functions|>--------------------------------------------------------------------------------------------------------------------
 
@@ -1016,16 +1119,135 @@ local function ManageEquipButton(currentlyEquipped, statName, Equip)
 	equipButton.Visible = true
 end
 
-local function DisplayExpRewardInfo(rewardInfo, researchList)
+local function DisplayExpRewardInfo(rewardInfo)
+	local rewardMenu
 	
-	if researchList then
+	if rewardInfo["Research List"] then
+		rewardMenu = researchRewardViewer
 		
+		local researchList = rewardInfo["Research List"]
+		local researchCount = #researchList
 		
+		for r = 1,researchCount,1 do
+			local researchRewardInfo = researchList[r]
+			local researchRewardTile = GuiElements.ResearchRewardTile:Clone()
+			
+			local researchName = researchRewardInfo["Research Name"]
+			local researchTypeName = researchRewardInfo["Research Type"]
+			
+			local pageCount = #rewardMenu.RewardPages:GetChildren()
+			if r == 1 or (r-1)%3 == 0 then
+				local newResearchRewardPage = GuiElements.DataMenuPage:Clone()
+				newResearchRewardPage.BackgroundTransparency = 1
+				newResearchRewardPage.Name = "Page" .. tostring(pageCount + 1)
+				
+				newResearchRewardPage.Parent = rewardMenu.RewardPages
+				newResearchRewardPage.Visible = false
+				researchRewardTile.Parent = newResearchRewardPage
+				pageCount += 1
+			else
+				researchRewardTile.Parent = rewardMenu.RewardPages:FindFirstChild("Page" .. tostring(pageCount))
+			end
+			researchRewardTile.Position = UDim2.new(0.116, 0, 0.118 + 0.294*((r-1)-3*(pageCount-1)), 0)
+			
+			local shortName = researchName
+			if string.len(researchName) > 20 then
+				local shortString = string.sub(researchName, 1, 20)
+				shortName = shortString .. "..."
+			end
+			researchRewardTile.ResearchName.Text = researchName
+			
+			researchRewardTile.ResearchType.Text = researchTypeName
+			researchRewardTile.Picture.Image = researchRewardInfo["Research Image"]
+			researchRewardTile.Name = "Reward" .. tostring(r)
+			
+			researchRewardTile.Activated:Connect(function()
+				researchRewardViewer.InfoMenuOpen.Value = true
+				researchRewardViewer.RewardPages.Visible = false
+				
+				local researchInfoViewer = researchRewardViewer.ResearchInfoViewer
+				researchInfoViewer.Visible = true
+				
+				local researchType = string.gsub(researchTypeName, " Research", "") .. " Improvements"
+				local researchInfo = getItemStatTable:InvokeServer("Research", nil, researchType, researchName)
+				local researchDependsMet = CheckResearchDepends:InvokeServer(researchInfo)
+				
+				if researchDependsMet then
+					researchInfoViewer.ResearchImage.LockNotify.Visible = false
+					researchInfoViewer.ResearchImage.LockImage.Visible = false
+					researchInfoViewer.ResearchImage.Image = researchInfo["Research Image"]
+					
+					researchInfoViewer.ResearchName.Text = researchName
+					researchInfoViewer.ResearchName.TextColor3 = Color3.fromRGB(255, 255, 255)
+					researchInfoViewer.ResearchTime.Text = GuiUtility.ToDHMS(researchInfo["Research Length"])
+					researchInfoViewer.UnlockedState.Text = "Research Unlocked"
+					researchInfoViewer.ComputerNote.Text = "View in your computer for more info"
+				else --locked info
+					researchInfoViewer.ResearchImage.LockNotify.Visible = true
+					researchInfoViewer.ResearchImage.LockImage.Visible = true
+					researchInfoViewer.ResearchImage.Image = ""
+					
+					researchInfoViewer.ResearchName.Text = "Unknown Research"
+					researchInfoViewer.ResearchName.TextColor3 = Color3.fromRGB(226, 226, 226)
+					researchInfoViewer.UnlockedState.Text = "Research Locked"
+					researchInfoViewer.ComputerNote.Text = "View in your computer for ways to unlock"
+				end
+			end)
+		end
 		
-	else --Item or Equipment Reward
+		rewardMenu.PageManager.CurrentPage.Value = 1
+		rewardMenu.RewardPages.Page1.Visible = true
 		
+	else
+		rewardMenu = expInfoViewerMenu:FindFirstChild(rewardInfo[1] .. "RewardViewer")
+		local itemInfo = rewardInfo[2]
 		
+		rewardMenu.Badge.Image = itemInfo["GUI Info"].BadgeImage.Value
+		rewardMenu.ItemName.Text = tostring(itemInfo)
 		
+		if rewardInfo[1] == "Item" then
+			rewardMenu.RewardAmount.Text = tostring(rewardInfo[3])
+			rewardMenu.ItemWorth.Text = tostring(itemInfo.CurrencyValue.Value)
+			rewardMenu.StorageAmount.Text = tostring(GetItemCountSum:InvokeServer(tostring(itemInfo)))
+			
+			GuiUtility.Display3DModels(Player, rewardMenu.ItemImage, itemInfo:Clone(), true, itemInfo["GUI Info"].DisplayAngle.Value)
+		else --Equipment
+			local equipType = tostring(itemInfo.Parent.Parent)
+			local itemType = tostring(itemInfo.Parent)
+			local itemStats = getItemStatTable:InvokeServer("Equipment", equipType, itemType, tostring(itemInfo))
+			
+			GuiUtility.Display3DModels(Player, rewardMenu.ItemImage, itemInfo.Handle:Clone(), true, itemInfo["GUI Info"].DisplayAngle.Value)
+			ManageStatBars(rewardMenu, itemStats)
+		end
+	end
+	
+	if rewardMenu then
+		rewardMenu.Visible = true
+	end
+end
+
+--Disable rewards buttons depending on visibility of RewardViewers
+for _,gui in pairs (expInfoViewerMenu:GetChildren()) do
+	if string.match(gui.Name, "RewardViewer") then
+		gui:GetPropertyChangedSignal("Visible"):Connect(function()
+			local bool = not gui.Visible
+			
+			for _,level in pairs (expInfoViewerMenu.LevelRewards.BackFrame:GetChildren()) do
+				if level:IsA("Frame") and string.match(level.Name, "Level") then
+					for _,reward in pairs (level:GetChildren()) do
+						if reward:IsA("ImageButton") and string.match(reward.Name, "Reward") then
+							reward.Active = bool
+							reward.Selectable = bool
+						end
+					end
+				end
+			end
+			
+			expInfoViewerMenu.LevelRewards.NextPage.Active = bool
+			expInfoViewerMenu.LevelRewards.NextPage.Selectable = bool
+			expInfoViewerMenu.LevelRewards.PreviousPage.Active = bool
+			expInfoViewerMenu.LevelRewards.PreviousPage.Selectable = bool
+		end)
 	end
 end
 
@@ -1046,6 +1268,28 @@ local function InsertItemViewerInfo(tile, statMenu, Type, statName, statInfo, va
 		GuiUtility.Display3DModels(Player, statMenu.ItemImage, statInfo:Clone(), true, statInfo["GUI Info"].DisplayAngle.Value)
 
 	elseif Type == "Experience" then
+		equipmentRewardViewer.Visible = false
+		itemRewardViewer.Visible = false
+		researchRewardViewer.Visible = false
+		researchRewardViewer.RewardPages.Visible = true
+		researchRewardViewer.InfoMenuOpen.Value = false
+		researchRewardViewer.ResearchInfoViewer.Visible = false
+		
+		for _,gui in pairs (DataMenu.ExperienceMenu:GetChildren()) do
+			if gui:FindFirstChild("Page1") then
+				for _,page in pairs (gui:GetChildren()) do
+					if page:IsA("Frame") and string.match(page.Name, "Page") then
+						for _,tile in pairs (page:GetChildren()) do
+							if tile:IsA("ImageButton") and string.match(tile.Name, "Slot") then
+								tile.Active = false
+								tile.Selectable = false
+							end
+						end
+					end
+				end
+			end
+		end
+		
 		if statMenu.ItemName.Text ~= statInfo["StatName"] then
 			statMenu.ItemImage.Image = statInfo["StatImage"]
 			statMenu.ItemName.Text = statInfo["StatName"]
@@ -1164,7 +1408,7 @@ local function InsertItemViewerInfo(tile, statMenu, Type, statName, statInfo, va
 								researchListTile.RewardImage.Image = "rbxassetid://7080090511"
 								
 								researchListTile.Activated:Connect(function()
-									DisplayExpRewardInfo(levelInfo["Rewards"][rewardCount], true)
+									DisplayExpRewardInfo(levelInfo["Rewards"][rewardCount])
 								end)
 							end
 							
@@ -1210,7 +1454,7 @@ local function InsertItemViewerInfo(tile, statMenu, Type, statName, statInfo, va
 		statMenu.ItemImage.BackgroundColor3 = rarity.TileColor.Value
 		statMenu.ItemImageBorder.BackgroundColor3 = rarity.Value
 
-		ManageStatBars(value)
+		ManageStatBars(equipmentQuickViewMenu, value)
 		ManageEquipButton(DataMenu.PlayerMenu:FindFirstChild(itemType).CurrentlyEquipped.Value, statName)
 
 		--local ItemModel = game.ReplicatedStorage.Equippable:FindFirstChild(Type):FindFirstChild(AcquiredLocation):FindFirstChild(Stat)
@@ -1258,7 +1502,7 @@ local function InsertTileInfo(Type, tile, statName, value, itemType, tileAlready
 		tile.PressedImage = rarityInfo.TileImages.PressedRarityTile.Value
 
 	elseif Type == "Experience" then
-		statMenu = DataMenu.ExperienceMenu.ExpInfoViewerMenu
+		statMenu = expInfoViewerMenu
 
 		local expMenuButton = DataMenu.ExperienceMenu:FindFirstChild(itemType .. "MenuButton")
 		if expMenuButton then
@@ -1727,33 +1971,33 @@ EquipButton.Activated:Connect(function()
 	end
 end)
 
---May have to use this in item viewer too, so keep as function (not only equipment)
-local function HideRemainingStatDisplays()
-	for i,statDisplay in pairs (equipmentQuickViewMenu.StatDisplays:GetChildren()) do
+--May have to use this in item viewer too, so keep as function for now (not only equipment)
+local function HideRemainingStatDisplays(menu)
+	for i,statDisplay in pairs (menu.StatDisplays:GetChildren()) do
 		if statDisplay:FindFirstChild("Utilized") then
 			statDisplay.Visible = statDisplay.Utilized.Value
 		end
 	end
 end
 
-function ManageStatBars(ItemStats)
-	for i,statDisplay in pairs (equipmentQuickViewMenu.StatDisplays:GetChildren()) do
+function ManageStatBars(menu, itemStats)
+	for i,statDisplay in pairs (menu.StatDisplays:GetChildren()) do
 		if statDisplay:FindFirstChild("Utilized") then
 			statDisplay.Utilized.Value = false
 		end
 	end
 
-	for stat = 1,#ItemStats["Stats"],1 do
-		local StatName = ItemStats["Stats"][stat][1]
-		local StatValue = ItemStats["Stats"][stat][2]
+	for stat = 1,#itemStats["Stats"],1 do
+		local StatName = itemStats["Stats"][stat][1]
+		local StatValue = itemStats["Stats"][stat][2]
 
-		if ItemStats["Images"][StatName .. "Image"] then --Displayed on a GUI
-			if ItemStats["Images"][StatName .. "Image"][2] then --Associated ImageType
-				local ImageId = ItemStats["Images"][StatName .. "Image"][1]
-				local ImageType = ItemStats["Images"][StatName .. "Image"][2]
+		if itemStats["Images"][StatName .. "Image"] then --Displayed on a GUI
+			if itemStats["Images"][StatName .. "Image"][2] then --Associated ImageType
+				local ImageId = itemStats["Images"][StatName .. "Image"][1]
+				local ImageType = itemStats["Images"][StatName .. "Image"][2]
 
 				local FoundStatDisplay = false
-				for i,statDisplay in pairs (equipmentQuickViewMenu.StatDisplays:GetChildren()) do
+				for i,statDisplay in pairs (menu.StatDisplays:GetChildren()) do
 					if FoundStatDisplay == false then
 						if string.find(tostring(statDisplay), ImageType) and statDisplay:FindFirstChild("Utilized") then
 							if statDisplay.Utilized.Value ~= true then
@@ -1787,7 +2031,7 @@ function ManageStatBars(ItemStats)
 		end
 	end
 
-	HideRemainingStatDisplays()
+	HideRemainingStatDisplays(menu)
 end
 
 local function UpdateBagButtonBar(Button, RelatedInvMenu)
@@ -1901,18 +2145,8 @@ UpdatePlayerMenu.OnClientEvent:Connect(function(EquipType, ItemType, Item)
 	local AssociatedMenu = PlayerMenu:FindFirstChild(ItemType .. "Menu")
 	local AssociatedButton = PlayerMenu:FindFirstChild(ItemType)
 
-	if EquipType == "Bags" then
-		local itemStats = getItemStatTable:InvokeServer("Equipment", EquipType, ItemType, Item) 
-		ManageTiles(Item, AssociatedMenu, itemStats, EquipType, ItemType)
-	else
-		local itemStats = getItemStatTable:InvokeServer("Equipment", EquipType, ItemType, Item)
-		ManageTiles(Item, AssociatedMenu, itemStats, EquipType, ItemType)
-	end
-
-	--Update Default Menu (Equipped) Item Pictures
-	--if Item == AssociatedButton.CurrentlyEquipped.Value then
-	--AssociatedButton.Image = itemInfo["GUI Info"].StatImage.Value
-	--end
+	local itemStats = getItemStatTable:InvokeServer("Equipment", EquipType, ItemType, Item)
+	ManageTiles(Item, AssociatedMenu, itemStats, EquipType, ItemType)
 end)
 
 UpdateItemCount.OnClientEvent:Connect(function(ItemTypeCount, BagCapacity, BagType, DepositedInventory)
