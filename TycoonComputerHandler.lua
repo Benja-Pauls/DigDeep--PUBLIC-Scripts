@@ -8,6 +8,7 @@ local PlayerGui = Player:WaitForChild("PlayerGui")
 local StarterGui = game:GetService("StarterGui")
 local TycoonComputerGui = script.Parent
 
+local guiElements = game.ReplicatedStorage.GuiElements
 local ComputerScreen = TycoonComputerGui.ComputerScreen
 local MenuSelect = ComputerScreen.MenuSelect
 local FadeOut = ComputerScreen.FadeOut
@@ -23,7 +24,7 @@ local eventsFolder = game.ReplicatedStorage.Events
 local LocalLoadTycoon = eventsFolder.Tycoon:WaitForChild("LocalLoadTycoon")
 local MoveAllBaseScreenUI = eventsFolder.GUI:WaitForChild("MoveAllBaseScreenUI")
 local GetItemCountSum = eventsFolder.Utility:WaitForChild("GetItemCountSum")
-local GetCurrentSkillLevel = eventsFolder.Utility:WaitForChild("GetCurrentSkillLevel")
+local GetCurrentPlayerLevel = eventsFolder.Utility:WaitForChild("GetCurrentPlayerLevel")
 local CheckPlayerStat = eventsFolder.Utility:WaitForChild("CheckPlayerStat")
 
 local ComputerIsOn = false
@@ -247,7 +248,7 @@ local function FinalizePageCreation(itemMenu, rarityInfo, referencePageNumber, i
 		end
 	end
 	
-	local tycoonStoragePage = game.ReplicatedStorage.GuiElements.DataMenuPage
+	local tycoonStoragePage = guiElements.DataMenuPage
 	local newPage = tycoonStoragePage:Clone()
 	newPage.Parent = itemMenu
 	newPage.BackgroundTransparency = 1
@@ -369,7 +370,7 @@ local function UpdateSelectionInfo(Page, tile)
 			end
 		end)
 	else --Item not discovered
-		GuiUtility.Display3DModels(Player, SelectionMenu.Picture, game.ReplicatedStorage.GuiElements.LockedBlock:Clone(), true, itemInfo["GUI Info"].DisplayAngle.Value)
+		GuiUtility.Display3DModels(Player, SelectionMenu.Picture, guiElements.LockedBlock:Clone(), true, itemInfo["GUI Info"].DisplayAngle.Value)
 		SelectionMenu.Picture.BackgroundColor3 = Color3.fromRGB(5, 16, 29)
 		SelectionMenu.DisplayName.Text = "Not Discovered"
 		SelectionMenu.DisplayName.TextColor3 = Color3.fromRGB(150, 150, 150)
@@ -393,7 +394,7 @@ local function UpdateTileLock(tile, StatValue, RarityName)
 	if StatValue == true then
 		tile.LockImage.Visible = false
 		tile.Picture.Visible = true
-		local RarityInfo = game.ReplicatedStorage.GuiElements.RarityColors:FindFirstChild(RarityName)
+		local RarityInfo = guiElements.RarityColors:FindFirstChild(RarityName)
 		tile.BackgroundColor3 = RarityInfo.TileColor.Value
 	else
 		tile.LockImage.Visible = true
@@ -722,13 +723,13 @@ function ManageStorageTiles(MenuName)
 	if ItemsPreview:FindFirstChild(MenuName) then
 		local itemMenu = ItemsPreview:FindFirstChild(MenuName) --Save if later different menus for item storage
 		
-		local tycoonStorageTile = game.ReplicatedStorage.GuiElements.TycoonStorageTile
+		local tycoonStorageTile = guiElements.TycoonStorageTile
 		
 		for i,itemType in pairs (game.ReplicatedStorage.InventoryItems:GetChildren()) do
 			for i,item in pairs (itemType:GetChildren()) do --make tile for every item
 				--print("Creating a storage tile for ", item)
 				local itemRarity = item["GUI Info"].RarityName.Value
-				local rarityInfo = game.ReplicatedStorage.GuiElements.RarityColors:FindFirstChild(itemRarity)
+				local rarityInfo = guiElements.RarityColors:FindFirstChild(itemRarity)
 				local orderValue = rarityInfo.Order.Value
 				
 				local pageCount = GetHighPage(itemMenu)
@@ -1023,35 +1024,46 @@ local function ColorTileRarity(Tile, RarityInfo)
 	RarityInfo.RarityGradient:Clone().Parent = Tile.RarityFrame
 end
 
-local function InsertTileInfo(menu, tile, researchData, researchType, finishTime, statTable)
+local function InsertTileInfo(menu, tile, researchInfo, researchType, finishTime, statTable, onlySkillMet)
 	if statTable == nil then --Available and Previous Research
 		tile.ResearchTile.Visible = true
-		tile.CostTile.Visible = false
-		local researchTile = tile.ResearchTile
+		tile.CostTile:Destroy()
+		tile.DependTile:Destroy()
 		
-		researchTile.ResearchName.Text = researchData["Research Name"]
+		local researchTile = tile.ResearchTile
 		researchTile.ResearchType.Text = researchType
 		ColorTileRarity(researchTile, tile.Rarity.Value)
 		
+		if onlySkillMet then
+			researchTile.ResearchName.Text = "[Unknown Research]"
+			researchTile.ResearchName.TextColor3 = Color3.fromRGB(204, 204, 204)
+			researchTile.DisplayImage.Image = ""
+		else
+			researchTile.ResearchName.Text = researchInfo["Research Name"]
+			researchTile.ResearchName.TextColor3 = Color3.fromRGB(255, 255, 255)
+			researchTile.DisplayImage.Image = researchInfo["Research Image"]
+		end
+
 		if finishTime then
 			researchTile.ResearchTime.Visible = false
 			researchTile.ResearchType.Visible = false
 			researchTile.TimerBar.Visible = true
 			researchTile.TimerSymbol.Visible = true
-			ManageTileTimer(researchTile, researchData, finishTime)
+			ManageTileTimer(researchTile, researchInfo, finishTime)
 		else
 			researchTile.TimerBar.Visible = false
 			researchTile.TimerSymbol.Visible = false
 			researchTile.ResearchTime.Visible = true
 			researchTile.ResearchType.Visible = true
-			researchTile.ResearchTime.Text = GuiUtility.ToDHMS(researchData["Research Length"], true)
+			researchTile.ResearchTime.Text = GuiUtility.ToDHMS(researchInfo["Research Length"], true)
 		end
 		
 		if menu ~= PreviousResearch then
-			local TileDebounce = false
+			local tileDebounce = false
+			
 			tile.Activated:Connect(function()
-				if TileDebounce == false then
-					TileDebounce = true
+				if tileDebounce == false then
+					tileDebounce = true
 
 					ResearchersList.InfoMenuLabel.Visible = true
 					ResearchersList.CostMenuLabel.Visible = true
@@ -1071,12 +1083,12 @@ local function InsertTileInfo(menu, tile, researchData, researchType, finishTime
 					end
 
 					--Insert experience and material costs into cost list
-					for i,expRequire in pairs (researchData["Experience Cost"]) do
-						ManageResearchTile(CostList, researchData, researchType, nil, expRequire)
+					for i,expRequire in pairs (researchInfo["Experience Cost"]) do
+						ManageResearchTile(CostList, researchInfo, researchType, nil, expRequire)
 					end
 					
-					for i,matRequire in pairs (researchData["Material Cost"]) do
-						ManageResearchTile(CostList, researchData, researchType, nil, matRequire)
+					for i,matRequire in pairs (researchInfo["Material Cost"]) do
+						ManageResearchTile(CostList, researchInfo, researchType, nil, matRequire)
 					end
 					
 					CostList.Visible = true
@@ -1094,94 +1106,210 @@ local function InsertTileInfo(menu, tile, researchData, researchType, finishTime
 					Taskbar.PreviousResearchButton.Visible = false
 					Taskbar.PreviousResearchButton.Active = false
 					
-					local NameCharacterCount = string.len(researchData["Research Name"])
-					if NameCharacterCount > 20 then
-						local ShortResearchName = string.sub(researchData["Research Name"], 1, 20) .. "..."
+					local nameCharacterCount = string.len(researchInfo["Research Name"])
+					if nameCharacterCount > 20 then
+						local ShortResearchName = string.sub(researchInfo["Research Name"], 1, 20) .. "..."
 						InfoMenu.ResearchName.Text = ShortResearchName
 					else
-						InfoMenu.ResearchName.Text = researchData["Research Name"]
+						InfoMenu.ResearchName.Text = researchInfo["Research Name"]
 					end
 					
-					InfoMenu.DisplayImage.Image = researchData["Research Image"]
 					InfoMenu.ResearchType.Text = researchType
-					InfoMenu.ResearchTime.Text = GuiUtility.ToDHMS(researchData["Research Length"], true)
+					InfoMenu.Rarity.Text = researchInfo["Rarity"]
 					
-					--change size of description box based on character count
-					local NameCharacterCount = string.len(researchData["Description"])
-					local NewYScale = math.ceil(NameCharacterCount/37)*.069
-					InfoMenu.Description.Size = UDim2.new(InfoMenu.Description.Size.X.Scale, 0, NewYScale, 0)
-					InfoMenu.Description.Text = researchData["Description"]
-					
-					InfoMenu.Rarity.Text = researchData["Rarity"]
-					local RarityInfo = game.ReplicatedStorage.GuiElements.RarityColors:FindFirstChild(researchData["Rarity"])
+					local RarityInfo = guiElements.RarityColors:FindFirstChild(researchInfo["Rarity"])
 					InfoMenu.RarityFrame.BackgroundColor3 = RarityInfo.TileColor.Value
 					InfoMenu.RarityFrame.BorderColor3 = RarityInfo.Value
 					InfoMenu.DisplayImage.BackgroundColor3 = RarityInfo.TileColor.Value
 					InfoMenu.DisplayImage.BorderColor3 = RarityInfo.Value
-					
+
 					if InfoMenu.RarityFrame:FindFirstChild("RarityGradient") then
 						InfoMenu.RarityFrame.RarityGradient:Destroy()
 					end
 					local RarityFrameGradient = RarityInfo.RarityGradient:Clone()
 					RarityFrameGradient.Parent = InfoMenu.RarityFrame
 					RarityFrameGradient.Rotation = -90
-					
+
 					if InfoMenu.Rarity:FindFirstChild("RarityGradient") then
 						InfoMenu.Rarity.RarityGradient:Destroy()
 					end
 					RarityInfo.RarityGradient:Clone().Parent = InfoMenu.Rarity
 					
-					TileDebounce = false
+					for _,page in pairs (InfoMenu.DependsToComplete.DependPages:GetChildren()) do
+						if page:IsA("Frame") and string.match(page.Name, "Page") then
+							page:Destroy()
+						end
+					end
+					
+					if onlySkillMet then --Make list of research dependencies
+						InfoMenu.ResearchTime.Text = GuiUtility.ToDHMS(researchInfo["Research Length"], true)
+						InfoMenu.DisplayImage.Image = "rbxassetid://6973810990"
+						InfoMenu.DisplayImage.LockNotify.Visible = true
+						InfoMenu.DisplayImage.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+						
+						InfoMenu.ResearchName.Text = "Unknown Research"
+						InfoMenu.ResearchName.TextColor3 = Color3.fromRGB(204, 204, 204)
+						InfoMenu.Description.Visible = false
+						InfoMenu.ResearchButton.Visible = false
+						InfoMenu.ResearchButton.Active = false
+						InfoMenu.ResearchButton.Selectable = false
+						InfoMenu.DependsToComplete.Visible = true
+						
+						local dependencyCount = #researchInfo["Dependencies"]
+						local dependPages = InfoMenu.DependsToComplete.DependPages
+						
+						if dependencyCount > 0 then
+							for d = 1,dependencyCount do
+								local dependTile = guiElements.ResearchSlot:Clone()
+								dependTile.ResearchTile:Destroy()
+								dependTile.CostTile:Destroy()
+								dependTile.DependTile.Visible = true
+								
+								--Manage Pages and Tile Placement
+								local pageCount = #dependPages:GetChildren()
+								if d == 1 or (d-1)%3 == 0 then
+									local newPage = guiElements.DataMenuPage:Clone()
+									newPage.BackgroundTransparency = 1
+									newPage.Name = "Page" .. tostring(pageCount + 1)
+									
+									newPage.Parent = dependPages
+									newPage.Visible = false
+									pageCount += 1
+								end
+								
+								local dependency = researchInfo["Dependencies"][d]
+								local completed = CheckResearchDepends:InvokeServer(researchInfo, dependency)
+								local page = dependPages:FindFirstChild("Page" .. pageCount)
+								
+								dependTile.Name = "Depend" .. tostring(d)
+								dependTile.Parent = page
+								dependTile = dependTile.DependTile
+								dependTile.ResearchName.TextColor3 = Color3.fromRGB(255, 255, 255)
+								
+								if completed then
+									dependTile.Parent.BackgroundColor3 = Color3.fromRGB(7, 44, 6)
+									dependTile.CompletionStatus.Image = "rbxassetid://7092611336"
+									dependTile.CompletionStatus.Size = UDim2.new(0.067, 0, 0.456, 0)
+									dependTile.ResearchName.Text = dependency
+									
+								else--Check if dependency research can be viewed
+									dependTile.Parent.BackgroundColor3 = Color3.fromRGB(38, 5, 5)
+									dependTile.CompletionStatus.Image = "rbxassetid://7092617018"
+									dependTile.CompletionStatus.Size = UDim2.new(0.075, 0, 0.507, 0)
+									
+									local dependInfo,dependencyViewable = CheckResearchDepends:InvokeServer(dependency)
+									
+									if dependencyViewable then --dependencies met for dependency
+										dependTile.ResearchName.Text = dependInfo["Research Name"]
+									else
+										dependTile.ResearchName.Text = "[Unknown Research]"
+										dependTile.ResearchName.TextColor3 = Color3.fromRGB(204, 204, 204)
+									end
+								end
+								
+								dependTile.Parent.Size = UDim2.new(0.93, 0, 0.225, 0)
+								dependTile.Parent.Position = UDim2.new(0.036, 0, .168 + .281*((d-1)-3*(pageCount-1)), 0)
+								
+								dependTile.Parent.Activated:Connect(function() --Display research Info
+									print("Depend tile has been activated")
+									
+									--if tile can be found in available, previous, or current research, display it
+									
+									--**If a tile is being researched, can the player click it? If they can't,
+									--then display a quick text notification that it is current being researched
+									
+									
+									
+									--else, if the tile cannot be found, display a quick text notification that the
+									--research could not be found in computer
+									
+								end)
+							end
+							
+							if dependPages:FindFirstChild("Page1") then
+								dependPages.Page1.Visible = true
+							end
+						end
+						
+					else
+						InfoMenu.ResearchTime.Text = GuiUtility.ToDHMS(researchInfo["Research Length"], true)
+						InfoMenu.DisplayImage.Image = researchInfo["Research Image"]
+						InfoMenu.DisplayImage.LockNotify.Visible = false
+						InfoMenu.DisplayImage.BackgroundColor3 = Color3.fromRGB(41, 86, 125)
+						
+						--change size of description box based on character count
+						local NameCharacterCount = string.len(researchInfo["Description"])
+						local NewYScale = math.ceil(NameCharacterCount/37)*.069
+						InfoMenu.Description.Size = UDim2.new(InfoMenu.Description.Size.X.Scale, 0, NewYScale, 0)
+						InfoMenu.Description.Text = researchInfo["Description"]
+						
+						InfoMenu.Description.Visible = true
+						InfoMenu.ResearchButton.Visible = true
+						InfoMenu.ResearchButton.Active = true
+						InfoMenu.ResearchButton.Selectable = true
+						InfoMenu.DependsToComplete.Visible = false
+					end
+					
+					tileDebounce = false
 				end
 			end)
 		end
-	else --Material Tile
-		tile.ResearchTile.Visible = false
+	else --Cost Tile
+		tile.ResearchTile:Destroy()
 		tile.CostTile.Visible = true
-		local CostTile = tile.CostTile
+		tile.DependTile:Destroy()
+		local costTile = tile.CostTile
 		
-		local StatInfo = statTable[1]
-		local StatAmount = statTable[2]
+		local statInfo = statTable[1]
+		local statAmount = statTable[2]
 		local discovered = false
-		
 		local statType
-		if StatInfo:FindFirstChild("Levels") then --ExpRequirement
-			statType = tostring(StatInfo.Parent)
-			StatAmount = "Level " .. tostring(StatAmount) 
+		if statInfo.Parent then
+			discovered = CheckPlayerStat:InvokeServer(tostring(statInfo) .. "Discovered")
+			statType = string.gsub(statInfo.AssociatedSkill.Value, " Skill", "")
+
+			costTile.StatName.Text = tostring(statInfo)
+			costTile.DisplayImage.Image = statInfo["GUI Info"].StatImage.Value
+
+			local PlayerItemCount = GetItemCountSum:InvokeServer(tostring(statInfo))
+			ChangeCostColor(costTile, PlayerItemCount, statAmount)
+			statAmount = GuiUtility.ConvertShort(statAmount) --simplify for display
+			
+		else --Exp Cost
+			statAmount = "Level " .. tostring(statAmount) 
 			discovered = true
-			
-			local PlayerLevel = GetCurrentSkillLevel:InvokeServer(StatInfo)
-			ChangeCostColor(CostTile, PlayerLevel, statTable[2])
-		else
-			statType = string.gsub(StatInfo.AssociatedSkill.Value, " Skill", "")
-			--local rarityName = tostring(tile.Rarity.Value)
-			--local storagetile = SeekStorageTile(statType, RarityName, tostring(StatInfo))
-			--Discovered = ItemsPreview:FindFirstChild(statType):FindFirstChild(RarityName):WaitForChild(tostring(StatInfo)).Discovered.Value
-			
-			discovered = CheckPlayerStat:InvokeServer(tostring(StatInfo) .. "Discovered")
-			
-			local PlayerItemCount = GetItemCountSum:InvokeServer(tostring(StatInfo))
-			ChangeCostColor(CostTile, PlayerItemCount, StatAmount)
-			StatAmount = GuiUtility.ConvertShort(StatAmount) --simplify for display
+
+			statType = statInfo["StatType"]
+			if string.sub(statInfo["StatType"], -1) == "s" then --get rid of plural
+				statType = string.sub(statInfo["StatType"], 1, -2)
+			else
+				statType = statInfo["StatType"]
+			end
+
+			costTile.StatName.Text = string.gsub(statInfo["StatName"], " Skill", "")
+			costTile.DisplayImage.Image = statInfo["StatImage"]
+
+			local playerLevel = GetCurrentPlayerLevel:InvokeServer(statInfo)
+			ChangeCostColor(costTile, playerLevel, statTable[2])
 		end
-		CostTile.StatType.Text = statType
-		CostTile.ResearchCost.Text = StatAmount
-		ColorTileRarity(CostTile, tile.Rarity.Value)
+
+		costTile.StatType.Text = statType
+		costTile.ResearchCost.Text = statAmount
+		ColorTileRarity(costTile, tile.Rarity.Value)
 
 		if not discovered then
-			CostTile.StatName.Text = "[UnDiscovered]" 
-			CostTile.StatName.TextColor3 = Color3.fromRGB(204, 204, 204)
-			CostTile.DisplayImage.Image = "rbxassetid://6741669069" --lock icon
-			CostTile.DisplayImage.BackgroundColor3 = Color3.fromRGB(5, 16, 29)
+			costTile.StatName.Text = "[UnDiscovered]" 
+			costTile.StatName.TextColor3 = Color3.fromRGB(204, 204, 204)
+			costTile.DisplayImage.Image = "rbxassetid://6741669069" --lock icon
+			costTile.DisplayImage.BackgroundColor3 = Color3.fromRGB(5, 16, 29)
 		else
-			CostTile.StatName.Text = string.gsub(tostring(StatInfo), " Skill", "")
-			CostTile.DisplayImage.Image = StatInfo["GUI Info"].StatImage.Value
-			
-			--local TileDebounce = false
-			--Tile.Activated:Connect(function()
-				--Select item in storage menu and display storage menu display of item?
-				--**Maybe a warning menu popup that says "Are you sure you would like to see this item in storage?"
-			--end)
+			if statInfo["GUI Info"] then
+				costTile.StatName.Text = tostring(statInfo)
+				costTile.DisplayImage.Image = statInfo["GUI Info"].StatImage.Value
+			elseif statInfo["StatName"] then--Exp tile
+				costTile.StatName.Text = string.gsub(statInfo["StatName"], " Skill", "")
+				costTile.DisplayImage.Image = statInfo["StatImage"]
+			end
 		end
 
 	end
@@ -1206,8 +1334,8 @@ end
 
 local ManageTilePlacementFunction = eventsFolder.GUI:FindFirstChild("ManageTilePlacement")
 
-function ManageResearchTile(Menu, ResearchData, ResearchType, FinishTime, StatTable)
-	if Menu == CurrentResearch and FinishTime then --Guaranteed to only be one page
+function ManageResearchTile(menu, researchData, researchType, finishTime, statTable, onlySkillMet)
+	if menu == CurrentResearch and finishTime then --Guaranteed to only be one page
 		local ParentTile
 		for i,outlineTile in pairs (CurrentResearch:GetChildren()) do
 			if outlineTile:IsA("ImageLabel") then
@@ -1220,7 +1348,7 @@ function ManageResearchTile(Menu, ResearchData, ResearchType, FinishTime, StatTa
 		end
 		
 		if ParentTile then
-			local NewTile = game.ReplicatedStorage.GuiElements.ResearchSlot:Clone()
+			local NewTile = guiElements.ResearchSlot:Clone()
 			NewTile.Name = "ResearchSlot"
 			NewTile.Position = UDim2.new(0, 0, 0, 0)
 			NewTile.Size = UDim2.new(1, 0, 1, 0)
@@ -1228,14 +1356,14 @@ function ManageResearchTile(Menu, ResearchData, ResearchType, FinishTime, StatTa
 			NewTile.Selectable = false
 			NewTile.Parent = ParentTile
 			
-			local RarityName = ResearchData["Rarity"]
-			local RarityInfo = game.ReplicatedStorage.GuiElements.RarityColors:FindFirstChild(RarityName)
+			local RarityName = researchData["Rarity"]
+			local RarityInfo = guiElements.RarityColors:FindFirstChild(RarityName)
 			NewTile.Rarity.Value = RarityInfo
 			
-			InsertTileInfo(Menu, NewTile, ResearchData, ResearchType, FinishTime)
+			InsertTileInfo(menu, NewTile, researchData, researchType, finishTime)
 			
 			--Delete tile from available research menu
-			local AvailPage,AvailTile = FindPrevAvailableTile(ResearchData)
+			local AvailPage,AvailTile = FindPrevAvailableTile(researchData)
 			if AvailPage and AvailTile then
 				CurrentResearch.Visible = true
 				AvailableResearch.Visible = true
@@ -1246,11 +1374,11 @@ function ManageResearchTile(Menu, ResearchData, ResearchType, FinishTime, StatTa
 			
 			local ProgressBar = NewTile.ResearchTile.TimerBar.ProgressBar
 			ProgressBar.CompleteResearch.Activated:Connect(function()
-				CompleteResearch:FireServer(ResearchData["Research Name"], ResearchType)
+				CompleteResearch:FireServer(researchData["Research Name"], researchType)
 			end)
 
 			ProgressBar.SkipTime.Activated:Connect(function()
-				--Current based off CoC gem calculations
+				--Current based off CoC gem calculations (segmented linear graph)
 				--<1h = 16.296x
 				--1<x<24 = 8.491x + 7.8053
 				--24<x<inf = 4.189x + 111.0432
@@ -1258,7 +1386,7 @@ function ManageResearchTile(Menu, ResearchData, ResearchType, FinishTime, StatTa
 				--Move this gem calculation to a server script so value is guaranteed safe
 				--(use, in local script, everytime player progress updates to update visual; however, when this button
 				--is activated, the final robux purchase will be conducted by a server script)
-				local SecondsLeft = FinishTime - os.time()
+				local SecondsLeft = finishTime - os.time()
 				local h = math.floor(SecondsLeft%(24 * 3600) / 3600) --HoursLeft
 				
 				local GemCost
@@ -1270,39 +1398,37 @@ function ManageResearchTile(Menu, ResearchData, ResearchType, FinishTime, StatTa
 					GemCost = math.ceil(4.189*h + 111.0432)
 				end
 				
-				
 				--player will pay to skip time with premium currency that is bought in the
 				--premium currency shop. This is because you cannot code in a robux charge,
 				--you must pre set it up
 			end)
 		else
-			warn("No tile available for a current research!",ResearchData)
+			warn("No tile available for a current research!",researchData)
 		end
-	else --Previous and Available Research
-		--local NewTile = ManageTilePlacement(Menu, 5, ResearchData, StatTable)
 		
+	else --Previous and Available Research
 		local RarityName
-		if StatTable == nil then
-			local StatInfo = ResearchData
-			RarityName = StatInfo["Rarity"]
+		if statTable == nil then
+			local statInfo = researchData
+			RarityName = statInfo["Rarity"]
 		else
-			local StatInfo = StatTable[1]
-			if StatInfo["GUI Info"]:FindFirstChild("RarityName") then
-				RarityName = StatInfo["GUI Info"].RarityName.Value
+			local statInfo = statTable[1]
+			if statInfo["GUI Info"] then
+				RarityName = statInfo["GUI Info"].RarityName.Value
 			else
 				RarityName = "DisplayFirst"
 			end
 		end
-		local RarityInfo = game.ReplicatedStorage.GuiElements.RarityColors:FindFirstChild(RarityName)
+		local RarityInfo = guiElements.RarityColors:FindFirstChild(RarityName)
 		
-		local NewTile = ManageTilePlacementFunction:Invoke(Menu, "Research", RarityInfo)
+		local NewTile = ManageTilePlacementFunction:Invoke(menu, "Research", RarityInfo)
 		NewTile.Active = true
 		NewTile.Selectable = true
-		InsertTileInfo(Menu, NewTile, ResearchData, ResearchType, nil, StatTable)
+		InsertTileInfo(menu, NewTile, researchData, researchType, nil, statTable, onlySkillMet)
 		
 		if NewTile.Parent.Parent == CostList then
-			SelectedResearch = ResearchData
-			SelectedResearchType = ResearchType
+			SelectedResearch = researchData
+			SelectedResearchType = researchType
 		else
 			SelectedResearch = nil
 			SelectedResearchType = nil
@@ -1357,7 +1483,7 @@ function ManageTileTruePosition(Menu, Page, AffectingTile, TruePosition, MaxTile
 									if Menu:FindFirstChild("Page" .. tostring(tonumber(CurrentPageNumber) + 1)) then
 										Page = Menu:FindFirstChild("Page" .. tostring(tonumber(CurrentPageNumber) + 1))
 									else
-										local newPage = game.ReplicatedStorage.GuiElements.ResearchPage:Clone()
+										local newPage = guiElements.ResearchPage:Clone()
 										newPage.Visible = false
 										newPage.Name = "Page" .. tostring(tonumber(CurrentPageNumber) + 1)
 										newPage.Parent = Menu
@@ -1555,34 +1681,6 @@ Taskbar.CurrentResearchButton.Activated:Connect(function()
 	Taskbar.PreviousResearchButton.Active = true
 end)
 
---[[
-ComputerScreen.Taskbar.ChangeResearchView.Activated:Connect(function()
-	if CurrentResearch.Visible then
-		CurrentResearch.Visible = false
-		PreviousResearch.Visible = true
-		UpdatePageDisplay(PreviousResearch, true)
-		ResearchersList.PreviousResearchPages.Visible = true
-		
-		ResearchersList.CurrentMenuLabel.Visible = false
-		ResearchersList.PreviousMenuLabel.Visible = true
-		
-		Taskbar.CurrentResearch.Visible = false
-		Taskbar.CurrentResearch.Active = false
-		Taskbar.PreviousResearch.Visible = true
-		Taskbar.ChangeResearchView.ButtonLabel.Text = "Current Research"
-	else
-		CurrentResearch.Visible = true
-		PreviousResearch.Visible = false
-		UpdatePageDisplay(PreviousResearch, false)
-		ResearchersList.PreviousResearchPages.Visible = false
-		
-		ResearchersList.CurrentMenuLabel.Visible = true
-		ResearchersList.PreviousMenuLabel.Visible = false
-		Taskbar.ChangeResearchView.ButtonLabel.Text = "Previous Research"
-	end
-end)
-]]
-
 InfoMenu.ResearchButton.Activated:Connect(function()
 	InfoMenu.ResearchButton.Active = false
 	--Disable research button and reenable it when event is fired back to client
@@ -1618,21 +1716,24 @@ end)
 
 --------------------<|Event Functions|>------------------------------
 local UpdateResearch = eventsFolder.GUI:WaitForChild("UpdateResearch")
-UpdateResearch.OnClientEvent:Connect(function(ResearchData, ResearchType, Completed, Purchased, FinishTime, Researchers)
-	if Researchers == nil then
-		if Purchased and Completed then --Previous
-			ManageResearchTile(PreviousResearch, ResearchData, ResearchType)
-		elseif Purchased and not Completed then --Current
-			ManageResearchTile(CurrentResearch, ResearchData, ResearchType, FinishTime)
+UpdateResearch.OnClientEvent:Connect(function(researchData, researchType, completed, purchased, finishTime, skillMet, researchers)
+	if researchers == nil then
+		if purchased and completed then --Previous
+			ManageResearchTile(PreviousResearch, researchData, researchType)
+		elseif purchased and not completed then --Current
+			ManageResearchTile(CurrentResearch, researchData, researchType, finishTime)
 		else --Check If Can Be Available
-			local AllDependenciesMet = CheckResearchDepends:InvokeServer(ResearchData)
+			local AllDependenciesMet = CheckResearchDepends:InvokeServer(researchData)
+			
 			if AllDependenciesMet then
-				ManageResearchTile(AvailableResearch, ResearchData, ResearchType)
+				ManageResearchTile(AvailableResearch, researchData, researchType)
+			elseif skillMet == true then
+				ManageResearchTile(ResearchMenu.AvailableResearch, researchData, researchType, nil, nil, skillMet)
 			end	
 		end
 	else
 		for slot = 1,5 do
-			if slot <= Researchers then
+			if slot <= researchers then
 				CurrentResearch:FindFirstChild("ResesarchOutline" .. tostring(slot)).Visible = true
 			else
 				CurrentResearch:FindFirstChild("ResesarchOutline" .. tostring(slot)).Visible = false
@@ -1798,3 +1899,4 @@ end
 
 ManageStorageTiles("Materials")
 
+	
