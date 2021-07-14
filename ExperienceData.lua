@@ -7,6 +7,7 @@ local ExperienceData = {
 		
 		["Mining Skill"] = {
 			["StatName"] = "Mining Skill",
+			["StatType"] = "Skills",
 			["Description"] = "",
 			["StatImage"] = "",
 			
@@ -71,6 +72,7 @@ local ExperienceData = {
 		
 		["Foraging Skill"] = {
 			["StatName"] = "Foraging Skill",
+			["StatType"] = "Skills",
 			["Description"] = "",
 			["StatImage"] = "",
 			
