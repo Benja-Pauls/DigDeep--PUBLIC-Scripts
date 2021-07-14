@@ -604,7 +604,11 @@ end
 function GetHighPage(Menu, rarityName) --Find page for rarity tile OR max page count
 	local highPage = 0
 	for i,page in pairs (Menu:GetChildren()) do
-		if page:IsA("Frame") and string.find(page.Name, "Page") then
+		
+		--**This is only reading MenuIcon and CurrentPage in AvailableResearch menu for the legendary that is
+		--inputted into the menu because it's skill requirements were met but not dependency
+		
+		if page:IsA("Frame") and string.match(page.Name, "Page") then
 			if rarityName then
 				--Want highest page with tile rarity present
 				local RarityIsPresent = false
@@ -792,14 +796,13 @@ local function ManageTilePlacement(Menu, Type, rarityInfo)
 	--if found, put tile at end and move any with higher order value (do slot checks above)
 	--if none available, look for one with order value more
 	--if found, put tile at top and move any with higher order value
-
+	
 	local rarityName
 	local maxTileAmount
 	if rarityInfo then 
 		rarityName = rarityInfo.Name
 
 		if Type == "Research" then
-			print("Research Tile")
 			maxTileAmount = 5
 		else
 			maxTileAmount = 12 --Inventory was 18
@@ -808,21 +811,33 @@ local function ManageTilePlacement(Menu, Type, rarityInfo)
 		rarityName = "No Rarity"
 		maxTileAmount = 4
 	end
+	
+	if Type == "Research" and rarityName == "Legendary" then
+		print("legendary research tile seen", Menu)
+	elseif Type == "Research" and rarityName == "Uncommon" then
+		print("uncommon tile seen!", Menu)
+	end
 
 	local pageCount = GetHighPage(Menu)
-
+	
+	print(pageCount)
+	
 	local Page
 	local TruePosition
 	local PageSlotCount = 0 --Position reference, +1 for name (Count=0: "Slot1")
 	if pageCount > 0 then
+		print("1")
 		if rarityName ~= "No Rarity" then
+			print("2")
 			local highRarityPage = GetHighPage(Menu, rarityName)
 			local rarityOrderValue = rarityInfo.Order.Value
-
+			
 			if highRarityPage ~= 0 then
+				print("3.1")
 				--print("11111111111 highRarityPage ~= 0: ", rarityName)
 				Page,TruePosition,PageSlotCount = SeekSlotAvailability(Menu, Type, highRarityPage, rarityName, maxTileAmount)
 			else
+				print("3.2")
 				--Look for lesser rarity to reference instead
 				local lesserRarityPage,lesserRarityName = FindNearbyRarity(Menu, rarityInfo, rarityOrderValue, -1)
 				if lesserRarityPage then
@@ -836,6 +851,10 @@ local function ManageTilePlacement(Menu, Type, rarityInfo)
 						Page,TruePosition,PageSlotCount = SeekSlotAvailability(Menu, Type, higherRarityPage, higherRarityName, maxTileAmount)
 					end
 				end
+			end
+			
+			if Type == "Research" then
+				print(Menu, Page, PageSlotCount, rarityInfo.Name, rarityInfo.Order.Value)
 			end
 		else --New experience tiles
 
@@ -987,7 +1006,7 @@ end
 
 DepositInventory.OnClientEvent:Connect(function()
 	for _,menu in pairs (DataMenu.InventoryMenu:GetChildren()) do
-		if menu:IsA("Frame") then
+		if menu:IsA("Frame") and menu:FindFirstChild("Page1") then
 			for _,page in pairs (menu:GetChildren()) do
 				page:Destroy()
 			end
@@ -1076,6 +1095,7 @@ researchRewardViewer.ExitButton.Activated:Connect(function()
 	if researchRewardViewer.InfoMenuOpen.Value == true then
 		researchRewardViewer.ResearchInfoViewer.Visible = false
 		researchRewardViewer.RewardPages.Visible = true
+		researchRewardViewer.InfoMenuOpen.Value = false
 	else
 		researchRewardViewer.Visible = false
 		researchRewardViewer.RewardPages.Visible = true
@@ -1189,6 +1209,7 @@ local function DisplayExpRewardInfo(rewardInfo)
 					
 					researchInfoViewer.ResearchName.Text = "Unknown Research"
 					researchInfoViewer.ResearchName.TextColor3 = Color3.fromRGB(226, 226, 226)
+					researchInfoViewer.ResearchTime.Text = "Unknown"
 					researchInfoViewer.UnlockedState.Text = "Research Locked"
 					researchInfoViewer.ComputerNote.Text = "View in your computer for ways to unlock"
 				end
@@ -1707,7 +1728,8 @@ local function ShowEXPChange(currentLevel, nextLevel, skillInfo, expAmount, amou
 			progressBar.Progress:TweenSize(UDim2.new(0, 276, 0, 30), "Out", "Quint", .2)
 			wait(.2)
 			CountdownDifference(difference, progressBar.Progress, levelProgress, amountAdded, true)
-
+			
+			print("Level up")
 		else
 			difference:TweenSize(UDim2.new(0, 276*levelProgress, 0, 30), "Out", "Quint", .2)
 			CountdownDifference(difference, progressBar.Progress, levelProgress, amountAdded)
@@ -1774,12 +1796,11 @@ local function ManageEXPPopUp(statName, expAmount, amountAdded)
 	if #expPopUpGui:GetChildren() ~= 0 then
 		if expPopUpGui.ExperienceBar.NamePlate.DisplayName.Text == simpleStatName then --Old Exp Bar
 			ShowEXPChange(currentLevel, nextLevel, skillInfo, expAmount, amountAdded)
-			CountdownPopUp(expPopUpGui, expPopUpGui.ExperienceBar, 12, .5, 0, 0, .9)
-
+			CountdownPopUp(expPopUpGui, expPopUpGui.ExperienceBar, 12, 0.5, 0, 0, 0.9)
 		else
 			InsertNewEXPBar(skillInfo, simpleStatName, expAmount, currentLevel, nextLevel, true)
 		end
-
+		
 	else
 		InsertNewEXPBar(skillInfo, simpleStatName, expAmount, currentLevel, nextLevel)
 		ShowEXPChange(currentLevel, nextLevel, skillInfo, expAmount, amountAdded)
@@ -2126,11 +2147,9 @@ UpdateInventory.OnClientEvent:Connect(function(statName, folder, value, amountAd
 		ManageMaterialPopups(statName, itemType, amountAdded) 
 
 	elseif Type == "Experience" then 
-		--if string.find(statName, "Skill") then
-		--statName = string.gsub(statName, "Skill", "") --Remove "Skill" from string
-		--end
-
 		if amountAdded ~= nil and amountAdded ~= 0 then
+			--Any experience gain will be associated with an exp bar appearance
+			
 			ManageEXPPopUp(statName, value, amountAdded)
 		end
 	end
