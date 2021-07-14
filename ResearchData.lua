@@ -32,8 +32,8 @@ local ResearchData = {
 					{RS.InventoryItems.Foraging["Glowing Mushroom"], 5},
 				},
 				["Experience Cost"] = {
-					{experienceData["Skills"]["Mining Skill"], 5},
-					{experienceData["Skills"]["Foraging Skill"], 2}
+					{experienceData["Skills"]["Mining Skill"], 5, "Skill"},
+					{experienceData["Skills"]["Foraging Skill"], 2, "Skill"}
 				},
 				["Dependencies"] = {}
 				
@@ -58,7 +58,13 @@ local ResearchData = {
 				["Experience Cost"] = {
 					{experienceData["Skills"]["Mining Skill"], 3}
 				},
-				["Dependencies"] = {"More Efficient Fuel Cells"}
+				["Dependencies"] = {
+					"Better Fuel Cells",
+					"Fuel Cells",
+					"Fuel Cells2",
+					"Fuel Cells3",
+					"Fuel Cells4"
+				}
 			},
 			
 			[2] = {
@@ -73,7 +79,7 @@ local ResearchData = {
 					{RS.InventoryItems.Mining.Coal, 1}
 				},
 				["Experience Cost"] = {
-					{experienceData["Skills"]["Mining Skill"], 3}
+					{experienceData["Skills"]["Mining Skill"], 3, "Skill"}
 				},
 				["Dependencies"] = {"Fuel Cells7"}
 			},
@@ -90,7 +96,7 @@ local ResearchData = {
 					{RS.InventoryItems.Mining["Scrap Metal"], 5}
 				},
 				["Experience Cost"] = {
-					{experienceData["Skills"]["Mining Skill"], 3}
+					{experienceData["Skills"]["Mining Skill"], 3, "Skill"}
 				},
 				["Dependencies"] = {}
 			},
@@ -213,6 +219,22 @@ local ResearchData = {
 				["Rarity"] = "Uncommon",
 				["Description"] = "",
 				
+				["Research Length"] = 300,
+				["Material Cost"] = {
+					{RS.InventoryItems.Mining.Stone, 5}
+				},
+				["Experience Cost"] = {
+					{experienceData["Skills"]["Mining Skill"], 3}
+				},
+				["Dependencies"] = {}
+			},
+			
+			[12] = {
+				["Research Name"] = "Fuel Cells10",
+				["Research Image"] = "",
+				["Rarity"] = "Uncommon",
+				["Description"] = "",
+
 				["Research Length"] = 300,
 				["Material Cost"] = {
 					{RS.InventoryItems.Mining.Stone, 5}
