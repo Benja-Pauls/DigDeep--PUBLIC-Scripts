@@ -6,9 +6,12 @@ local PlayerStatManager = {}
 local tycoons = game.Workspace:WaitForChild("Tycoons"):GetChildren() --utilize as a load before getting player data?
 
 local PlayerData = game.ServerStorage:FindFirstChild("PlayerData")
+
 local Utility = require(game.ServerScriptService.Utility)
 local equipmentData = require(game.ServerStorage.EquipmentData)
+local experienceData = require(game.ServerStorage.ExperienceData)
 local itemData = require(game.ServerStorage.ItemData)
+local researchData = require(game.ServerStorage.ResearchData)
 
 -----<|Events/Remote Functions|>--     (key of event order)
 local eventsFolder = game.ReplicatedStorage.Events
@@ -23,10 +26,10 @@ local UpdateEquippedItem = eventsFolder.GUI:WaitForChild("UpdateEquippedItem")
 local getItemStatTable = eventsFolder.Utility:WaitForChild("GetItemStatTable")
 local GetItemCountSum = eventsFolder.Utility:WaitForChild("GetItemCountSum")
 local GetBagCount = eventsFolder.Utility:WaitForChild("GetBagCount")
-local GetCurrentSkillLevel = eventsFolder.Utility:WaitForChild("GetCurrentSkillLevel")
+local GetCurrentPlayerLevel = eventsFolder.Utility:WaitForChild("GetCurrentPlayerLevel")
 local SellItem = eventsFolder.Utility:WaitForChild("SellItem")
 local DepositInventory = eventsFolder.Utility:WaitForChild("DepositInventory")
-local CheckResearchDepends = eventsFolder.Utility:WaitForChild("CheckResearchDepends")
+local checkResearchDepends = eventsFolder.Utility:WaitForChild("CheckResearchDepends")
 local CheckPlayerStat = eventsFolder.Utility:WaitForChild("CheckPlayerStat")
 
 local HandleDropMaterialsEvent = eventsFolder.Tycoon:WaitForChild("HandleDropMaterials")
@@ -349,89 +352,102 @@ function LoadPlayerData(PlayerDataFile, data, JoinedPlayer)
 	local DataMenu = JoinedPlayer.PlayerGui:WaitForChild("DataMenu"):WaitForChild("DataMenu")
 	
 	local PlayerInventory = CreateSaveReference(PlayerDataFile, "Inventory", "Folder")
-	
 	local TycoonStorage = CreateSaveReference(PlayerDataFile, "TycoonStorage", "Folder")	
-	
-	local PlayerResearch = CreateSaveReference(PlayerDataFile, "Research", "Folder")
-	local researchData = require(game.ServerStorage.ResearchData)
-	
-	local PlayerExperience = CreateSaveReference(PlayerDataFile, "Experience", "Folder")
-	local experienceData = require(game.ServerStorage.ExperienceData)
-	
+	local playerResearch = CreateSaveReference(PlayerDataFile, "Research", "Folder")
+	local playerExperience = CreateSaveReference(PlayerDataFile, "Experience", "Folder")
 	local PlayerStatItems = CreateSaveReference(PlayerDataFile, "Player", "Folder")
 	local EquippedItems = CreateSaveReference(PlayerStatItems, "CurrentlyEquipped", "Folder")
-	 
 	
-	local ResearchersAvailable = CreateSaveReference(PlayerResearch, "ResearchersAvailable", "NumberValue")
+	local ResearchersAvailable = CreateSaveReference(playerResearch, "ResearchersAvailable", "NumberValue")
 	local SavedResearchers = CheckSaveData(data["ResearchersAvailable"])
-	ImportSaveData(data, SavedResearchers, PlayerResearch, ResearchersAvailable)
-	sessionData[playerUserId]["ResearchersAvailable"] = 5 --for testing right now
+	ImportSaveData(data, SavedResearchers, playerResearch, ResearchersAvailable)
+	data["ResearchersAvailable"] = 5 --for testing right now
 	--UpdateResearch:FireClient(JoinedPlayer, nil, nil, nil, nil, 5) --put Researchers in front to prevent heavy nils
 	
-	local ResearchersUsed = CreateSaveReference(PlayerResearch, "ResearchersUsed", "NumberValue")
+	local researchersUsed = CreateSaveReference(playerResearch, "ResearchersUsed", "NumberValue")
 	local SavedResearcherUsage = CheckSaveData(data["ResearchersUsed"])
-	ImportSaveData(data, SavedResearcherUsage, PlayerResearch, ResearchersUsed)
+	ImportSaveData(data, SavedResearcherUsage, playerResearch, researchersUsed)
 	
-	local UsedCount = 0
-	local researchTable = researchData["Research"]
-	for _,researchType in pairs (researchTable) do
-		local ResearchTypeName = researchType["Research Type Name"]
-		local ResearchTypeFolder = CreateSaveReference(PlayerResearch, ResearchTypeName, "Folder")
-		
-		for r = 1,#researchType,1 do
-			if researchType[r] then
-				local ResearchData = researchType[r]
-				local ResearchName = ResearchData["Research Name"]
-
-				local Research = CreateSaveReference(ResearchTypeFolder, ResearchName, "BoolValue") --true if completed
-				local SavedValue = CheckSaveData(data[ResearchName])
-				ImportSaveData(data, SavedValue, ResearchTypeFolder, Research)
-				
-				local PurchasedBool = CreateSaveReference(Research, ResearchName .. "Purchased", "BoolValue")
-				local SavedPurchaseBool = CheckSaveData(data[ResearchName .. "Purchased"])
-				ImportSaveData(data, SavedPurchaseBool, Research, PurchasedBool, ResearchName .. "Purchased")
-				
-				local FinishTime = CreateSaveReference(Research, ResearchName .. "FinishTime", "NumberValue")
-				local SavedFinishTime = CheckSaveData(data[ResearchName .. "FinishTime"])
-				ImportSaveData(data, SavedFinishTime, Research, FinishTime, ResearchName .. "FinishTime")
-
-				--Purchase Handler will have to place the research appropriately or fire the appropriate events
-				--so different locations understand the research is now available
-				local ClonedResearchData = Utility:CloneTable(ResearchData)
-				local CompletionValue = data[ResearchName]
-				local PurchasedValue = data[ResearchName .. "Purchased"]
-				local FinishTimeValue = data[ResearchName .. "FinishTime"]
-				
-				UpdateResearch:FireClient(JoinedPlayer, ClonedResearchData, ResearchTypeName, CompletionValue, PurchasedValue, FinishTimeValue)
-				
-				if PurchasedValue and not CompletionValue then
-					UsedCount += 1
-				end
-			end
-		end
-	end
-	PlayerStatManager:ChangeStat(JoinedPlayer, "ResearchersUsed", UsedCount, "Research")
-	
-	--Once new experience folder is available, make for all experience folders (Skills and Reputation)
-	--local experienceFolder = game.ReplicatedStorage:WaitForChild("Experience")
 	for _,expType in pairs (experienceData) do
 		if expType["StatTypeName"] then
 			local expTypeName = expType["StatTypeName"]
-			local expSaveFolder = CreateSaveReference(PlayerExperience, expTypeName, "Folder")
-			
+			local expSaveFolder = CreateSaveReference(playerExperience, expTypeName, "Folder")
+
 			for _,expInfo in pairs (expType) do
 				if expInfo["StatName"] then
 					local expName = expInfo["StatName"]
+					
 					local exp = CreateSaveReference(expSaveFolder, expName, "NumberValue")
 					local savedValue = CheckSaveData(data[expName])
-					ImportSaveData(data, savedValue, expSaveFolder, exp)
+					ImportSaveData(data, savedValue, expSaveFolder, exp, expName)
 					
+					local expLevel = CreateSaveReference(exp, expName .. "Level", "NumberValue")
+					expLevel.Value = GetPlayerLevel(JoinedPlayer, expInfo) --Ensure level matches expData
+					data[expName .. "Level"] = expLevel.Value
+
 					--Create exp tiles with value > 0
 					UpdateInventory:FireClient(JoinedPlayer, expName, expTypeName, tostring(data[expName]), nil, "Experience", expTypeName)
 				end
 			end
 		end
 	end
+	
+	local usedResearcherCount = 0
+	local researchTable = researchData["Research"]
+	for _,researchType in pairs (researchTable) do
+		local researchTypeName = researchType["Research Type Name"]
+		local researchTypeFolder = CreateSaveReference(playerResearch, researchTypeName, "Folder")
+		
+		for r = 1,#researchType,1 do
+			if researchType[r] then
+				local researchInfo = researchType[r]
+				local researchName = researchInfo["Research Name"]
+
+				local research = CreateSaveReference(researchTypeFolder, researchName, "BoolValue") --true if completed
+				local savedValue = CheckSaveData(data[researchName])
+				ImportSaveData(data, savedValue, researchTypeFolder, research)
+				
+				local purchasedBool = CreateSaveReference(research, researchName .. "Purchased", "BoolValue")
+				local savedPurchaseBool = CheckSaveData(data[researchName .. "Purchased"])
+				ImportSaveData(data, savedPurchaseBool, research, purchasedBool, researchName .. "Purchased")
+				
+				local finishTime = CreateSaveReference(research, researchName .. "FinishTime", "NumberValue")
+				local savedFinishTime = CheckSaveData(data[researchName .. "FinishTime"])
+				ImportSaveData(data, savedFinishTime, research, finishTime, researchName .. "FinishTime")
+
+				if #researchInfo["Experience Cost"] > 0 then
+					local skillMetBool = CreateSaveReference(research, researchName .. "SkillMet", "BoolValue")
+					
+					for e = 1,#researchInfo["Experience Cost"] do --Ensure SkillMet matches expData
+						local expTable = researchInfo["Experience Cost"][e]
+						local expInfo = expTable[1]
+						local expRequirement = expTable[2]
+						
+						local playerLevel = GetPlayerLevel(JoinedPlayer, expInfo)
+						if playerLevel >= expRequirement then --see if player already meets skill require
+							skillMetBool.Value = true
+							data[researchName .. "SkillMet"] = true
+						else
+							ImportSaveData(data, false, research, skillMetBool, researchName .. "SkillMet")
+						end
+					end
+				end
+				
+				local clonedResearchInfo = Utility:CloneTable(researchInfo)
+				local completionValue = data[researchName]
+				local purchasedValue = data[researchName .. "Purchased"]
+				local finishTimeValue = data[researchName .. "FinishTime"]
+				local skillMetValue = data[researchName .. "SkillMet"]
+				
+				UpdateResearch:FireClient(JoinedPlayer, clonedResearchInfo, researchTypeName, completionValue, purchasedValue, finishTimeValue, skillMetValue)
+				
+				if purchasedValue and not completionValue then
+					usedResearcherCount += 1
+				end
+			end
+		end
+	end
+	PlayerStatManager:ChangeStat(JoinedPlayer, "ResearchersUsed", usedResearcherCount, "Research")
 
 	--All Inventory Item Data
 	for _,itemType in pairs (game.ReplicatedStorage.InventoryItems:GetChildren()) do
@@ -705,28 +721,31 @@ function GetItemCountSum.OnServerInvoke(player, statName)
 	end
 end
 
-function GetCurrentSkillLevel.OnServerInvoke(player, skillInfo)
+function GetPlayerLevel(player, expInfo) --Use total exp to find level, not level saved value
 	local playerUserId = player.UserId
-	if sessionData[playerUserId][tostring(skillInfo)] then
-		local expAmount = sessionData[playerUserId][tostring(skillInfo)]
-
-		--This function exists seperately from CheckPlayerStat since exp is saved as a sum, and the server must check
-		--which level is associated with how much exp the player has
+	local expName = expInfo["StatName"]
+	
+	if sessionData[playerUserId][expName] then
+		local expAmount = sessionData[playerUserId][expName]
 
 		local highestLevel
-		for _,level in pairs (skillInfo.Levels:GetChildren()) do
-			if level.Value <= expAmount then
+		for l = 1,#expInfo["Levels"] do
+			if expInfo["Levels"][l]["Exp Requirement"] <= expAmount then
 				if highestLevel then
-					if level.Value > highestLevel.Value then
-						highestLevel = level
+					if l > highestLevel then
+						highestLevel = l
 					end
 				else
-					highestLevel = level
+					highestLevel = l
 				end
 			end
 		end
-		return tonumber(highestLevel.Name)
+		return highestLevel
 	end
+end
+
+function GetCurrentPlayerLevel.OnServerInvoke(player, skillInfo)
+	return GetPlayerLevel(player, skillInfo) --Both PSM and client need to access this function
 end
 
 SellItem.OnServerEvent:Connect(function(Player, Menu, item, Percentage)--, Amount)
@@ -774,26 +793,61 @@ DepositInventory.OnServerEvent:Connect(function(Player)
 	return true
 end)
 
-function CheckResearchDepends.OnServerInvoke(player, researchData)
-	if researchData["Dependencies"] then
+local function CheckResearchDepends(player, researchInfo, specificDepend)
+	--Possibly check if player hasn't already finished this research. Otherwise, they could be exploiting
+	
+	if typeof(researchInfo) == "string" then --find researchInfo and if depends met
+		local researchFound = false
 		
-		local Dependencies = researchData["Dependencies"]
-		
-		local DependenciesMet = 0
-		for i,dependency in pairs (Dependencies) do
-			local ResearchCompleted = PlayerStatManager:getStat(player, dependency)
-			if ResearchCompleted then
-				DependenciesMet += 1
+		for _,researchType in pairs (researchData["Research"]) do
+			for r = 1,#researchType do
+				if researchFound == false and researchType[r] then
+					if researchType[r]["Research Name"] == researchInfo then
+						researchFound = true
+						researchInfo = researchType[r]
+						
+						local dependsMet = CheckResearchDepends(player, researchInfo)
+						return Utility:CloneTable(researchType[r]),dependsMet
+					end
+				end
 			end
 		end
-		
-		if DependenciesMet == #Dependencies then
-			return true
+	end
+	
+	if researchInfo["Research Name"] then
+		if not PlayerStatManager:getStat(player, researchInfo["Research Name"], true) then
+			if researchInfo["Dependencies"] and specificDepend == nil then
+				local dependencies = researchInfo["Dependencies"]
+				
+				local dependenciesMet = 0
+				for _,dependency in pairs (dependencies) do
+					local researchCompleted = PlayerStatManager:getStat(player, dependency, true)
+					if researchCompleted then
+						dependenciesMet += 1
+					end
+				end
+				
+				if dependenciesMet == #dependencies then
+					return true
+				end
+				
+			elseif researchInfo["Dependencies"] and specificDepend then
+				if typeof(specificDepend) == "string" then
+					local researchCompleted = PlayerStatManager:getStat(player, specificDepend, true)
+					return researchCompleted
+				end
+				
+			else
+				warn(player, "is exploiting")
+			end
+			
+		else
+			warn(player, "is exploiting")
 		end
-	else
-		warn(player, "is exploiting")
 	end
 end
+
+checkResearchDepends.OnServerInvoke = CheckResearchDepends
 
 function CheckPlayerStat.OnServerInvoke(player, statName)
 	return PlayerStatManager:getStat(player, statName, true)
