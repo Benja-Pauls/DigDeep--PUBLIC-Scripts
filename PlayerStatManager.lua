@@ -796,7 +796,7 @@ end)
 local function CheckResearchDepends(player, researchInfo, specificDepend)
 	--Possibly check if player hasn't already finished this research. Otherwise, they could be exploiting
 	
-	if typeof(researchInfo) == "string" then --find researchInfo and if depends met
+	if typeof(researchInfo) == "string" then --find researchInfo (including type) and if depends met
 		local researchFound = false
 		
 		for _,researchType in pairs (researchData["Research"]) do
@@ -807,7 +807,7 @@ local function CheckResearchDepends(player, researchInfo, specificDepend)
 						researchInfo = researchType[r]
 						
 						local dependsMet = CheckResearchDepends(player, researchInfo)
-						return Utility:CloneTable(researchType[r]),dependsMet
+						return dependsMet
 					end
 				end
 			end
