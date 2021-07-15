@@ -603,11 +603,7 @@ end
 
 function GetHighPage(Menu, rarityName) --Find page for rarity tile OR max page count
 	local highPage = 0
-	for i,page in pairs (Menu:GetChildren()) do
-		
-		--**This is only reading MenuIcon and CurrentPage in AvailableResearch menu for the legendary that is
-		--inputted into the menu because it's skill requirements were met but not dependency
-		
+	for i,page in pairs (Menu:GetChildren()) do		
 		if page:IsA("Frame") and string.match(page.Name, "Page") then
 			if rarityName then
 				--Want highest page with tile rarity present
@@ -714,7 +710,7 @@ end
 local function GetHighestSlotOfRarity(Page, rarityName) --highest slot of rarity on page
 	local highestSlotValue = 0
 	for i,slot in pairs (Page:GetChildren()) do
-		if (slot:IsA("ImageButton") or slot:IsA("TextButton")) and string.find(slot.Name, "Slot") then
+		if (slot:IsA("ImageButton") or slot:IsA("TextButton")) and string.match(slot.Name, "Slot") then
 			if slot.Rarity.Value.Name == rarityName then
 				local slotValue = string.gsub(slot.Name, "Slot", "")
 				if tonumber(slotValue) > highestSlotValue then
@@ -745,7 +741,7 @@ local function SeekSlotAvailability(Menu, Type, checkedPageNumber, rarityName, m
 		PageSlotCount = highestSlotValue
 		TruePosition = GetTileTruePosition(Page, PageSlotCount, maxTileAmount)
 	else --newTile cannot fit on checkedPage
-		if Menu:findFirstChild("Page" .. tostring(checkedPageNumber + 1)) then --next page is available
+		if Menu:FindFirstChild("Page" .. tostring(checkedPageNumber + 1)) then --next page is available
 			Page = Menu:FindFirstChild("Page" .. tostring(checkedPageNumber + 1))
 		else --no next page, make a new page
 			Page = CreateNewMenuPage(Type, Menu, Page, checkedPageNumber + 1)
@@ -811,50 +807,32 @@ local function ManageTilePlacement(Menu, Type, rarityInfo)
 		rarityName = "No Rarity"
 		maxTileAmount = 4
 	end
-	
-	if Type == "Research" and rarityName == "Legendary" then
-		print("legendary research tile seen", Menu)
-	elseif Type == "Research" and rarityName == "Uncommon" then
-		print("uncommon tile seen!", Menu)
-	end
 
 	local pageCount = GetHighPage(Menu)
-	
-	print(pageCount)
 	
 	local Page
 	local TruePosition
 	local PageSlotCount = 0 --Position reference, +1 for name (Count=0: "Slot1")
 	if pageCount > 0 then
-		print("1")
 		if rarityName ~= "No Rarity" then
-			print("2")
 			local highRarityPage = GetHighPage(Menu, rarityName)
 			local rarityOrderValue = rarityInfo.Order.Value
 			
 			if highRarityPage ~= 0 then
-				print("3.1")
 				--print("11111111111 highRarityPage ~= 0: ", rarityName)
 				Page,TruePosition,PageSlotCount = SeekSlotAvailability(Menu, Type, highRarityPage, rarityName, maxTileAmount)
 			else
-				print("3.2")
 				--Look for lesser rarity to reference instead
 				local lesserRarityPage,lesserRarityName = FindNearbyRarity(Menu, rarityInfo, rarityOrderValue, -1)
 				if lesserRarityPage then
 					--print("22222222222 lesserRarity: ", lesserRarityPage, lesserRarityName)
 					Page,TruePosition,PageSlotCount = SeekSlotAvailability(Menu, Type, lesserRarityPage, lesserRarityName, maxTileAmount)
-				else
-					--Look for higher rarity to reference instead
-					local higherRarityPage,higherRarityName = FindNearbyRarity(Menu, rarityInfo, rarityOrderValue, 1)
-					if higherRarityPage then
-						--print("3333333333 higherRarityName: ", higherRarityPage, higherRarityName)
-						Page,TruePosition,PageSlotCount = SeekSlotAvailability(Menu, Type, higherRarityPage, higherRarityName, maxTileAmount)
-					end
+					
+				else --Must be first tile
+					Page = Menu.Page1
+					PageSlotCount = 0
+					TruePosition = 0
 				end
-			end
-			
-			if Type == "Research" then
-				print(Menu, Page, PageSlotCount, rarityInfo.Name, rarityInfo.Order.Value)
 			end
 		else --New experience tiles
 
@@ -1016,78 +994,22 @@ end)
 
 local researchRewardViewer = DataMenu.ExperienceMenu.ExpInfoViewerMenu.ResearchRewardViewer
 local rrPageManager = researchRewardViewer.PageManager
+
 local rewardPageDebounce = false
-
-local function ChangeResearchRewardPage(newPagePos, currentPagePos, previousPageNumber)
-	if previousPageNumber then
-		local newPageNumber = rrPageManager.CurrentPage.Value
-		local newPage = researchRewardViewer.RewardPages:FindFirstChild("Page" .. tostring(newPageNumber))
-		local currentPage = researchRewardViewer.RewardPages:FindFirstChild("Page" .. tostring(previousPageNumber))
-
-		newPage.ZIndex += 1
-		newPage.Position = UDim2.new(0, 0, newPagePos, 0)
-		newPage.Visible = true
-
-		newPage:TweenPosition(UDim2.new(0, 0, 0, 0), "Out", "Quint", 0.3)
-		currentPage:TweenPosition(UDim2.new(0, 0, currentPagePos, 0), "Out", "Quint", 0.3)
-		rrPageManager.CurrentPage.Value = newPageNumber
-
-		wait(0.3)
-		newPage.ZIndex -= 1
-		currentPage.Visible = false
-		currentPage.Position = UDim2.new(0, 0, 0, 0)
-	else
-		local currentPage = currentPagePos
-		currentPage:TweenPosition(UDim2.new(0, 0, 0.03*newPagePos, 0), "Out", "Quint", 0.1)
-		wait(0.1)
-		currentPage:TweenPosition(UDim2.new(0, 0, 0, 0), "Out", "Bounce", 0.25)
-		wait(0.25)
-	end
-	
-	rewardPageDebounce = false
-end
-
-researchRewardViewer.PageManager.NextPage.Activated:Connect(function()
+local rewardPages = researchRewardViewer.RewardPages
+rrPageManager.NextPage.Activated:Connect(function()
 	if rewardPageDebounce == false then
 		rewardPageDebounce = true
-		
-		local currentPageNumber = rrPageManager.CurrentPage.Value
-		local pageCount = #researchRewardViewer.RewardPages:GetChildren()
-		
-		if pageCount > 1 then
-			if rrPageManager.CurrentPage.Value + 1 > pageCount then
-				rrPageManager.CurrentPage.Value = 1
-			else
-				rrPageManager.CurrentPage.Value += 1
-			end
-			
-			ChangeResearchRewardPage(1, -1, currentPageNumber)
-		else
-			local currentPage = researchRewardViewer.RewardPages:FindFirstChild("Page" .. tostring(currentPageNumber))
-			ChangeResearchRewardPage(1, currentPage)
-		end
+		GuiUtility.ChangeToNextPage(rrPageManager, rewardPages)
+		rewardPageDebounce = false
 	end
 end)
 
-researchRewardViewer.PageManager.PreviousPage.Activated:Connect(function()
+rrPageManager.PreviousPage.Activated:Connect(function()
 	if rewardPageDebounce == false then
 		rewardPageDebounce = true
-		
-		local currentPageNumber = rrPageManager.CurrentPage.Value
-		local pageCount = #researchRewardViewer.RewardPages:GetChildren()
-		
-		if pageCount > 1 then
-			if rrPageManager.CurrentPage.Value - 1 <= 0 then
-				rrPageManager.CurrentPage.Value = pageCount
-			else
-				rrPageManager.CurrentPage.Value -= 1
-			end
-			
-			ChangeResearchRewardPage(-1, 1, currentPageNumber)
-		else
-			local currentPage = researchRewardViewer.RewardPages:FindFirstChild("Page" .. tostring(currentPageNumber))
-			ChangeResearchRewardPage(-1, currentPage)
-		end
+		GuiUtility.ChangeToPreviousPage(rrPageManager, rewardPages)
+		rewardPageDebounce = false
 	end
 end)
 
