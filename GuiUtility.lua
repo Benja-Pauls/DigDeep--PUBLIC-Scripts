@@ -315,9 +315,72 @@ function GuiUtility.CommitPageChange(changedToPage, delayAmount)
 	return false --for page debounce
 end
 
-function GuiUtility.ManageTilePlacement()
-	
+local function MoveTopDownPage(pageManager, pages, newPagePos, currentPagePos, previousPageNumber)
+	if previousPageNumber then
+		local newPageNumber = pageManager.CurrentPage.Value
+		local newPage = pages:FindFirstChild("Page" .. tostring(newPageNumber))
+		local currentPage = pages:FindFirstChild("Page" .. tostring(previousPageNumber))
+
+		newPage.ZIndex += 1
+		newPage.Position = UDim2.new(0, 0, newPagePos, 0)
+		newPage.Visible = true
+
+		newPage:TweenPosition(UDim2.new(0, 0, 0, 0), "Out", "Quint", 0.3)
+		currentPage:TweenPosition(UDim2.new(0, 0, currentPagePos, 0), "Out", "Quint", 0.3)
+		pageManager.CurrentPage.Value = newPageNumber
+
+		wait(0.3)
+		newPage.ZIndex -= 1
+		currentPage.Visible = false
+		currentPage.Position = UDim2.new(0, 0, 0, 0)
+	else
+		local currentPage = currentPagePos
+		currentPage:TweenPosition(UDim2.new(0, 0, 0.03*newPagePos, 0), "Out", "Quint", 0.1)
+		wait(0.1)
+		currentPage:TweenPosition(UDim2.new(0, 0, 0, 0), "Out", "Bounce", 0.25)
+		wait(0.25)
+	end
 end
+
+function GuiUtility.ChangeToNextPage(pageManager, pages)
+	local currentPageNumber = pageManager.CurrentPage.Value
+	local pageCount = #pages:GetChildren() --possibly make GuiUtility wide gethighpage in future
+
+	if pageCount > 1 then
+		if pageManager.CurrentPage.Value + 1 > pageCount then
+			pageManager.CurrentPage.Value = 1
+		else
+			pageManager.CurrentPage.Value += 1
+		end
+
+		MoveTopDownPage(pageManager, pages, 1, -1, currentPageNumber)
+	else
+		local currentPage = pages:FindFirstChild("Page" .. tostring(currentPageNumber))
+		MoveTopDownPage(pageManager, pages, 1, currentPage)
+	end
+end
+
+function GuiUtility.ChangeToPreviousPage(pageManager, pages)
+	local currentPageNumber = pageManager.CurrentPage.Value
+	local pageCount = #pages:GetChildren() --possibly make GuiUtility wide gethighpage in future
+
+	if pageCount > 1 then
+		if pageManager.CurrentPage.Value - 1 <= 0 then
+			pageManager.CurrentPage.Value = pageCount
+		else
+			pageManager.CurrentPage.Value -= 1
+		end
+
+		MoveTopDownPage(pageManager, pages, -1, 1, currentPageNumber)
+	else
+		local currentPage = pages:FindFirstChild("Page" .. tostring(currentPageNumber))
+		MoveTopDownPage(pageManager, pages, -1, currentPage)
+	end
+end
+
+--Make page change function that can be used everywhere, checking all directions with the only difference between
+--next and previous in terms of function but then using local GuiUtility functions to tween since that is so similar
+
 
 
 
