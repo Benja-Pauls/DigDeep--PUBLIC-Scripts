@@ -71,7 +71,7 @@ local ResearchData = {
 				["Research Name"] = "Better Fuel Cells",
 				["Research Image"] = "",
 				["Rarity"] = "Uncommon",
-				["Description"] = "",
+				["Description"] = "This is a placeholder description for this research",
 				
 				["Research Length"] = 15,
 				["Material Cost"] = {
@@ -88,7 +88,7 @@ local ResearchData = {
 				["Research Name"] = "Fuel Cells",
 				["Research Image"] = "",
 				["Rarity"] = "Common",
-				["Description"] = "",
+				["Description"] = "This is a placeholder description for this research",
 				
 				["Research Length"] = 108000,
 				["Material Cost"] = {
@@ -105,7 +105,7 @@ local ResearchData = {
 				["Research Name"] = "Fuel Cells2",
 				["Research Image"] = "",
 				["Rarity"] = "Rare",
-				["Description"] = "",
+				["Description"] = "This is a placeholder description for this research",
 				
 				["Research Length"] = 4500,
 				["Material Cost"] = {
@@ -121,7 +121,7 @@ local ResearchData = {
 				["Research Name"] = "Fuel Cells3",
 				["Research Image"] = "",
 				["Rarity"] = "Common",
-				["Description"] = "",
+				["Description"] = "This is a placeholder description for this research",
 				
 				["Research Length"] = 30,
 				["Material Cost"] = {
@@ -137,7 +137,7 @@ local ResearchData = {
 				["Research Name"] = "Fuel Cells4",
 				["Research Image"] = "",
 				["Rarity"] = "Common",
-				["Description"] = "",
+				["Description"] = "This is a placeholder description for this research",
 				
 				["Research Length"] = 60,
 				["Material Cost"] = {
@@ -153,7 +153,7 @@ local ResearchData = {
 				["Research Name"] = "Fuel Cells5",
 				["Research Image"] = "",
 				["Rarity"] = "Common",
-				["Description"] = "",
+				["Description"] = "This is a placeholder description for this research",
 				
 				["Research Length"] = 120,
 				["Material Cost"] = {
@@ -169,7 +169,7 @@ local ResearchData = {
 				["Research Name"] = "Fuel Cells6",
 				["Research Image"] = "",
 				["Rarity"] = "Uncommon",
-				["Description"] = "",
+				["Description"] = "This is a placeholder description for this research",
 				
 				["Research Length"] = 300,
 				["Material Cost"] = {
@@ -185,7 +185,7 @@ local ResearchData = {
 				["Research Name"] = "Fuel Cells7",
 				["Research Image"] = "",
 				["Rarity"] = "Legendary",
-				["Description"] = "",
+				["Description"] = "This is a placeholder description for this research",
 				
 				["Research Length"] = 300,
 				["Material Cost"] = {
@@ -201,7 +201,7 @@ local ResearchData = {
 				["Research Name"] = "Fuel Cells8",
 				["Research Image"] = "",
 				["Rarity"] = "Rare",
-				["Description"] = "",
+				["Description"] = "This is a placeholder description for this research",
 				
 				["Research Length"] = 300,
 				["Material Cost"] = {
@@ -217,7 +217,7 @@ local ResearchData = {
 				["Research Name"] = "Fuel Cells9",
 				["Research Image"] = "",
 				["Rarity"] = "Uncommon",
-				["Description"] = "",
+				["Description"] = "This is a placeholder description for this research",
 				
 				["Research Length"] = 300,
 				["Material Cost"] = {
@@ -233,7 +233,7 @@ local ResearchData = {
 				["Research Name"] = "Fuel Cells10",
 				["Research Image"] = "",
 				["Rarity"] = "Uncommon",
-				["Description"] = "",
+				["Description"] = "This is a placeholder description for this research",
 
 				["Research Length"] = 300,
 				["Material Cost"] = {
