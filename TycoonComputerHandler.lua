@@ -1034,13 +1034,31 @@ local function ColorTileRarity(Tile, RarityInfo)
 	end
 end
 
-local function DisplayResearchTileInfo(researchInfo, researchType, onlySkillMet)
+local function DisplayResearchTileInfo(researchInfo, researchType, onlySkillMet, visibleButton)
 	ResearchersList.InfoMenuLabel.Visible = true
 	ResearchersList.CostMenuLabel.Visible = true
 	ResearchersList.CurrentMenuLabel.Visible = false
 	ResearchersList.AvailableMenuLabel.Visible = false
 	ResearchersList.PreviousMenuLabel.Visible = false
-
+	
+	for _,button in pairs (InfoMenu:GetChildren()) do
+		if string.match(button.Name, "Button") then
+			button.Visible = false
+			if button:IsA("ImageButton") then
+				button.Active = false
+				button.Selectable = false
+			end
+		end
+	end
+	
+	if not onlySkillMet then
+		visibleButton.Visible = true
+		if visibleButton:IsA("ImageButton") then
+			visibleButton.Active = true
+			visibleButton.Selectable = true
+		end
+	end
+	
 	UpdatePageDisplay(AvailableResearch, false)
 	UpdatePageDisplay(PreviousResearch, false)
 	UpdatePageDisplay(CostList, true)
@@ -1116,7 +1134,7 @@ local function DisplayResearchTileInfo(researchInfo, researchType, onlySkillMet)
 	local visBool2 = false
 	if onlySkillMet then --Make list of research dependencies
 		InfoMenu.ResearchTime.Text = "<b>" .. GuiUtility.ToDHMS(researchInfo["Research Length"], true) .. "</b>"
-		InfoMenu.DisplayImage.Image = "rbxassetid://6973810990"
+		InfoMenu.DisplayImage.Image = "rbxassetid://6973810990" --lock image
 		InfoMenu.DisplayImage.LockNotify.Visible = true
 		InfoMenu.DisplayImage.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 
@@ -1155,13 +1173,16 @@ local function DisplayResearchTileInfo(researchInfo, researchType, onlySkillMet)
 				dependTile.Parent = page
 				dependTile = dependTile.DependTile
 				dependTile.ResearchName.TextColor3 = Color3.fromRGB(255, 255, 255)
+				dependTile.CompletionStatus.Visible = true
+				dependTile.NotFoundNotify.Visible = false
 				
-				local dependViewable = false
+				local dependInfo,dependViewable = CheckResearchDepends:InvokeServer(dependency)
 				if completed then
 					dependTile.Parent.BackgroundColor3 = Color3.fromRGB(7, 44, 6)
 					dependTile.CompletionStatus.Image = "rbxassetid://7092611336"
 					dependTile.CompletionStatus.Size = UDim2.new(0.067, 0, 0.456, 0)
 					dependTile.ResearchName.Text = "<b>" .. dependency .. "</b>"
+					dependTile.DisplayImage.Image = dependInfo["Research Image"]
 
 				else--Check if dependency research can be viewed
 					dependTile.Parent.BackgroundColor3 = Color3.fromRGB(38, 5, 5)
@@ -1171,46 +1192,78 @@ local function DisplayResearchTileInfo(researchInfo, researchType, onlySkillMet)
 					dependViewable = CheckResearchDepends:InvokeServer(dependency)
 					if dependViewable then --dependencies met for dependency
 						dependTile.ResearchName.Text = "<b>" .. dependency .. "</b>"
+						dependTile.DisplayImage.Image = dependInfo["Research Image"]
 					else
 						dependTile.ResearchName.Text = "<b>[Unknown Research]</b>"
 						dependTile.ResearchName.TextColor3 = Color3.fromRGB(204, 204, 204)
+						dependTile.DisplayImage.Image = "rbxassetid://6973810990" --lock image
 					end
 				end
 
 				dependTile.Parent.Size = UDim2.new(0.93, 0, 0.225, 0)
 				dependTile.Parent.Position = UDim2.new(0.036, 0, .168 + .281*((d-1)-3*(pageCount-1)), 0)
-
+				
+				--Color Tile Rarity Colors
+				--ColorTileRarity(dependTile, guiElements.RarityColors.DisplayFirst)
+				--**IF dependTiles are colored by rarity, they would also have to be arranged by rarity, resulting
+				--in a lot more processing power being used to generate the list
+				
+				local dependTileDebounce = false
 				dependTile.Parent.Activated:Connect(function() --Display research Info
-					print("Depend tile has been activated")
+					if dependTileDebounce == false then
+						dependTileDebounce = true
+						
+						local researchFound = false
+						if completed then --Only found in PreviousResearch
+							local page,researchTile = FindResearchTile(PreviousResearch, dependency)
+							
+							if researchTile then
+								local researchType = researchTile.ResearchTile.ResearchType.Text
+								DisplayResearchTileInfo(dependInfo, researchType, false, InfoMenu.CompletedButton)
+								
+								researchFound = true
+							end
+						else
+							local onlySkillBool = true
+							if dependViewable then --Could be found in CurrentResearch
+								onlySkillBool = false
+								local page,researchTile = FindResearchTile(CurrentResearch, dependency)
+								
+								if researchTile then
+									local researchType = researchTile.ResearchTile.ResearchType.Text
+									if researchTile.ResearchTile.CompleteResearch.Visible == true then
+										DisplayResearchTileInfo(dependInfo, researchType, false, InfoMenu.CompleteButton)
+									elseif researchTile.ResearchTile.SkipTime.Visible == true then
+										DisplayResearchTileInfo(dependInfo, researchType, false, InfoMenu.ResearchingButton)
+									end
+									
+									researchFound = true
+								end
+							end
 
-					local researchFound
-					if completed then --Only found in PreviousResearch
-						local page,researchTile = FindResearchTile(PreviousResearch, dependency)
-						researchFound = researchTile
-					else
-						if dependViewable then --Could be found in CurrentResearch
-							local page,researchTile = FindResearchTile(CurrentResearch, dependency)
-							researchFound = researchTile
+							if researchFound == false then --Last place to check is AvailableResearch
+								local page,researchTile = FindResearchTile(AvailableResearch, dependency)
+								
+								if researchTile then
+									local researchType = researchTile.ResearchTile.ResearchType.Text
+									DisplayResearchTileInfo(dependInfo, researchType, onlySkillBool, InfoMenu.ResearchButton)
+									
+									researchFound = true
+								end
+							end	
 						end
-
-						if researchFound == nil then --Last place to check is AvailableResearch
-							local page,researchTile = FindResearchTile(AvailableResearch, dependency)
-							researchFound = researchTile
-						end	
+						
+						if researchFound == false then --show small text notify in depend tile
+							dependTile.CompletionStatus.Visible = false
+							dependTile.NotFoundNotify.Visible = true
+							wait(2)
+							
+							dependTile.CompletionStatus.Visible = true
+							dependTile.NotFoundNotify.Visible = false
+						end
 					end
 					
-					if researchFound ~= nil then
-						
-						
-					else
-						
-						
-					end
-					--if tile can be found in available, previous, or current research, display it
-
-					--else, if the tile cannot be found, display a quick text notification that the
-					--research could not be found in computer
-
+					dependTileDebounce = false
 				end)
 			end
 
@@ -1235,9 +1288,6 @@ local function DisplayResearchTileInfo(researchInfo, researchType, onlySkillMet)
 	end
 
 	InfoMenu.Description.Visible = visBool1
-	InfoMenu.ResearchButton.Visible = visBool1
-	InfoMenu.ResearchButton.Active = visBool1
-	InfoMenu.ResearchButton.Selectable = visBool1
 
 	local dependsToComplete = InfoMenu.DependsToComplete
 	dependsToComplete.Visible = visBool2
@@ -1289,7 +1339,7 @@ local function InsertTileInfo(menu, tile, researchInfo, researchType, finishTime
 			tile.Activated:Connect(function()
 				if tileDebounce == false then
 					tileDebounce = true
-					DisplayResearchTileInfo(researchInfo, researchType, onlySkillMet)
+					DisplayResearchTileInfo(researchInfo, researchType, onlySkillMet, InfoMenu.ResearchButton)
 					tileDebounce = false
 				end
 			end)
@@ -1921,6 +1971,14 @@ ComputerScreen.Taskbar.Home.Activated:Connect(function()
 	PrepareAllMenuVisibility()
 	MenuSelect.Visible = true
 	ComputerScreen.Taskbar.Visible = true
+end)
+
+ComputerScreen.Taskbar.BackButton.Activated:Connect(function()
+	InfoMenu.Visible = false
+	CurrentResearch.Visible = true
+	
+	--How to use back button to return to research if clicked on depend tile and still use backbutton to return
+	--to current research/
 end)
 
 --Back button to return to current menu type's main menu, instead of the menu type selection menu?
