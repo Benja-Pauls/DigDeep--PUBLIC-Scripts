@@ -53,7 +53,7 @@ local MenuTabs = {
 local tabSelection = DataMenu.TopTabBar.TabSelection
 local tsWidth = tabSelection.Size.X.Scale
 local previousTween
-for i,v in pairs (MenuTabs) do
+for _,v in pairs (MenuTabs) do
 	local tabWidth = v.Size.X.Scale
 	local newSelectPos = math.abs(tabWidth - tsWidth)/2 + v.Position.X.Scale
 
@@ -77,7 +77,7 @@ for i,v in pairs (MenuTabs) do
 			v.Image = selectedImage
 			v.Active = false
 
-			for i,tab in pairs (MenuTabs) do
+			for _,tab in pairs (MenuTabs) do
 				if tab ~= v then --other tabs
 					tab.Active = false
 
@@ -87,7 +87,7 @@ for i,v in pairs (MenuTabs) do
 				end
 			end
 
-			for i,tab in pairs (MenuTabs) do
+			for _,tab in pairs (MenuTabs) do
 				tab.Active = true
 			end
 		end
