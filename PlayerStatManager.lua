@@ -806,8 +806,14 @@ local function CheckResearchDepends(player, researchInfo, specificDepend)
 						researchFound = true
 						researchInfo = researchType[r]
 						
-						local dependsMet = CheckResearchDepends(player, researchInfo)
-						return dependsMet
+						local dependsMet = false
+						if PlayerStatManager:getStat(player, researchInfo["Research Name"], true) then
+							dependsMet = true
+						else
+							dependsMet = CheckResearchDepends(player, researchInfo)
+						end
+
+						return Utility:CloneTable(researchInfo),dependsMet
 					end
 				end
 			end
