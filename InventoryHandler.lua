@@ -1780,42 +1780,44 @@ end
 local prevItem
 local prevAmount
 local currentPopUpStat
-local function ManageMaterialPopups(statName, itemType, amountAdded)
+local function ManageTopRightPopUps(statName, itemType, amountAdded)
 
-	if amountAdded ~= nil then
-		if amountAdded ~= 0 then
+	if amountAdded ~= nil and amountAdded ~= 0 then
 
-			if amountAdded < 0 then
-				currentPopUpStat = "Negative" .. statName
-			else
-				currentPopUpStat = statName
-			end
+		if amountAdded < 0 then
+			currentPopUpStat = "Negative" .. statName --Should losing items be recorded?
+		else
+			currentPopUpStat = statName
+		end
+		
+		--There will be two different popups: material popups that are short, and notification popups that are 
+		--taller for players to more easily see and read
+		--**Notifications: Level Up, Bag Capacity, etc
+		
+		if prevItem ~= currentPopUpStat then
+			InsertNewMaterialPopUp(itemType, statName, amountAdded)
+			prevItem = statName
+			prevAmount = amountAdded
+			
+		elseif prevItem == currentPopUpStat and #itemPopUpGui:GetChildren() == 0 then
+			InsertNewMaterialPopUp(itemType, statName, amountAdded) --Was PopUp of stat, but expired
+			prevItem = statName
+			prevAmount = amountAdded
+			
+		elseif #itemPopUpGui:GetChildren() >= 1 then
+			prevAmount = prevAmount + amountAdded --Update Item PopUp
 
-			if prevItem ~= currentPopUpStat then
-				InsertNewMaterialPopUp(itemType, statName, amountAdded)
-				prevItem = statName
-				prevAmount = amountAdded
-
-			elseif prevItem == currentPopUpStat and #itemPopUpGui:GetChildren() == 0 then
-				InsertNewMaterialPopUp(itemType, statName, amountAdded) --Was PopUp of stat, but expired
-				prevItem = statName
-				prevAmount = amountAdded
-
-			elseif #itemPopUpGui:GetChildren() >= 1 then
-				prevAmount = prevAmount + amountAdded --Update Item PopUp
-
-				local MostRecent = 0
-				for i,slot in pairs (itemPopUpGui:GetChildren()) do
-					if slot.Object.Value == statName then
-						if i > MostRecent then
-							MostRecent = i
-						end
+			local MostRecent = 0
+			for i,slot in pairs (itemPopUpGui:GetChildren()) do
+				if slot.Object.Value == statName then
+					if i > MostRecent then
+						MostRecent = i
 					end
 				end
-
-				itemPopUpGui:FindFirstChild("PopUp" .. tostring(MostRecent)).Amount.Text = tostring(prevAmount)
-				CountdownPopUp(itemPopUpGui, itemPopUpGui:FindFirstChild("PopUp" .. tostring(MostRecent)), 5, .2, 0)
 			end
+
+		 	itemPopUpGui:FindFirstChild("PopUp" .. tostring(MostRecent)).Amount.Text = tostring(prevAmount)
+			CountdownPopUp(itemPopUpGui, itemPopUpGui:FindFirstChild("PopUp" .. tostring(MostRecent)), 5, .2, 0)
 		end
 	end
 end
@@ -2066,7 +2068,7 @@ UpdateInventory.OnClientEvent:Connect(function(statName, folder, value, amountAd
 	end
 
 	if Type == "Inventory" then
-		ManageMaterialPopups(statName, itemType, amountAdded) 
+		ManageTopRightPopUps(statName, itemType, amountAdded) 
 
 	elseif Type == "Experience" then 
 		if amountAdded ~= nil and amountAdded ~= 0 then
