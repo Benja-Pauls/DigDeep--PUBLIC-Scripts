@@ -25,11 +25,11 @@ local ResearchData = {
 				["Research Name"] = "Bio-Glow Pickaxe",
 				["Research Image"] = "",
 				["Rarity"] = "Rare",
-				["Description"] = "If you find some glowing mushrooms, our scientists may be able to analyze their structure and form alloys from the glowing cells",
+				["Description"] = "If you find some Glow Shrooms, our scientists may be able to analyze their structure and form alloys from the glowing cells",
 				
 				["Research Length"] = 10,
 				["Material Cost"] = {
-					{RS.InventoryItems.Foraging["Glowing Mushroom"], 5},
+					{RS.InventoryItems.Foraging["Glow Shroom"], 5},
 				},
 				["Experience Cost"] = {
 					{experienceData["Skills"]["Mining Skill"], 5, "Skill"},
