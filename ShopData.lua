@@ -89,7 +89,7 @@ local NPCData = {
 
 		["Items"] = { --Sort by type (Rarity = ItemType)
 			{RS.InventoryItems.Mining.Stone, 2, "Coins"},
-			{RS.InventoryItems.Foraging["Glowing Mushroom"], 50, "Coins"},
+			{RS.InventoryItems.Foraging["Glow Shroom"], 50, "Coins"},
 			{RS.InventoryItems.Mining.Coal, 10, "Coins"},
 			{RS.InventoryItems.Mining.Obsidian, 500, "Coins"}
 			
