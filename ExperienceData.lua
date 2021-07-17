@@ -38,7 +38,7 @@ local ExperienceData = {
 					["Level Name"] = "Geologist",
 					["Exp Requirement"] = 250,
 					["Rewards"] = {
-						[1] = {"Item", RS.InventoryItems.Foraging["Glowing Mushroom"], 10},
+						[1] = {"Item", RS.InventoryItems.Foraging["Glow Shroom"], 10},
 						[2] = {"Equipment", RS.Equippable.Tools.Pickaxes["Exp Reward Pickaxe"]},
 					}
 				},
