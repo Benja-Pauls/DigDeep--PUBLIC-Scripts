@@ -6,7 +6,6 @@ local Camera = game.Workspace.CurrentCamera
 script.Parent.OpenDataMenuButton.Visible = true
 
 local Player = game.Players.LocalPlayer
-local PlayerUserId = Player.UserId
 local OpenDataMenuButton = script.Parent.OpenDataMenuButton
 local DataMenu = script.Parent.DataMenu
 local GuiElements = game.ReplicatedStorage.GuiElements
@@ -263,8 +262,7 @@ function ReadyMenuButtons(Menu)
 				else
 					ButtonMenu.Visible = true
 					ButtonMenu.EmptyNotifier.Visible = false
-					ButtonMenu.QuickViewMenu.Visible = false
-					--UpdateBagDisplays(Menu, ButtonMenu)		
+					ButtonMenu.QuickViewMenu.Visible = false		
 				end
 
 				if ButtonMenu:FindFirstChild("FirstSeeMenu") then
@@ -485,31 +483,6 @@ local function GetStatImage(StatInfo)
 		ImageId = StatInfo["GUI Info"].StatImage.Value
 	end
 	return ImageId
-end
-
-local function FindStatLevel(statInfo, expValue)
-	local currentLevel = 0
-
-	if statInfo["Levels"] then
-		for l = 1,#statInfo["Levels"],1 do
-			if statInfo["Levels"][l] then
-				local levelInfo = statInfo["Levels"][l]
-
-				if tonumber(expValue) >= levelInfo["Exp Requirement"] and l > currentLevel then
-					currentLevel = l
-				end
-			end
-		end
-	end
-
-	local nextLevel
-	if statInfo["Levels"][currentLevel + 1] then
-		nextLevel = currentLevel + 1
-	else
-		nextLevel = currentLevel
-	end
-
-	return currentLevel,nextLevel
 end
 
 local function GetLevelCounts(statInfo)
@@ -1455,7 +1428,7 @@ local function InsertTileInfo(Type, tile, statName, value, itemType, tileAlready
 		end
 
 		statInfo = getItemStatTable:InvokeServer("Experience", nil, itemType, statName)
-		local currentLevel,nextLevel = FindStatLevel(statInfo, value)
+		local currentLevel,nextLevel = GuiUtility.FindStatLevel(statInfo, value)
 		local currentLevelInfo = statInfo["Levels"][currentLevel]
 		local nextLevelInfo = statInfo["Levels"][nextLevel]
 
@@ -1517,353 +1490,11 @@ for i,searchBar in pairs (SearchBars) do
 	GuiUtility.ManageSearchVisual(searchBar.SearchInput)
 end
 
-----------------------------<|Countdown Functions|>--------------------------------------------------------------------------------------------------------------------------
-
-function CountdownPopUp(popUpGuiScreen, popUp, expireTime, xJump, yJump, xJump2, yJump2)
-	if popUp:FindFirstChild("TimeLeft") then
-		local Timer = popUp.TimeLeft
-		Timer.Value = 0
-
-		coroutine.resume(coroutine.create(function()
-			for sec = 1,expireTime,1 do
-				wait(1)
-
-				if sec == Timer.Value + 1 then
-					Timer.Value = sec
-					if sec == expireTime then
-						if popUp:FindFirstChild("NamePlate") then
-							local namePlate = popUp:FindFirstChild("NamePlate")
-							local xPos = namePlate.Position.X.Scale
-							local yPos = namePlate.Position.Y.Scale
-							namePlate:TweenPosition(UDim2.new(xPos + xJump2 ,0 , yPos + yJump2 ,0), "Out", "Quint", .3)
-							wait(.4)
-						end
-
-						local xPos = popUp.Position.X.Scale
-						local yPos = popUp.Position.Y.Scale
-						popUp:TweenPosition(UDim2.new(xPos + xJump, 0, yPos + yJump, 0), "In", "Quint", .5)
-						wait(.8)
-						popUp:Destroy()
-
-						if #popUpGuiScreen:GetChildren() > 0 then
-							for i,slot in pairs (popUpGuiScreen:GetChildren()) do
-								slot.Name = "PopUp" .. tostring(i)
-							end
-						end
-					end
-				end
-			end
-		end))
-	end
-end
-
-local differenceEXPAdded = 0
-local lastProgressAmount = 0
-local function CountdownDifference(difference, progressBar, levelProgress, amountAdded, levelFinished)
-	print(difference, progressBar, levelProgress, amountAdded, levelFinished)
-	local expBar = difference.Parent.Parent
-
-	if expBar:FindFirstChild("TimeLeft") and amountAdded >= 1 then
-		differenceEXPAdded = differenceEXPAdded + amountAdded
-
-		if levelProgress < lastProgressAmount or levelProgress >= 1 or levelFinished then
-			lastProgressAmount = levelProgress
-			NewDiffPopUp(expBar, differenceEXPAdded, 1)
-			differenceEXPAdded = 0
-
-			progressBar:TweenSize(UDim2.new(levelProgress, 0, 0, 30), "Out", "Quint", .5)
-			difference:TweenSize(UDim2.new(levelProgress, 0, 0, 30), "Out", "Quint", .5)
-			local PreviousLevel = tonumber(expBar.CurrentLevel.Text)
-			expBar.CurrentLevel.Text = PreviousLevel + 1
-			expBar.NextLevel.Text = PreviousLevel + 2
-
-		else --Countdown to when difference bar is filled
-			lastProgressAmount = levelProgress
-
-			local timer = difference.TimeLeft
-			timer.Value = 0
-
-			coroutine.resume(coroutine.create(function()
-				for sec = 1,5,1 do
-					wait(1)
-
-					if timer then
-						if sec == timer.Value + 1 then
-							timer.Value = sec
-							if sec == 5 then
-								NewDiffPopUp(expBar, differenceEXPAdded, 3)
-								differenceEXPAdded = 0
-
-								progressBar:TweenSize(UDim2.new(0, difference.Size.X.Offset, difference.Size.Y.Scale, 30), "Out", "Quint", .5)
-								wait(.6)
-								difference:Destroy()
-							end
-						end
-					end
-				end
-			end))
-		end
-	end
-end
-
-----------------------------<|Exp Reward Menu Functions|>---------------------------------------------------------------------------------------------------------
-
-
-
-
-
-----------------------------<|EXPBar PopUp Functions|>------------------------------------------------------------------------------------------------------------
-local expBarGui = GuiElements:FindFirstChild("ExperienceBar")
-local expPopUpGui = script.Parent.Parent.PopUps:FindFirstChild("EXPBarPopUp")
-
-function NewDiffPopUp(expBar, difference, pace)
-	local realDiffPopUp = GuiElements:FindFirstChild("EXPPopUp")
-	local newDiffPopUp = realDiffPopUp:Clone()
-
-	newDiffPopUp.Parent = expBar
-	newDiffPopUp.Text = "+" .. tostring(difference) .. "XP"
-	newDiffPopUp.Position = UDim2.new(math.random(-17.72,-15.48), 0, math.random(-1.71,-.777), 0)
-	newDiffPopUp:TweenSize(UDim2.new(0, 100, 0, 25), "Out", "Quart", .5) --Grow
-	wait(pace)
-
-	newDiffPopUp:TweenSizeAndPosition(UDim2.new(0, 0, 0, 0), UDim2.new(-7.64, 0, 0.123, 0), "In", "Quint", 1) --Move to bar
-	wait(1.1)
-	newDiffPopUp:Destroy()
-end
-
-local function ShowEXPChange(currentLevel, nextLevel, skillInfo, expAmount, amountAdded)
-	local experienceBar = expPopUpGui.ExperienceBar
-	experienceBar.CurrentLevel.Text = tostring(currentLevel)
-	experienceBar.NextLevel.Text = tostring(nextLevel)
-
-	local currentLevelInfo = skillInfo["Levels"][currentLevel]
-	local nextLevelInfo = skillInfo["Levels"][nextLevel]
-	local progressBar = experienceBar.ProgressBar
-
-	local levelProgress = tonumber(expAmount - currentLevelInfo["Exp Requirement"]) / tonumber(nextLevelInfo["Exp Requirement"] - currentLevelInfo["Exp Requirement"])
-	if progressBar:FindFirstChild("EXPDifference") then --Difference Bar Check
-		local difference = progressBar.EXPDifference
-
-		if levelProgress < lastProgressAmount then
-			difference:TweenSize(UDim2.new(0, 276, 0, 30), "Out", "Quint", .2)
-			wait(.2)
-			progressBar.Progress:TweenSize(UDim2.new(0, 276, 0, 30), "Out", "Quint", .2)
-			wait(.2)
-			CountdownDifference(difference, progressBar.Progress, levelProgress, amountAdded, true)
-			
-			print("Level up")
-		else
-			difference:TweenSize(UDim2.new(0, 276*levelProgress, 0, 30), "Out", "Quint", .2)
-			CountdownDifference(difference, progressBar.Progress, levelProgress, amountAdded)
-		end
-
-	else
-		local difference = progressBar.Progress:Clone()
-		difference.ZIndex = 3 --Put behind progress frame
-		difference.Parent = progressBar
-		difference.Name = "EXPDifference"
-		difference.BackgroundColor3 = Color3.new(85, 255, 255)
-
-		local timeLeftValue = Instance.new("IntValue", difference)
-		timeLeftValue.Name = "TimeLeft"	
-
-		difference:TweenSize(UDim2.new(0, 276*levelProgress, 0, 30), "Out", "Quint", .2)
-
-		CountdownDifference(difference, progressBar.Progress, levelProgress, levelProgress, amountAdded)
-	end
-end
-
-local function InsertNewEXPBar(skillInfo, statName, expAmount, currentLevel, nextLevel, popUpAlreadyExists)
-
-	if popUpAlreadyExists then
-		local oldExpPopUp = expPopUpGui.ExperienceBar
-		local namePlate = oldExpPopUp.NamePlate
-		namePlate:TweenPosition(UDim2.new(-12,0,0,0), "Out", "Quint", .15)
-		wait(.15)
-		oldExpPopUp:TweenPosition(UDim2.new(0.98, 0, 1.055, 0), "Out", "Quint", .2)
-		wait(.2)
-		oldExpPopUp:Destroy()
-	end
-
-	local newExpBar = expBarGui:Clone()
-	newExpBar.Parent = expPopUpGui
-	newExpBar.Position = UDim2.new(0.98, 0, 1.055, 0)
-	newExpBar.CurrentLevel.Text = tostring(currentLevel)
-	newExpBar.NextLevel.Text = tostring(nextLevel)
-
-	newExpBar:TweenPosition(UDim2.new(.98, 0, newExpBar.Position.Y.Scale - .1, 0), "Out", "Quint", .5)
-
-	local progressBar = expPopUpGui.ExperienceBar.ProgressBar
-
-	local currentLevelInfo = skillInfo["Levels"][currentLevel]
-	local nextLevelInfo = skillInfo["Levels"][nextLevel]
-	local levelProgress = tonumber(expAmount - currentLevelInfo["Exp Requirement"]) / tonumber(nextLevelInfo["Exp Requirement"] - currentLevelInfo["Exp Requirement"])
-
-	progressBar.Progress.Size = UDim2.new(0, 276*levelProgress, 0, 30)
-	CountdownPopUp(expPopUpGui, newExpBar, 12, .45, 0, 0, .9) --Start Countdown
-
-	local namePlate = newExpBar.NamePlate
-	namePlate.DisplayName.Text = tostring(statName)
-
-	wait(.5)
-	namePlate:TweenPosition(UDim2.new(-12, 0, -0.9, 0), "Out", "Quint", .3)
-end
-
-local function ManageEXPPopUp(statName, expAmount, amountAdded)
-	local skillInfo = getItemStatTable:InvokeServer("Experience", nil, "Skills", statName)
-	local simpleStatName = string.gsub(statName, " Skill", "")
-
-	local currentLevel, nextLevel = FindStatLevel(skillInfo, expAmount)
-
-	if #expPopUpGui:GetChildren() ~= 0 then
-		if expPopUpGui.ExperienceBar.NamePlate.DisplayName.Text == simpleStatName then --Old Exp Bar
-			ShowEXPChange(currentLevel, nextLevel, skillInfo, expAmount, amountAdded)
-			CountdownPopUp(expPopUpGui, expPopUpGui.ExperienceBar, 12, 0.5, 0, 0, 0.9)
-		else
-			InsertNewEXPBar(skillInfo, simpleStatName, expAmount, currentLevel, nextLevel, true)
-		end
-		
-	else
-		InsertNewEXPBar(skillInfo, simpleStatName, expAmount, currentLevel, nextLevel)
-		ShowEXPChange(currentLevel, nextLevel, skillInfo, expAmount, amountAdded)
-	end
-end
-
 for _,button in pairs (DataMenu.ExperienceMenu:GetChildren()) do
 	if button:IsA("ImageButton") and string.match(button.Name, "MenuButton") then
 		GuiUtility.SetUpPressableButton(button, 0.005)
 	end
 end
-
---------------------<|Material PopUp Functions|>-------------------------------------------------------------------------------------------------------------------
-local itemPopUpGui = script.Parent.Parent.PopUps:FindFirstChild("ItemPopUp")
-
-local moveUpAmount = 0.105
-local itemPopUpCount
-local function InsertNewMaterialPopUp(itemType, statName, amountAdded)
-
-	--Move other popups upward
-	for _,popUp in pairs (itemPopUpGui:GetChildren()) do
-		popUp:TweenPosition(UDim2.new(popUp.Position.X.Scale, 0, popUp.Position.Y.Scale - moveUpAmount, 0), "Out", "Quint", .8)
-	end
-
-	local itemInfo = game.ReplicatedStorage.InventoryItems:FindFirstChild(itemType):FindFirstChild(statName)
-
-	local newItemPopUp = GuiElements.PopUpSlot:Clone()
-	newItemPopUp.Parent = itemPopUpGui
-	newItemPopUp.Amount.Text = tostring(amountAdded)
-	newItemPopUp.DisplayName.Text = statName
-	newItemPopUp.Object.Value = statName
-	newItemPopUp.Position = UDim2.new(0.835, 0,1, 0)
-
-	itemPopUpCount = #itemPopUpGui:GetChildren()
-	newItemPopUp.Name = "PopUp" .. tostring(itemPopUpCount)
-	newItemPopUp.Object.Value = statName
-
-	local imageId = itemInfo["GUI Info"].StatImage.Value
-	newItemPopUp.Picture.Image = imageId
-
-	local rarityName = itemInfo["GUI Info"].RarityName.Value
-	local rarityInfo = GuiElements.RarityColors:FindFirstChild(rarityName)
-	newItemPopUp.BackgroundColor3 = rarityInfo.TileColor.Value
-	newItemPopUp.BorderColor3 = rarityInfo.Value
-	newItemPopUp.CircleBorder.BackgroundColor3 = rarityInfo.Value
-	newItemPopUp["Round Edge"].BackgroundColor3 = rarityInfo.Value
-	newItemPopUp["Round Edge"].Inner.BackgroundColor3 = rarityInfo.TileColor.Value
-
-	newItemPopUp.ZIndex = 50
-
-	newItemPopUp:TweenPosition(UDim2.new(0.835, 0,0.8, 0), "Out" , "Quint", .45)
-	CountdownPopUp(itemPopUpGui, newItemPopUp, 5, .2, 0)
-end
-
-local prevItem
-local prevAmount
-local currentPopUpStat
-local function ManageTopRightPopUps(statName, itemType, amountAdded)
-
-	if amountAdded ~= nil and amountAdded ~= 0 then
-
-		if amountAdded < 0 then
-			currentPopUpStat = "Negative" .. statName --Should losing items be recorded?
-		else
-			currentPopUpStat = statName
-		end
-		
-		--There will be two different popups: material popups that are short, and notification popups that are 
-		--taller for players to more easily see and read
-		--**Notifications: Level Up, Bag Capacity, etc
-		
-		if prevItem ~= currentPopUpStat then
-			InsertNewMaterialPopUp(itemType, statName, amountAdded)
-			prevItem = statName
-			prevAmount = amountAdded
-			
-		elseif prevItem == currentPopUpStat and #itemPopUpGui:GetChildren() == 0 then
-			InsertNewMaterialPopUp(itemType, statName, amountAdded) --Was PopUp of stat, but expired
-			prevItem = statName
-			prevAmount = amountAdded
-			
-		elseif #itemPopUpGui:GetChildren() >= 1 then
-			prevAmount = prevAmount + amountAdded --Update Item PopUp
-
-			local MostRecent = 0
-			for i,slot in pairs (itemPopUpGui:GetChildren()) do
-				if slot.Object.Value == statName then
-					if i > MostRecent then
-						MostRecent = i
-					end
-				end
-			end
-
-		 	itemPopUpGui:FindFirstChild("PopUp" .. tostring(MostRecent)).Amount.Text = tostring(prevAmount)
-			CountdownPopUp(itemPopUpGui, itemPopUpGui:FindFirstChild("PopUp" .. tostring(MostRecent)), 5, .2, 0)
-		end
-	end
-end
-
--------------------------<|Bag Information GUI Functions|>----------------------------------------------------------------------------------------------------------
-local BagPopUp = GuiElements:FindFirstChild("BagPopUp")
-local BagPopUpGui = script.Parent.Parent:WaitForChild("PopUps"):WaitForChild("CurrentBagPopUp")
-
-
---**Remove this code to put bag capacity notifications with item popups (like 50% full, 75% full, and 100% full)
---**If players then need a more exact amount of items in their bag, they can look at the display on their bag or 
---**open the inventory menu
-
-
-
-local function InsertNewBagPopUp(BagPopUp, BagPopUpGui, ItemTypeCount, BagCapacity, BagType, PopUpAlreadyExists)
-	if PopUpAlreadyExists then
-		local OldBagPopUp = BagPopUpGui:FindFirstChild("BagPopUp")
-		local NamePlate = OldBagPopUp.NamePlate
-		NamePlate:TweenPosition(UDim2.new(0.076,0,0,0), "Out", "Quint", .15)
-		wait(.15)
-		OldBagPopUp:TweenPosition(UDim2.new(0.159,0,1,0), "Out", "Quint", .2)
-		wait(.2)
-		OldBagPopUp:Destroy()
-	end
-
-	local NewBagPopUp = BagPopUp:Clone()
-	NewBagPopUp.Parent = BagPopUpGui
-	NewBagPopUp.Amounts.Text = tostring(ItemTypeCount) .. "/" .. tostring(BagCapacity)
-
-	NewBagPopUp:TweenPosition(UDim2.new(0.159,0,0.918,0), "Out", "Quint", .5)
-	wait(.5)
-	local NamePlate = NewBagPopUp:FindFirstChild("NamePlate")
-	NamePlate.Text = BagType
-	NamePlate:TweenPosition(UDim2.new(0.076,0,-0.344,0), "Out", "Quint", .3)
-	wait(.3)
-
-	if BagCapacity == 0 or ItemTypeCount == BagCapacity then
-		NewBagPopUp.Amounts.TextColor3 = Color3.fromRGB(203, 12, 15)
-	else
-		NewBagPopUp.Amounts.TextColor3 = Color3.fromRGB(0, 0, 0)
-	end
-
-	CountdownPopUp(BagPopUpGui, NewBagPopUp, 11, 0, 0.082, 0, 0.344)
-end
-
 
 -------------------------------------<|PlayerMenu Functions|>------------------------------------------------------------------------------------------------------------
 
@@ -1871,7 +1502,7 @@ local PlayerMenu = DataMenu:FindFirstChild("PlayerMenu")
 local PlayerInfo = PlayerMenu.PlayerInfo
 local thumbType = Enum.ThumbnailType.HeadShot
 local thumbSize = Enum.ThumbnailSize.Size420x420
-local PlayerProfilePicture = game.Players:GetUserThumbnailAsync(PlayerUserId, thumbType, thumbSize)
+local PlayerProfilePicture = game.Players:GetUserThumbnailAsync(Player.UserId, thumbType, thumbSize)
 
 PlayerInfo.PlayerThumbnail.Image = PlayerProfilePicture
 PlayerInfo.PlayerName.Text = tostring(Player)
@@ -1979,34 +1610,6 @@ function ManageStatBars(menu, itemStats)
 	HideRemainingStatDisplays(menu)
 end
 
-local function UpdateBagButtonBar(Button, RelatedInvMenu)
-	local BagCapacity = RelatedInvMenu:GetAttribute("BagCapacity")
-	local ItemCount = RelatedInvMenu:GetAttribute("ItemCount")
-	local ProgressBar = Button.Progress.Progress
-
-	if BagCapacity > 0 then
-		ProgressBar.Size = UDim2.new(ItemCount/BagCapacity, 0, 1, 0)
-	else
-		ProgressBar.Size = UDim2.new(1, 0, 1, 0)
-	end
-end
-
-function UpdateBagDisplays(Menu, ButtonMenu)
-	for i,button in pairs (ButtonMenu:GetChildren()) do
-		if button:IsA("ImageButton") then
-			if string.find(tostring(button), "Bags") then
-				local SingularName = string.gsub(tostring(button), "Bags", "")
-				local PluralName = SingularName .. "s"
-				local RelatedInvMenu = Menu.InventoryMenu:FindFirstChild(PluralName .. "Menu")
-
-				if RelatedInvMenu then
-					UpdateBagButtonBar(button, RelatedInvMenu)
-				end
-			end
-		end
-	end
-end
-
 -----------------<Overall ManageTiles Function|>----------------------------------------------------------------------
 
 local function ManageTiles(statName, Menu, value, Type, itemType)
@@ -2056,30 +1659,19 @@ end
 UpdateInventory.OnClientEvent:Connect(function(statName, folder, value, amountAdded, Type, itemType)
 	local typeFrame = DataMenu:FindFirstChild(tostring(Type) .. "Menu")
 
-	local Slots
+	local slots
 	if folder then
 		if typeFrame == DataMenu.ExperienceMenu then
-			Slots = typeFrame:FindFirstChild(folder .. "Menu") or typeFrame:FindFirstChild(folder)
+			slots = typeFrame:FindFirstChild(folder .. "Menu") or typeFrame:FindFirstChild(folder)
 		else
-			Slots = typeFrame.MaterialsMenu
+			slots = typeFrame.MaterialsMenu
 		end
 	else
 		warn("No Folder associated with inventory update. Stat Name: " .. statName)
 	end
 
-	if Type == "Inventory" then
-		ManageTopRightPopUps(statName, itemType, amountAdded) 
-
-	elseif Type == "Experience" then 
-		if amountAdded ~= nil and amountAdded ~= 0 then
-			--Any experience gain will be associated with an exp bar appearance
-			
-			ManageEXPPopUp(statName, value, amountAdded)
-		end
-	end
-
 	if tonumber(value) ~= 0 then
-		ManageTiles(statName, Slots, tonumber(value), Type, itemType)
+		ManageTiles(statName, slots, tonumber(value), Type, itemType)
 	end
 end)
 
@@ -2090,47 +1682,6 @@ UpdatePlayerMenu.OnClientEvent:Connect(function(EquipType, ItemType, Item)
 
 	local itemStats = getItemStatTable:InvokeServer("Equipment", EquipType, ItemType, Item)
 	ManageTiles(Item, AssociatedMenu, itemStats, EquipType, ItemType)
-end)
-
-UpdateItemCount.OnClientEvent:Connect(function(ItemTypeCount, BagCapacity, BagType, DepositedInventory)
-	if ItemTypeCount < 0 then
-		ItemTypeCount = 0
-	end
-
-	if not DepositedInventory then
-		if #BagPopUpGui:GetChildren() ~= 0 then --Menu already present
-			if BagPopUpGui.BagPopUp.NamePlate.Text == BagType then
-				local CurrentBagPopUp = BagPopUpGui:FindFirstChild("BagPopUp")
-				CountdownPopUp(BagPopUpGui, CurrentBagPopUp, 11, 0, 0.082, 0, 0.344)
-				CurrentBagPopUp.Amounts.Text = tostring(ItemTypeCount) .. "/" .. tostring(BagCapacity)
-			else
-				InsertNewBagPopUp(BagPopUp, BagPopUpGui, ItemTypeCount, BagCapacity, BagType, true)
-			end
-		else
-			InsertNewBagPopUp(BagPopUp, BagPopUpGui, ItemTypeCount, BagCapacity, BagType)
-		end
-	end
-
-	if ItemTypeCount ~= BagCapacity or BagCapacity ~= 0 then
-		local ItemType
-		if string.find(BagType, "Bag") then
-			ItemType = string.gsub(BagType, "Bags", "") .. "s"
-		else
-			ItemType = BagType
-			BagType = string.gsub(ItemType, "s", "") .. "Bags"
-		end
-
-		--Update bag counts in inventory
-		local InventoryMenu = DataMenu.InventoryMenu.MaterialsMenu
-		InventoryMenu:SetAttribute("ItemCount", ItemTypeCount)
-		InventoryMenu:SetAttribute("BagCapacity", BagCapacity)
-
-		--Update bag counts in playermenu
-		local BagButton = DataMenu.PlayerMenu:FindFirstChild(BagType)
-		if BagButton and InventoryMenu then
-			UpdateBagButtonBar(BagButton, InventoryMenu)
-		end
-	end
 end)
 
 UpdateEquippedItem.OnClientEvent:Connect(function(EquipType, ItemType, Item)
@@ -2157,10 +1708,6 @@ UpdateEquippedItem.OnClientEvent:Connect(function(EquipType, ItemType, Item)
 				end
 			end
 		end
-	end
-
-	if ItemType == "Bags" then
-		--UpdateBagDisplays(DataMenu, DataMenu.PlayerMenu)
 	end
 end)
 
