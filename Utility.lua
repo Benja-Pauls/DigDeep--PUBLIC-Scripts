@@ -1,6 +1,3 @@
---(ModuleScript)
---Small module script for repetitive processes
-------------------------------------------------------------------------------------------------------------------------------------------------
 local Utility = {}
 
 function Utility:GetItemInfo(statName, typeOnly)
@@ -19,7 +16,7 @@ function Utility:UpdateMoneyDisplay(Player, newPlayerCash)
 	local PlayerGui = game.Players:FindFirstChild(tostring(Player)).PlayerGui
 	local MoneyDisplay = PlayerGui:WaitForChild("MoneyDisplay")
 	
-	MoneyDisplay["Coin Display"].Amount.Text = "$" .. tostring(newPlayerCash)
+	MoneyDisplay["Coin Display"].Frame.Amount.Text = "$" .. tostring(newPlayerCash)
 	PlayerGui.DataMenu.DataMenu.PlayerMenu.PlayerInfo.PlayerCash.Text = tostring(newPlayerCash)
 end
 
