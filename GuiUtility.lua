@@ -110,6 +110,31 @@ function GuiUtility.ToDHMS(sec, tileTimePreview)
 	end
 end
 
+function GuiUtility.FindStatLevel(statInfo, expValue)
+	local currentLevel = 0
+
+	if statInfo["Levels"] then
+		for l = 1,#statInfo["Levels"],1 do
+			if statInfo["Levels"][l] then
+				local levelInfo = statInfo["Levels"][l]
+
+				if tonumber(expValue) >= levelInfo["Exp Requirement"] and l > currentLevel then
+					currentLevel = l
+				end
+			end
+		end
+	end
+
+	local nextLevel
+	if statInfo["Levels"][currentLevel + 1] then
+		nextLevel = currentLevel + 1
+	else
+		nextLevel = currentLevel
+	end
+
+	return currentLevel,nextLevel
+end
+
 -------------<|Tween Functions|>------------------------------------------------------
 local TweenService = game:GetService("TweenService")
 
