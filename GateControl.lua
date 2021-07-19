@@ -72,7 +72,11 @@ ClaimTycoon.OnServerEvent:Connect(function(player,tycoon)
 		
 		local PlayerData = game.ServerStorage:FindFirstChild("PlayerData")
 		local PlayerDataFile = PlayerData:FindFirstChild(tostring(player.UserId))
-		local PlayerCash = PlayerDataFile:FindFirstChild("Currencies"):FindFirstChild("UniversalCurrencies"):FindFirstChild("Currency")
+		local PlayerCash = PlayerDataFile:FindFirstChild("Currencies"):FindFirstChild("UniversalCurrencies"):FindFirstChild("Coins")
+		
+		
+		print("CHANGE THIS SCRIPT LATER SO NON-SERVER SCRIPT DOESN'T ACCESS SERVERSTORAGE")
+		
 		local ownstycoon = PlayerDataFile:FindFirstChild("OwnsTycoon")
 		if PlayerCash.Value >= script.Parent.Parent.Price.Value then
 			if tycoon:WaitForChild("Owner").Value == nil then
@@ -82,7 +86,7 @@ ClaimTycoon.OnServerEvent:Connect(function(player,tycoon)
 		
 				PlayerCash.Value = PlayerCash.Value - tycoon.Entrance.Price.Value
 				local MoneyDisplay = game.Players:FindFirstChild(tostring(player)).PlayerGui.MoneyDisplay
-				MoneyDisplay["CoinDisplay"].Amount.Text = "$" .. tostring(PlayerCash.Value)
+				MoneyDisplay["Coin Display"].Frame.Amount.Text = tostring(PlayerCash.Value)
 		
 				LocalLoadTycoon:FireClient(player,tycoon)
 
