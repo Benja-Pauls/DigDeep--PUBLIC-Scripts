@@ -41,7 +41,7 @@ local NPCData = {
 		},
 		
 		["Items"] = { --item, cost, costType, requiredResearch
-			{RS.Equippable.Bags.MaterialBags["Beginner Bag"], 55, "Coins"},
+			{RS.Equippable.Bags.MaterialBags["Beginner Bag"], 1, "Coins"},
 			{RS.Equippable.Bags.MaterialBags["Advanced Bag"], 100, "Coins"},
 			{RS.Equippable.Tools.Pickaxes.Pickaxe, 5, "Coins"},
 			{RS.Equippable.Tools.Pickaxes["Orange Pickaxe"], 15, "Coins"},
