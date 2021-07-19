@@ -431,33 +431,10 @@ function CleanupMenuTabs(Menu)
 	end
 end
 
-local TI = TweenInfo.new(1, Enum.EasingStyle.Circular, Enum.EasingDirection.Out)
-local startingPos = Vector2.new(-1.2, 0) --Start on right
-local waitPeriod = 2.5
-
---****Replace shine effect with small notification circle in corner of tile
-local function AnimateShine(button)
-	local Gradient = button.UIGradient
-	local ShineEffect = TweenService:Create(Gradient, TI, {Offset = Vector2.new(1.2, 0)})
-
-	Gradient.Offset = startingPos
-	ShineEffect:Play()
-	ShineEffect.Completed:Wait()
-
-	Gradient.Offset = startingPos
-	ShineEffect:Play()
-	ShineEffect.Completed:Wait()
-
-	if button.NewItem.Value == true then
-		wait(waitPeriod)
-		AnimateShine(button)
-	end
-end
-
 function CheckForNewItems()
 	local NewItemButtons = {}
 
-	for i,button in pairs (DataMenu.PlayerMenu:GetChildren()) do
+	for _,button in pairs (DataMenu.PlayerMenu:GetChildren()) do
 		if button:IsA("ImageButton") then
 			button.UIGradient.Offset = Vector2.new(1.5, 0)
 			if button.NewItem.Value == true then
@@ -1658,20 +1635,22 @@ end
 
 UpdateInventory.OnClientEvent:Connect(function(statName, folder, value, amountAdded, Type, itemType)
 	local typeFrame = DataMenu:FindFirstChild(tostring(Type) .. "Menu")
-
-	local slots
-	if folder then
-		if typeFrame == DataMenu.ExperienceMenu then
-			slots = typeFrame:FindFirstChild(folder .. "Menu") or typeFrame:FindFirstChild(folder)
+	
+	if typeFrame then
+		local slots
+		if folder then
+			if typeFrame == DataMenu.ExperienceMenu then
+				slots = typeFrame:FindFirstChild(folder .. "Menu") or typeFrame:FindFirstChild(folder)
+			else
+				slots = typeFrame.MaterialsMenu
+			end
 		else
-			slots = typeFrame.MaterialsMenu
+			warn("No Folder associated with inventory update. Stat Name: " .. statName)
 		end
-	else
-		warn("No Folder associated with inventory update. Stat Name: " .. statName)
-	end
 
-	if tonumber(value) ~= 0 then
-		ManageTiles(statName, slots, tonumber(value), Type, itemType)
+		if tonumber(value) ~= 0 then
+			ManageTiles(statName, slots, tonumber(value), Type, itemType)
+		end
 	end
 end)
 
