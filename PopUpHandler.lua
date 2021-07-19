@@ -1,6 +1,7 @@
 local player = game.Players.LocalPlayer
 local replicatedStorage = game.ReplicatedStorage
 local currentCamera = game.Workspace.CurrentCamera
+local tweenService = game:GetService("TweenService")
 
 local guiElements = replicatedStorage.GuiElements
 local guiUtility = require(replicatedStorage.GuiUtility)
@@ -13,9 +14,43 @@ local itemPopUpGui = script.Parent.ItemPopUp
 local expBarPopUpGui = script.Parent.EXPBarPopUp
 local mouseoverPopUpGui = script.Parent.MouseoverPopUp
 
+local currentPopUpTweens = {}
 ----------------------------<|Countdown Functions|>--------------------------------------------------------------------------------------------------------------------------
 
-function CountdownPopUp(popUpGuiScreen, popUp, expireTime, xJump, yJump, xJump2, yJump2)
+local function CountdownPopUp(popUp, expireTime) --xJump, yJump, xJump2, yJump2
+	local timer = popUp.TimeLeft
+	timer.Value = 0
+	
+	coroutine.resume(coroutine.create(function()
+		for sec = 1,expireTime do
+			wait(1)
+			
+			if sec == timer.Value + 1 then
+				timer.Value = sec
+				if sec == expireTime then
+					popUp.Name = "Expired"
+					
+					if currentPopUpTweens[popUp] then
+						currentPopUpTweens[popUp]:Pause()
+						currentPopUpTweens[popUp]:Destroy()
+					end
+					
+					local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+					local currentXSize = popUp.Size.X.Scale
+					local currentYPos = popUp.Position.Y.Scale
+					
+					local hideTween = tweenService:Create(popUp, tweenInfo, {Position = UDim2.new(1 + currentXSize, 0, currentYPos, 0)})
+					hideTween:Play()
+					
+					wait(0.3)
+					popUp:Destroy()
+				end
+			end
+		end
+	end))
+	
+	
+	--[[
 	if popUp:FindFirstChild("TimeLeft") then
 		local Timer = popUp.TimeLeft
 		Timer.Value = 0
@@ -27,22 +62,12 @@ function CountdownPopUp(popUpGuiScreen, popUp, expireTime, xJump, yJump, xJump2,
 				if sec == Timer.Value + 1 then
 					Timer.Value = sec
 					if sec == expireTime then
-						if popUp:FindFirstChild("NamePlate") then
-							local namePlate = popUp:FindFirstChild("NamePlate")
-							local xPos = namePlate.Position.X.Scale
-							local yPos = namePlate.Position.Y.Scale
-							namePlate:TweenPosition(UDim2.new(xPos + xJump2 ,0 , yPos + yJump2 ,0), "Out", "Quint", .3)
-							wait(.4)
-						end
-
-						local xPos = popUp.Position.X.Scale
-						local yPos = popUp.Position.Y.Scale
-						popUp:TweenPosition(UDim2.new(xPos + xJump, 0, yPos + yJump, 0), "In", "Quint", .5)
-						wait(.8)
+						
+						
 						popUp:Destroy()
 
-						if #popUpGuiScreen:GetChildren() > 0 then
-							for i,slot in pairs (popUpGuiScreen:GetChildren()) do
+						if #itemPopUpGui:GetChildren() > 0 then --Rename remaining popUps
+							for i,slot in pairs (itemPopUpGui:GetChildren()) do
 								slot.Name = "PopUp" .. tostring(i)
 							end
 						end
@@ -51,6 +76,7 @@ function CountdownPopUp(popUpGuiScreen, popUp, expireTime, xJump, yJump, xJump2,
 			end
 		end))
 	end
+	]]
 end
 
 local differenceEXPAdded = 0
@@ -263,6 +289,37 @@ local function InsertNewMaterialPopUp(itemType, statName, amountAdded)
 	CountdownPopUp(itemPopUpGui, newItemPopUp, 5, .2, 0)
 end
 ]]
+local rarityTweenInfo = TweenInfo.new(1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+
+local function AnimateRarityShine(popUp, rarityInfo)
+	for _,rarityFrame in pairs (popUp:GetChildren()) do
+		if string.match(rarityFrame.Name, "RarityFrame") then
+			rarityFrame.BackgroundColor3 = Color3.new(255, 255, 255)
+			if rarityFrame:FindFirstChild("RarityGradient") then
+				rarityFrame.RarityGradient:Destroy()
+			end
+			
+			local rarityGradient = rarityInfo.RarityGradient:Clone()
+			rarityGradient.Parent = rarityFrame
+			rarityGradient.Rotation = 90
+			rarityGradient.Offset = Vector2.new(0, 1.2)
+			
+			local outShineEffect = tweenService:Create(rarityGradient, rarityTweenInfo, {Offset = Vector2.new(0, -1.2)})
+			outShineEffect:Play()
+			--outShineEffect.Completed:Wait()
+			
+			--local inShineEffect = tweenService:Create(rarityGradient, rarityTweenInfo, {Offset = Vector2.new(0, -1.2)})
+			--inShineEffect:Play()
+			--inShineEffect.Completed:Wait()
+		end
+	end
+	
+	--wait(1)
+	--if newPopUp.Parent then --was continuous without parent, is it with?
+		--print("is this function continuous? for popup: ", newPopUp)
+		--AnimateRarityShine(newPopUp, rarityInfo)
+	--end
+end
 
 ---------------------<|RightSide PopUp Management|>---------------------------------------------------------------------
 local coinDisplay = script.Parent.Parent.MoneyDisplay["Coin Display"]
@@ -270,129 +327,119 @@ local jumpDistance = coinDisplay.Size.Y.Scale/5.25
 local scaleJumpDistance = jumpDistance / currentCamera.ViewportSize.Y
 local xPos = 0.99
 
-local function CreateRightSidePopUp(tile, tileType, statName, itemTypeName, amountAdded)
-	--statName, itemTypeName, and amountAdded are for itemPopUps, not notifiers
-	
-	--**no limit on the count of tiles; if they insert fast enough, there should be a lot on-screen
-	
-	
+local function CreateRightSidePopUp(newPopUp, popUpType, statName, itemTypeName, amountAdded)
 	local yPos = coinDisplay.Position.Y.Scale + coinDisplay.Size.Y.Scale + jumpDistance
 	
-	if tileType == "Item" then
-		--Insert tile info
+	--Insert Tile Info
+	local newTweenInfo
+	local expireTime
+	if popUpType == "Item" then
+		if newPopUp:FindFirstChild("ItemAmount") then
+			newPopUp.ItemAmount.Text = tostring(amountAdded)
+			newTweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+			expireTime = 3
+		else --Discovered Item PopUp
+			newTweenInfo = TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+			statName = string.gsub(statName, "Discovered", "")
+			expireTime = 7
+		end
+		
 		local itemInfo = replicatedStorage.InventoryItems:FindFirstChild(itemTypeName):FindFirstChild(statName)
 		local rarityInfo = guiElements.RarityColors:FindFirstChild(itemInfo["GUI Info"].RarityName.Value)
 		local itemImage = itemInfo["GUI Info"].StatImage.Value
 		
-		tile.ItemName.Text = tostring(itemInfo)
-		tile.ItemImage.Image = itemImage
-		tile.ItemAmount.Text = tostring(amountAdded)
-		tile.RarityFrame.BackgroundColor3 = rarityInfo.Value
-		tile.RarityFrame2.BackgroundColor3 = rarityInfo.Value
+		newPopUp.ItemName.Text = tostring(itemInfo)
+		newPopUp.ItemImage.Image = itemImage
 		
+		newPopUp.RarityFrame.BackgroundColor3 = rarityInfo.Value
+		newPopUp.RarityFrame2.BackgroundColor3 = rarityInfo.Value
+		--coroutine.resume(coroutine.create(function()
+			--AnimateRarityShine(newPopUp, rarityInfo) --Possibly implement?
+		--end))
 		
-		
-		
-		
-		tile.Activated:Connect(function()
+		newPopUp.Activated:Connect(function()
 			print("Open Inventory Menu")
 			
 		end)
 		
-	elseif string.match(tileType, "Notify") then
-		if tileType == "LevelUpNotify" then
+	elseif string.match(popUpType, "Notify") then
+		if popUpType == "LevelUpNotify" then
 			
-			tile.Activated:Connect(function()
+			newPopUp.Activated:Connect(function()
 				print("Open Exp Menu")
 				
 			end)
 			
-		elseif tileType == "BagEquipNotify" then
+		elseif popUpType == "BagEquipNotify" then
 			
 			
-			tile.Activated:Connect(function()
+			newPopUp.Activated:Connect(function()
 				print("Open Bag Menu")
 
 			end)
 			
-		else --BagCapacityNotify, NewItemNotify
-			
-			tile.Activated:Connect(function()
+		else --BagCapacityNotify
+			newPopUp.Activated:Connect(function()
 				print("Open Inventory Menu")
 				
 			end)
 		end	
+		
+		newTweenInfo = TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+		expireTime = 7
 	end
 	
-	--for _,popUp in pairs (itemPopUpGui:GetChildren()) do
-	for p = 1,#itemPopUpGui:GetChildren() do
+	local popUpCount = 0
+	for _,popUp in pairs (itemPopUpGui:GetChildren()) do --Some PopUps will be labelled "expired"
+		if string.match(popUp.Name, "PopUp") then
+			popUpCount += 1
+		end
+	end
+	
+	--Move all other popups
+	for p = 1,popUpCount do
 		local popUp = itemPopUpGui:FindFirstChild("PopUp" .. tostring(p))
-		popUp.Name = "PopUp" .. tostring(p + 1)
 		
-		--popUp.Position = UDim2.new(xPos, 0, popUp.Position.Y.Scale + tile.Size.Y.Scale + scaleJumpDistance, yPos)
-		--popUp.Position = UDim2.new(xPos, 0, popUp.Position.Y.Scale + tile.Size.Y.Scale + jumpDistance, 0)
-		
-		local sizeSum = tile.Size.Y.Scale
-		if p >= 2 then
-			for i = 2,p do
-				local iTile = itemPopUpGui:FindFirstChild("PopUp" .. tostring(i))
-				sizeSum += iTile.Size.Y.Scale
-			end
-		end
-		
-		popUp.Position = UDim2.new(xPos, 0, sizeSum + jumpDistance*p + yPos, 0)
-		
-		if p == #itemPopUpGui:GetChildren() then
-			 print(sizeSum, jumpDistance*p, jumpDistance*(p-1), p)
-		end
-	end
-	
-	tile.Parent = itemPopUpGui
-	tile.Name = "PopUp1"
-	
-	--**Later tween into position
-	tile.Position = UDim2.new(xPos, 0, yPos, 0)
-	
-	--manage right side pop ups by naming the new slot 1 and the rest prev+1 while also moving all other tiles down 
-	--by the height of the newly inserted tile+jump distance, if there is any other tiles to move
-	
-	
-	--[[
-	if amountAdded < 0 then
-		currentPopUpStat = "Negative" .. statName --Should losing items be recorded? YES
-	else
-		currentPopUpStat = statName
-	end
-
-
-	if prevItem ~= currentPopUpStat then
-		InsertNewMaterialPopUp(itemTypeName, statName, amountAdded)
-		prevItem = statName
-		prevAmount = amountAdded
-
-	elseif prevItem == currentPopUpStat and #itemPopUpGui:GetChildren() == 0 then
-		InsertNewMaterialPopUp(itemTypeName, statName, amountAdded) --Was PopUp of stat, but expired
-		prevItem = statName
-		prevAmount = amountAdded
-
-	elseif #itemPopUpGui:GetChildren() >= 1 then
-		prevAmount = prevAmount + amountAdded --Update Item PopUp
-
-		local MostRecent = 0
-		for i,slot in pairs (itemPopUpGui:GetChildren()) do
-			if slot.Object.Value == statName then
-				if i > MostRecent then
-					MostRecent = i
+		if popUp then
+			popUp.Name = "PopUp" .. tostring(p + 1)
+			
+			local sizeSum = newPopUp.Size.Y.Scale
+			if p >= 2 then
+				for i = 2,p do
+					local iTile = itemPopUpGui:FindFirstChild("PopUp" .. tostring(i))
+					sizeSum += iTile.Size.Y.Scale
 				end
 			end
+			
+			local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+			local tween = tweenService:Create(popUp, tweenInfo, {Position = UDim2.new(xPos, 0, sizeSum + jumpDistance*p + yPos, 0)})
+			
+			if currentPopUpTweens[popUp] then
+				currentPopUpTweens[popUp]:Pause()
+				currentPopUpTweens[popUp]:Destroy()
+			end
+			currentPopUpTweens[popUp] = tween
+			tween:Play()
 		end
-
-		itemPopUpGui:FindFirstChild("PopUp" .. tostring(MostRecent)).Amount.Text = tostring(prevAmount)
-		CountdownPopUp(itemPopUpGui, itemPopUpGui:FindFirstChild("PopUp" .. tostring(MostRecent)), 5, .2, 0)
 	end
-	]]
+	
+	newPopUp.Parent = itemPopUpGui
+	newPopUp.Name = "PopUp1"
+	newPopUp.Position = UDim2.new(1 + newPopUp.Size.X.Scale, 0, yPos, 0)
+	
+	if newTweenInfo then
+		local tween = tweenService:Create(newPopUp, newTweenInfo, {Position = UDim2.new(xPos, 0, yPos, 0)})
+		currentPopUpTweens[newPopUp] = tween
+		tween:Play()
+	end
+	
+	CountdownPopUp(newPopUp, expireTime)
 end
 
+local itemTilePopUp = guiElements.ItemPopUp
+local staticXSize = itemTilePopUp.Size.X.Scale
+local staticYSize = itemTilePopUp.Size.Y.Scale
+local outPos = UDim2.new(staticXSize*1.04, 0, staticYSize*1.08, 0)
 
 updateInventory.OnClientEvent:Connect(function(statName, folder, value, amountAdded, Type, itemTypeName)
 	--folder = "Material", "Arcade Level", "Skill", etc...
@@ -401,8 +448,7 @@ updateInventory.OnClientEvent:Connect(function(statName, folder, value, amountAd
 	
 	if amountAdded ~= nil and amountAdded ~= 0 then
 		if Type == "Inventory" then
-			
-			--see if PopUp1 is already this item (if so, update the amount)
+
 			local tileUpdated = false
 			if itemPopUpGui:FindFirstChild("PopUp1") then
 				local popUp = itemPopUpGui.PopUp1
@@ -410,18 +456,50 @@ updateInventory.OnClientEvent:Connect(function(statName, folder, value, amountAd
 				if popUp:FindFirstChild("ItemName") then
 					if popUp.ItemName.Text == statName then
 						tileUpdated = true
-						popUp.TimeLeft.Value = 0
+						CountdownPopUp(popUp, 3)
+						
+						if currentPopUpTweens[statName .. "Out"] then
+							currentPopUpTweens[statName .. "Out"]:Pause()
+							currentPopUpTweens[statName .. "Out"]:Destroy()
+						end
+						if currentPopUpTweens[statName .. "In"] then
+							currentPopUpTweens[statName .. "In"]:Pause()
+							currentPopUpTweens[statName .. "In"]:Destroy()
+						end
+						popUp.Size = UDim2.new(staticXSize, 0, staticYSize, 0)	
+							
+						local outTweenInfo = TweenInfo.new(0.1, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+						local inTweenInfo = TweenInfo.new(0.15, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+						
+						local outTween = tweenService:Create(popUp, outTweenInfo, {Size = outPos})
+						outTween:Play()
+						currentPopUpTweens[statName .. "Out"] = outTween
 						
 						popUp.ItemAmount.Text = tostring(tonumber(popUp.ItemAmount.Text) + amountAdded)
+						wait(0.1)
+						
+						local inTween = tweenService:Create(popUp, inTweenInfo, {Size = UDim2.new(staticXSize, 0, staticYSize, 0)})
+						inTween:Play()
+						currentPopUpTweens[statName .. "In"] = inTween
+						
+						--local itemInfo = game.ReplicatedStorage.InventoryItems:FindFirstChild(itemTypeName):FindFirstChild(statName)
+						--local rarityName = itemInfo["GUI Info"].RarityName.Value
+						--local rarityInfo = guiElements.RarityColors:FindFirstChild(rarityName)
+						--AnimateRarityShine(popUp, rarityInfo)
 					end
 				end
 			end
 				
 			if tileUpdated == false then
-				local itemTile = guiElements.ItemPopUp:Clone()
-				CreateRightSidePopUp(itemTile, "Item", statName, itemTypeName, amountAdded) 
+				CreateRightSidePopUp(itemTilePopUp:Clone(), "Item", statName, itemTypeName, amountAdded) 
 			end
-
+			
+		elseif Type == "Discovered" then
+			local newItemTile = guiElements.NotifyPopUps.NewItemNotify:Clone()
+			
+			wait(0.1)
+			CreateRightSidePopUp(newItemTile, "Item", statName, itemTypeName)
+			
 		elseif Type == "Experience" then 
 			--ManageEXPPopUp(statName, value, amountAdded)
 		end
@@ -447,6 +525,7 @@ updateItemCount.OnClientEvent:Connect(function(itemTypeCount, bagCapacity, bagTy
 					local interestPoint = tostring(poi*100)
 					local bagNotify = guiElements.NotifyPopUps:FindFirstChild("Bag" .. interestPoint .. "%Notify") 
 					
+					wait(0.1)
 					CreateRightSidePopUp(bagNotify:Clone(), "Notify") --Remember to :Clone()
 				end
 			end	
