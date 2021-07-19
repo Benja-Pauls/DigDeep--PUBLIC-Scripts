@@ -65,7 +65,13 @@ end
 ------------------------<|Tycoon Purchase Functions|>-------------------------------------------------------------------------------------------------------------
 
 local function DisplayButtonMaterials(Button)
-	local OriginalPage = game.ReplicatedStorage.GuiElements:FindFirstChild("CostsListPage")
+	
+	--**In the future, tycoon purchases probably won't be bought with materials 
+	--**Instead, research will be the only place players need to invest materials to progress, rather than confusing
+	--them with multiple locations to put materials into
+	
+	
+	local OriginalPage = game.ReplicatedStorage.GuiElements:FindFirstChild("DataMenuPage")
 	local OriginalSlot = game.ReplicatedStorage.GuiElements:FindFirstChild("TycoonPurchaseMaterialSlot")
 
 	local NewPage = OriginalPage:Clone()
@@ -73,22 +79,21 @@ local function DisplayButtonMaterials(Button)
 	NewPage.Position = UDim2.new(0, 0, 0, 0)
 	NewPage.Name = "Page1"
 
-	local MoneySlot = OriginalSlot:Clone() --Display cash cost even if 0
-	MoneySlot.Parent = NewPage
-	MoneySlot.Position = UDim2.new(0.064, 0, 0.032, 0)
-	MoneySlot.CostAmount.Text = tostring(Button.Price.Value)
-	MoneySlot.DisplayName.Text = "Cash"
-	MoneySlot.Picture.Image = "rbxgameasset://Images/Money1"	
-	MoneySlot.Name = "Slot1"
+	local currencySlot = OriginalSlot:Clone() --Display cash cost even if 0
+	currencySlot.Parent = NewPage
+	currencySlot.Position = UDim2.new(0.064, 0, 0.032, 0)
+	currencySlot.CostAmount.Text = tostring(Button.Price.Value)
+	currencySlot.DisplayName.Text = "Cash"
+	currencySlot.Picture.Image = "rbxgameasset://Images/Money1"	
+	currencySlot.Name = "Slot1"
 
-	MoneySlot.Picture.BackgroundColor3 = game.ReplicatedStorage.GuiElements.RarityColors.Uncommon.TileColor.Value
-	MoneySlot.Picture.BorderColor3 = game.ReplicatedStorage.GuiElements.RarityColors.Uncommon.Value
-	MoneySlot.BorderColor3 = game.ReplicatedStorage.GuiElements.ItemTypeColors.Cash.Value
+	currencySlot.Picture.BackgroundColor3 = game.ReplicatedStorage.GuiElements.RarityColors.Uncommon.TileColor.Value
+	currencySlot.Picture.BorderColor3 = game.ReplicatedStorage.GuiElements.RarityColors.Uncommon.Value
 
 	local PlayerCurrency = Player.PlayerGui.DataMenu.DataMenu.PlayerMenu.PlayerInfo.PlayerCash.Text
-	MoneySlot.PlayerSumAmount.Text = PlayerCurrency
+	currencySlot.PlayerSumAmount.Text = PlayerCurrency
 
-	ManageCostTextColor(Button.Price.Value, tonumber(PlayerCurrency), MoneySlot)
+	ManageCostTextColor(Button.Price.Value, tonumber(PlayerCurrency), currencySlot)
 
 	if Button:FindFirstChild("MaterialPrice") then
 		local MaterialFiles = Button.MaterialPrice:GetChildren()
@@ -132,7 +137,6 @@ local function DisplayButtonMaterials(Button)
 
 				NewSlot.Picture.BackgroundColor3 = game.ReplicatedStorage.GuiElements.RarityColors:FindFirstChild(Rarity).TileColor.Value
 				NewSlot.Picture.BorderColor3 = game.ReplicatedStorage.GuiElements.RarityColors:FindFirstChild(Rarity).Value
-				NewSlot.BorderColor3 = game.ReplicatedStorage.GuiElements.ItemTypeColors:FindFirstChild(tostring(file)).Value
 
 				local PlayerItemCount = GetItemCountSum:InvokeServer(tostring(material))
 				NewSlot.PlayerSumAmount.Text = tostring(PlayerItemCount)
@@ -178,6 +182,8 @@ end
 local press = false
 TycoonPurchaseInteract.Event:Connect(function(Button, player)
 	local TycoonOwner = Button.Parent.Parent.Owner.Value
+	print("CHANGE HOW TYCOON OWNER WORKS LATER SO EXPLOITERS CANNOT CHANGE WORKSPACE VALUES")
+	
 	if TycoonOwner == player then
 		if not Button.Parent.Parent.PurchasedObjects:FindFirstChild(Button.Object.Value) then
 			if TycoonPurchaseMenu.Visible == false then
