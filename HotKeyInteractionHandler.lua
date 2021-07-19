@@ -87,23 +87,23 @@ end)
 ---------------------------------------<|High-Traffic Functions|>--------------------------------------------------------------------------------------------
 
 ProximityPromptService.PromptTriggered:Connect(function(promptObject, player)
-	local InteractType = promptObject:GetAttribute("InteractType")
-	local InteractEvent = game.ReplicatedStorage.Events.HotKeyInteract:FindFirstChild(InteractType .. "Interact")
+	local interactType = promptObject:GetAttribute("InteractType")
+	local interactEvent = game.ReplicatedStorage.Events.HotKeyInteract:FindFirstChild(interactType .. "Interact")
 	
-	if InteractType == "TycoonPurchase" then
-		InteractEvent:Fire(promptObject.Parent, player)
+	if interactType == "TycoonPurchase" then
+		interactEvent:Fire(promptObject.Parent, player)
 	else
-		if InteractEvent:IsA("BindableEvent") then
-			InteractEvent:Fire(promptObject)
-		elseif InteractEvent:IsA("RemoteEvent") then
+		if interactEvent:IsA("BindableEvent") then
+			interactEvent:Fire(promptObject)
+		elseif interactEvent:IsA("RemoteEvent") then
 			local AssociatedObject = promptObject.AssociatedObject.Value
-			InteractEvent:FireServer(AssociatedObject)
+			interactEvent:FireServer(AssociatedObject)
 		end
 	end
 	
 	
 	
-	--Later types may include opening a door or interacting with another player
+	--Later types may include opening a door or interacting with another player to friend, trade, etc
 end)
 
 --For custom proximity prompt GUIs
@@ -137,5 +137,4 @@ end)
 ]]
 
 PrepInteractables()
-
 
