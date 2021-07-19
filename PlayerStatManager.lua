@@ -36,7 +36,7 @@ local HandleDropMaterialsEvent = eventsFolder.Tycoon:WaitForChild("HandleDropMat
 
 -------------------------<|Set Up Game|>--------------------------------------------------------------------------------------------------------------------------------------
 local DataStoreService = game:GetService("DataStoreService") 
-local PlayerSave = DataStoreService:GetDataStore("Tycoon Test209") --Changing this will change the datastore info is taken from
+local PlayerSave = DataStoreService:GetDataStore("Tycoon Test211") --Changing this will change the datastore info is taken from
 
 --When player joins
 game.Players.PlayerAdded:Connect(function(JoinedPlayer)
@@ -278,7 +278,7 @@ function PlayerStatManager:ChangeStat(player, statName, value, saveFolder, itemT
 				elseif string.find(statName, "Discovered") then
 					local acquiredLocation = Utility:GetItemInfo(string.gsub(statName, "Discovered", ""), true)
 					UpdateTycoonStorage:FireClient(player, statName, value, tostring(acquiredLocation))
-					
+					UpdateInventory:FireClient(player, statName, tostring(itemType), value, 1, "Discovered", tostring(acquiredLocation))
 				end
 			end
 			
