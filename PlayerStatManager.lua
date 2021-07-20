@@ -763,6 +763,8 @@ SellItem.OnServerEvent:Connect(function(Player, Menu, item, Percentage)--, Amoun
 
 			PlayerStatManager:ChangeStat(Player, "Coins", SellAmount, "Currencies", true) --Update Currency
 			PlayerStatManager:ChangeStat(Player, "TycoonStorage" .. tostring(itemInfo), -Amount, "TycoonStorage")
+			
+			SellItem:FireClient(Player) --RightSide Notify
 		else
 			--exploiter
 			warn("Item could not be found to sell!")
