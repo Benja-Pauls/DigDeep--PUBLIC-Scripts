@@ -491,7 +491,7 @@ SelectionMenu.SelectItem.Activated:Connect(function()
 		local itemName = itemTile.ItemName.Value
 		SellMenu.MaxAmount.Value = itemAmount
 		
-		local ItemInfo = GuiUtility.GetItemInfo(itemName, tostring(CurrentMenu))
+		local ItemInfo = GuiUtility.GetItemInfo(itemName)
 		if ItemInfo then
 			SellMenu.SelectedItem.Value = ItemInfo
 			ManageSellMenu(true)
@@ -1939,14 +1939,6 @@ local function HandleDepositInventory()
 		local finished = DepositInventory:FireServer(Player)
 		wait(finished)
 
-		--notify player that they deposited their inventory
-		TycoonComputerGui.DepositNotify.Visible = true
-		TycoonComputerGui.DepositNotify:TweenPosition(UDim2.new(0.358,0,0.85,0), "Out", "Quint", 1)
-		wait(1)
-		TycoonComputerGui.DepositNotify:TweenPosition(UDim2.new(0.358,0,1.1,0), "In", "Quint", 1.5)
-		wait(3)
-		TycoonComputerGui.DepositNotify.Visible = false
-
 		repeatDebounce = false	
 	end	
 end
@@ -2029,4 +2021,3 @@ end
 
 ManageStorageTiles("Materials")
 
-	
