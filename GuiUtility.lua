@@ -12,8 +12,10 @@ function GuiUtility.GetItemInfo(statName, typeOnly)
 	end
 end
 
-function GuiUtility.GetStatImage(stat)
-	local itemInfo = GuiUtility.GetItemInfo(tostring(stat))
+function GuiUtility.GetStatImage(stat, itemInfo)
+	if itemInfo == nil then
+		itemInfo = GuiUtility.GetItemInfo(tostring(stat))
+	end
 
 	if itemInfo then
 		if itemInfo["GUI Info"].StatImage then
@@ -196,9 +198,97 @@ function GuiUtility.SetUpPressableButton(button, scaleChange)
 	end)
 end
 
---possible page/tile change tween manager here as well..?
 
--------------<|Menu Display Functions|>------------------------------------------------
+
+
+-----------------------<|Info Display Functions|>---------------------------------------------------------------------------------------------
+
+function GuiUtility.CleanupMenuDefaults(player, menu)
+	local dataMenu = player.PlayerGui.DataMenu.DataMenu
+	
+	--Prep Default Menus
+	if menu.Name == "DataMenu" or menu.Name == "PlayerMenu" then
+		for _,gui in pairs (dataMenu.PlayerMenu:GetChildren()) do
+			gui.Visible = false
+			
+			if gui:IsA("ImageButton") then
+				gui.Visible = true
+				gui.Active = true
+			end
+		end
+		dataMenu.PlayerMenu.PlayerInfo.Visible = true
+	end
+
+	for _,button in pairs(menu:GetChildren()) do
+		if (button:IsA("TextButton") or button:IsA("ImageButton")) and button:FindFirstChild("Menu") then
+			local associatedMenuName = button.Menu.Value
+			local buttonMenu = menu:FindFirstChild(associatedMenuName)
+
+			buttonMenu.Visible = false
+		end
+	end
+
+	if menu.Name == "ExperienceMenu" then
+		menu.SkillsMenu.Visible = true
+		menu.SideButtonBar.Visible = true
+	end
+end
+
+function GuiUtility.OpenDataMenu(player, playerModel, dataMenu, currentTab)
+	local openDataMenuButton = dataMenu.Parent.OpenDataMenuButton
+	local menuTabs = {
+		dataMenu.PlayerMenuButton, 
+		dataMenu.InventoryMenuButton, 
+		dataMenu.ExperienceMenuButton,
+		dataMenu.JournalMenuButton
+	}
+	
+	dataMenu.Position = UDim2.new(0.159, 0, -.8, 0)
+	dataMenu.Visible = true
+	dataMenu.TopTabBar.CloseMenu.Active = true
+	openDataMenuButton.Active = false
+
+	--CheckForNewItems()
+	
+	dataMenu:TweenPosition(UDim2.new(0.159, 0, 0.173, 0), "Out", "Quint", 0.5)
+
+	--Reset Tab Selection
+	for _,tab in pairs (menuTabs) do
+		if tab.Name == currentTab .. "Button" then
+			local currentButton = dataMenu:FindFirstChild(currentTab .. "Button")
+			local tabSelection = dataMenu.TopTabBar.TabSelection
+			local tabWidth = currentButton.Size.X.Scale
+			local tsWidth = tabSelection.Size.X.Scale
+
+			local newSelectPos = math.abs(tabWidth - tsWidth)/2 + currentButton.Position.X.Scale
+			tabSelection.Position = UDim2.new(newSelectPos, 0, 0.888, 0)
+			currentButton.Image = currentButton.SelectedImage.Value
+			currentButton.Active = true
+		else
+			tab.Image = tab.StaticImage.Value
+		end
+	end
+
+	GuiUtility.CleanupMenuDefaults(player, dataMenu)
+	
+	if dataMenu:FindFirstChild(currentTab) then
+		local menu = dataMenu:FindFirstChild(currentTab)
+		menu.Visible = true
+		
+		for _,gui in pairs (menu:GetChildren()) do
+			if gui:FindFirstChild("FirstSeeMenu") then
+				gui.Visible = true
+			elseif gui.Name == "EmptyNotifier" then
+				gui.Visible = false
+			end
+		end
+	end
+
+	GuiUtility.Display3DModels(player, dataMenu.PlayerMenu.PlayerInfo.PlayerView, playerModel:Clone(), true, 178)
+
+	wait(0.5)
+	openDataMenuButton.Active = true
+end
 
 function GuiUtility.Display3DModels(Player, viewport, displayModel, bool, displayAngle)
 	--possibly clear all viewports once menu is closed? (or once viewport is not visible?)
@@ -311,10 +401,6 @@ function GuiUtility.ManageTextBoxSize(frame, inputText, charactersPerRow, rowSiz
 
 	frame.Size = UDim2.new(frame.Size.X.Scale, 0, rowSize * rowCount, 0)
 end
-
-
-
-
 
 ---------------<|Page Manager Functions|>--------------------
 
