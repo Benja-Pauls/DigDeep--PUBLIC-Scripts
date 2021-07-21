@@ -172,10 +172,10 @@ local function EnableOnlyButtonMenu(buttonMenu, bool, descendantsSeek)
 end
 
 local function ResetRarityTiles(Menu)
-	for i,page in pairs (Menu:GetChildren()) do
-		if page:IsA("Frame") and string.find(page.Name, "Page") then
-			for i,tile in pairs (page:GetChildren()) do
-				if tile:IsA("ImageButton") and string.find(tile.Name, "Slot") then
+	for _,page in pairs (Menu:GetChildren()) do
+		if page:IsA("Frame") and string.match(page.Name, "Page") then
+			for _,tile in pairs (page:GetChildren()) do
+				if tile:IsA("ImageButton") and string.match(tile.Name, "Slot") then
 					local rarityInfo = tile.Rarity.Value
 					tile.Image = rarityInfo.TileImages.StaticRarityTile.Value
 				end
@@ -187,7 +187,8 @@ end
 local pageDebounce = false
 local function SetupPageChange(menu, emptyNotifier, fullBool, partialBool)
 	pageManager.Menu.Value = menu
-	local PageCount = GetHighPage(menu)
+	local PageCount = GetHighPage(menu)	
+	
 	if PageCount > 0 then
 		emptyNotifier.Visible = false
 
@@ -272,10 +273,10 @@ function ReadyMenuButtons(Menu)
 							dataMenu.SelectedBagInfo.FillProgress.Size = UDim2.new(itemCount/bagCapacity, 0, 1, 0)
 							dataMenu.SelectedBagInfo.BagType.Value = string.gsub(tostring(ButtonMenu), "Menu", "")
 						end
-
+						
 						ResetRarityTiles(ButtonMenu.MaterialsMenu)
-						SetupPageChange(MaterialsMenu, pageManager, ButtonMenu.EmptyNotifier, false, true)
-
+						SetupPageChange(MaterialsMenu, ButtonMenu.EmptyNotifier, false, true)
+						
 					elseif tostring(ButtonMenu) == "PlayerMenu" then
 						ButtonMenu.EmptyNotifier.Visible = false
 						pageManager.FullBottomDisplay.Visible = false
@@ -303,7 +304,7 @@ function ReadyMenuButtons(Menu)
 							end
 						end
 
-						SetupPageChange(skillsMenu, pageManager, ButtonMenu.EmptyNotifier, true, false)
+						SetupPageChange(skillsMenu, ButtonMenu.EmptyNotifier, true, false)
 					end
 
 
@@ -314,7 +315,7 @@ function ReadyMenuButtons(Menu)
 
 						--print("Menu == PlayerMenu", ButtonMenu)
 						ResetRarityTiles(ButtonMenu)
-						SetupPageChange(ButtonMenu, pageManager, Menu.EmptyNotifier, false, true)
+						SetupPageChange(ButtonMenu, Menu.EmptyNotifier, false, true)
 
 					elseif tostring(Menu) == "ExperienceMenu" then
 						EnableOnlyButtonMenu(Menu, true, false)
@@ -340,7 +341,7 @@ function ReadyMenuButtons(Menu)
 								end
 							end
 
-							SetupPageChange(ButtonMenu, pageManager, Menu.EmptyNotifier, true, false)
+							SetupPageChange(ButtonMenu, Menu.EmptyNotifier, true, false)
 						end
 					end
 
@@ -804,7 +805,9 @@ DepositInventory.OnClientEvent:Connect(function()
 	for _,menu in pairs (dataMenu.InventoryMenu:GetChildren()) do
 		if menu:IsA("Frame") and menu:FindFirstChild("Page1") then
 			for _,page in pairs (menu:GetChildren()) do
-				page:Destroy()
+				if string.match(page.Name, "Page") then
+					page:Destroy()
+				end
 			end
 		end
 	end
@@ -1016,7 +1019,7 @@ local function InsertItemViewerInfo(tile, statMenu, Type, statName, statInfo, va
 
 	--**Value is useless in every instance except for stat bar appearance (inventory and experience amounts don't
 	--update, they only update to the value they were first created with for the tile.Activated)
-
+	
 	if Type == "Inventory" then
 		local rarityName = statInfo["GUI Info"].RarityName.Value
 		local rarityInfo = guiElements.RarityColors:FindFirstChild(rarityName)
@@ -1242,7 +1245,6 @@ end
 
 insertItemViewerInfo.Event:Connect(InsertItemViewerInfo)
 
-local previousTile
 local function InsertTileInfo(Type, tile, statName, value, itemType, tileAlreadyPresent)
 	tile.StatName.Value = statName
 
@@ -1315,13 +1317,13 @@ local function InsertTileInfo(Type, tile, statName, value, itemType, tileAlready
 				local rarityInfo = tile.Rarity.Value
 				local newTileImage = rarityInfo.TileImages.SelectedRarityTile.Value
 
-				--Both Equipment and Inventory use a QuickViewMenu (deselect previous tile)
-				if previousTile then
-					local prevRarityInfo = previousTile.Rarity.Value
-					previousTile.Image = prevRarityInfo.TileImages.StaticRarityTile.Value
+				local previousTile = statMenu.PreviousTile
+				if previousTile.Value then --Visually deselect previous tile
+					local prevRarityInfo = previousTile.Value.Rarity.Value
+					previousTile.Value.Image = prevRarityInfo.TileImages.StaticRarityTile.Value
 				end
 
-				previousTile = tile
+				previousTile.Value = tile
 				statMenu.Visible = true
 				tile.Image = newTileImage
 			end	
