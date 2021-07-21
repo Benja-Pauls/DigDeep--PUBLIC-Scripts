@@ -9,6 +9,7 @@ local eventsFolder = replicatedStorage.Events
 
 local depositInteract = eventsFolder.HotKeyInteract:WaitForChild("DepositInteract")
 
+local getItemStatTable = eventsFolder.Utility:WaitForChild("GetItemStatTable")
 local sellItem = eventsFolder.Utility:WaitForChild("SellItem")
 
 local insertItemViewerInfo = eventsFolder.GUI:WaitForChild("InsertItemViewerInfo")
@@ -352,6 +353,72 @@ local function AnimateRarityShine(popUp, rarityInfo)
 	--end
 end
 
+local function ShowDataMenu(itemInfo, itemName, rarityInfo, overallMenu, displayMenu, value, itemType)
+	--value is required for equipment and exp while itemType is only equipment
+	
+	if dataMenu.Visible == false then
+		guiUtility.OpenDataMenu(player, playerModel, dataMenu, tostring(overallMenu))
+	end
+	
+	if itemInfo then
+		--**Possibly make this a wide use function in GuiUtility to use with menu pages and replicatedstorage folders
+		local pageFound
+		local tileFound
+		for _,page in pairs (displayMenu:GetChildren()) do
+			if tileFound == nil then
+				if page:IsA("Frame") and string.match(page.Name, "Page") then
+					if tileFound == nil then
+						for _,tile in pairs (page:GetChildren()) do
+							local item = tile.StatName.Value
+
+							if item == itemName then
+								pageFound = page
+								tileFound = tile
+							end
+						end
+					end	
+				end
+			end
+		end
+		
+		local statMenu
+		if overallMenu:FindFirstChild("QuickViewMenu") then
+			statMenu = overallMenu.QuickViewMenu.QuickViewMenu
+		else
+			statMenu = overallMenu.ExpInfoViewerMenu
+		end
+		
+		local displayMenuName = string.gsub(overallMenu.Name, "Menu", "")
+		insertItemViewerInfo:Fire(tileFound, statMenu, displayMenuName, itemName, itemInfo, value, itemType)
+		
+		if rarityInfo then --Highlight tile containing item
+			tileFound.Image = rarityInfo.TileImages.SelectedRarityTile.Value
+			
+			local previousTile = overallMenu.QuickViewMenu.QuickViewMenu.PreviousTile
+			if previousTile.Value then
+				local prevRarityInfo = previousTile.Value.Rarity.Value
+				previousTile.Value.Image = prevRarityInfo.TileImages.StaticRarityTile.Value
+			end
+			previousTile.Value = tileFound
+		end
+		
+		--**May have to make a different if statement for experience (and possibly journal)
+		--since their tiles will likely directly open their "item's" info menu
+		
+		--Change to page with tile of item
+		if displayMenu:FindFirstChild("Page1") and pageFound then
+			pageFound.Visible = true
+
+			local pageManager = dataMenu.PageManager
+			pageManager.CurrentPage.Value = pageFound
+			pageManager.Menu.Value = displayMenu
+			pageManager.Visible = true
+			pageManager.PartialBottomDisplay.Visible = true
+			pageManager.FullBottomDisplay.Visible = false
+		end
+	end
+end
+
 ---------------------<|RightSide PopUp Management|>---------------------------------------------------------------------
 
 local function CreateRightSidePopUp(newPopUp, popUpType, statName, itemTypeName, amountAdded)
@@ -361,6 +428,7 @@ local function CreateRightSidePopUp(newPopUp, popUpType, statName, itemTypeName,
 	local newTweenInfo
 	local expireTime
 	if popUpType == "Item" then
+		statName = string.gsub(statName, "Discovered", "") --in case newly discovered
 		local itemInfo = replicatedStorage.InventoryItems:FindFirstChild(itemTypeName):FindFirstChild(statName)
 		local rarityInfo = guiElements.RarityColors:FindFirstChild(itemInfo["GUI Info"].RarityName.Value)
 		local itemImage = itemInfo["GUI Info"].StatImage.Value
@@ -372,7 +440,6 @@ local function CreateRightSidePopUp(newPopUp, popUpType, statName, itemTypeName,
 		else --Discovered Item PopUp
 			newPopUp.UnlockSymbol.ImageColor3 = rarityInfo.Value
 			newTweenInfo = TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
-			statName = string.gsub(statName, "Discovered", "")
 			expireTime = 6
 		end
 		
@@ -386,68 +453,30 @@ local function CreateRightSidePopUp(newPopUp, popUpType, statName, itemTypeName,
 		--end))
 		
 		newPopUp.Activated:Connect(function()
-			if dataMenu.Visible == false then
-				guiUtility.OpenDataMenu(player, playerModel, dataMenu, "InventoryMenu")
-			end
-			--**Possibly make this a function in GuiUtility (wide purpose use with IsA and possibly string.match() to
-			--look through not only pages but even ReplicatedStorage Folders)
-			
-			local pageFound
-			local tileFound
-			for _,page in pairs (dataMenu.InventoryMenu.MaterialsMenu:GetChildren()) do
-				if tileFound == nil then
-					if page:IsA("Frame") and string.match(page.Name, "Page") then
-						if tileFound == nil then
-							for _,tile in pairs (page:GetChildren()) do
-								local itemName = tile.StatName.Value
-								
-								if itemName == tostring(itemInfo) then
-									pageFound = page
-									tileFound = tile
-								end
-							end
-						end	
-					end
-				end
-			end
-			
-			insertItemViewerInfo:Fire(tileFound, dataMenu.InventoryMenu.QuickViewMenu.QuickViewMenu, "Inventory", tostring(itemInfo), itemInfo)
-			
-			--Highlight tile containing item
-			
-			
-			--Change to page with tile of item
-			if dataMenu.InventoryMenu.MaterialsMenu:FindFirstChild("Page1") and pageFound then
-				pageFound.Visible = true
-				
-				local pageManager = dataMenu.PageManager
-				pageManager.CurrentPage.Value = pageFound
-				pageManager.Menu.Value = dataMenu.InventoryMenu.MaterialsMenu
-				pageManager.Visible = true
-				pageManager.PartialBottomDisplay.Visible = true
-				pageManager.FullBottomDisplay.Visible = false
-			end
+			ShowDataMenu(itemInfo, statName, rarityInfo, dataMenu.InventoryMenu, dataMenu.InventoryMenu.MaterialsMenu)
 		end)
 		
 	elseif string.match(popUpType, "Notify") then --LevelUp, ItemsSold, BagCapacity, EquipBag, ItemsStored
 		if popUpType == "LevelUpNotify" then
+			local statInfo = getItemStatTable("Experience", nil, itemTypeName, statName)
+			--Change statImage of stat
+			--Change colors for stat
+			--Display what level the player is not at
 			
 			newPopUp.Activated:Connect(function()
 				print("Open Exp Menu and the tile of the skill that was pressed")
-				
+
+				ShowDataMenu(statInfo, statName, itemTypeName,  dataMenu.ExperienceMenu, dataMenu.ExperienceMenu:FindFirstChild(itemTypeName .. "Menu"))
 			end)
 			
-		elseif popUpType == "BagEquipNotify" then
-			
+		elseif popUpType == "EquipBagNotify" then
 			newPopUp.Activated:Connect(function()
-				print("Open Bag Menu")
-
+				ShowDataMenu(nil, "Display", nil, dataMenu.PlayerMenu, dataMenu.PlayerMenu.MaterialBagsMenu)
 			end)
 			
 		else --BagCapacityNotify, ItemsStoredNotify
 			newPopUp.Activated:Connect(function()
-				print("Open Inventory Menu")
-				
+				ShowDataMenu(nil, "Display", nil, dataMenu.InventoryMenu, dataMenu.InventoryMenu.MaterialsMenu)
 			end)
 		end	
 		
