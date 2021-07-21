@@ -245,6 +245,7 @@ function GuiUtility.OpenDataMenu(player, playerModel, dataMenu, currentTab)
 	
 	dataMenu.Position = UDim2.new(0.159, 0, -.8, 0)
 	dataMenu.Visible = true
+	dataMenu.PlayerMenu.EmptyNotifier.Visible = false
 	dataMenu.TopTabBar.CloseMenu.Active = true
 	openDataMenuButton.Active = false
 
@@ -277,9 +278,13 @@ function GuiUtility.OpenDataMenu(player, playerModel, dataMenu, currentTab)
 		
 		for _,gui in pairs (menu:GetChildren()) do
 			if gui:FindFirstChild("FirstSeeMenu") then
-				gui.Visible = true
-			elseif gui.Name == "EmptyNotifier" then
-				gui.Visible = false
+				if gui:FindFirstChild("Page1") then
+					gui.Visible = true
+					menu.EmptyNotifier.Visible = false
+				else
+					gui.Visible = false
+					menu.EmptyNotifier.Visible = true
+				end
 			end
 		end
 	end
