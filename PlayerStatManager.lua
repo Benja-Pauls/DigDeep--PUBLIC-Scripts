@@ -222,7 +222,7 @@ function PlayerStatManager:ChangeStat(player, statName, value, saveFolder, itemT
 	local playerUserId = game.Players:FindFirstChild(tostring(player)).UserId
 	local playerDataFile = PlayerData:WaitForChild(tostring(playerUserId))
 	
-	print(player, statName, value, saveFolder, itemType, sessionData[playerUserId][statName])
+	--print(player, statName, value, saveFolder, itemType, sessionData[playerUserId][statName])
 	--print(typeof(sessionData[playerUserId][statName]),typeof(value),statName,sessionData[playerUserId][statName])	
 	
 	assert(typeof(sessionData[playerUserId][statName]) == typeof(value), tostring(player) .. "'s saved value types don't match")
@@ -576,7 +576,7 @@ function PlayerStatManager:getStat(player, statName, boolCheck) --Check Stat Val
 	local playerUserId = game.Players:FindFirstChild(tostring(player)).UserId
 
 	if sessionData[playerUserId] then
-		if boolCheck then
+		if boolCheck then --Does not allow viewing stats that are not booleans
 			if typeof(sessionData[playerUserId][statName]) == "boolean" then
 				return (sessionData[playerUserId][statName])
 			else
@@ -774,25 +774,27 @@ end)
 
 DepositInventory.OnServerEvent:Connect(function(Player)
 	local PlayerDataFile = PlayerData:FindFirstChild(tostring(Player.UserId))
-	for i,folder in pairs (PlayerDataFile.Inventory:GetChildren()) do
-		for i,item in pairs (folder:GetChildren()) do
-			local InventoryValue = item.Value --the value of the item is one more than the actual value
-			if InventoryValue > 0 then
-				--Update Inventory
-				PlayerStatManager:ChangeStat(Player, tostring(item), 0, "Inventory", nil, "Zero")
-				item.Value = 0
+	
+	if PlayerDataFile:FindFirstChild("Inventory") then
+		for i,folder in pairs (PlayerDataFile.Inventory:GetChildren()) do
+			for i,item in pairs (folder:GetChildren()) do
+				local InventoryValue = item.Value --the value of the item is one more than the actual value
+				if InventoryValue > 0 then
+					--Update Inventory
+					PlayerStatManager:ChangeStat(Player, tostring(item), 0, "Inventory", nil, "Zero")
+					item.Value = 0
 
-				--Update Storage
-				PlayerStatManager:ChangeStat(Player, "TycoonStorage" .. tostring(item), InventoryValue, "TycoonStorage")
-				print(PlayerDataFile.Inventory:FindFirstChild(tostring(folder)):FindFirstChild(tostring(item)).Value)
+					--Update Storage
+					PlayerStatManager:ChangeStat(Player, "TycoonStorage" .. tostring(item), InventoryValue, "TycoonStorage")
 
-				--Call Inventory to Wipe Previous Pages and Tiles
-				DepositInventory:FireClient(Player)
+					--Call Inventory to Wipe Previous Pages and Tiles
+					DepositInventory:FireClient(Player)
+				end
 			end
 		end
-	end
 
-	return true
+		return true
+	end
 end)
 
 local function CheckResearchDepends(player, researchInfo, specificDepend)
