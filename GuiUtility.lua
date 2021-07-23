@@ -234,7 +234,7 @@ function GuiUtility.CleanupMenuDefaults(player, menu)
 	end
 end
 
-function GuiUtility.OpenDataMenu(player, playerModel, dataMenu, currentTab)
+function GuiUtility.OpenDataMenu(player, playerModel, dataMenu, overallMenuName, displayMenu)
 	local openDataMenuButton = dataMenu.Parent.OpenDataMenuButton
 	local menuTabs = {
 		dataMenu.PlayerMenuButton, 
@@ -255,8 +255,8 @@ function GuiUtility.OpenDataMenu(player, playerModel, dataMenu, currentTab)
 
 	--Reset Tab Selection
 	for _,tab in pairs (menuTabs) do
-		if tab.Name == currentTab .. "Button" then
-			local currentButton = dataMenu:FindFirstChild(currentTab .. "Button")
+		if tab.Name == overallMenuName .. "Button" then
+			local currentButton = dataMenu:FindFirstChild(overallMenuName .. "Button")
 			local tabSelection = dataMenu.TopTabBar.TabSelection
 			local tabWidth = currentButton.Size.X.Scale
 			local tsWidth = tabSelection.Size.X.Scale
@@ -272,19 +272,41 @@ function GuiUtility.OpenDataMenu(player, playerModel, dataMenu, currentTab)
 
 	GuiUtility.CleanupMenuDefaults(player, dataMenu)
 	
-	if dataMenu:FindFirstChild(currentTab) then
-		local menu = dataMenu:FindFirstChild(currentTab)
-		menu.Visible = true
+	if dataMenu:FindFirstChild(overallMenuName) then
+		local overallMenu = dataMenu:FindFirstChild(overallMenuName)
+		GuiUtility.CleanupMenuDefaults(player, overallMenu)
+		overallMenu.Visible = true
 		
-		for _,gui in pairs (menu:GetChildren()) do
-			if gui:FindFirstChild("FirstSeeMenu") then
-				if gui:FindFirstChild("Page1") then
-					gui.Visible = true
-					menu.EmptyNotifier.Visible = false
-				else
-					gui.Visible = false
-					menu.EmptyNotifier.Visible = true
+		if displayMenu == nil then
+			local found = false
+			for _,gui in pairs (overallMenu:GetChildren()) do
+				if gui:FindFirstChild("FirstSeeMenu") and not found then
+					found = true
+					displayMenu = gui
 				end
+			end
+		end
+		
+		--Page Display Management
+		if displayMenu then
+			local pageManager = dataMenu.PageManager
+			if displayMenu:FindFirstChild("Page1") then
+				pageManager.Visible = true
+				displayMenu.Visible = true
+				displayMenu.Page1.Visible = true
+				overallMenu.EmptyNotifier.Visible = false
+				
+				if overallMenu:FindFirstChild("QuickViewMenu") then
+					pageManager.PartialBottomDisplay.Visible = true
+					pageManager.FullBottomDisplay.Visible = false
+				else
+					pageManager.PartialBottomdipslay.Visible = false
+					pageManager.FullBottomDisplay.Visible = true
+				end
+			else
+				pageManager.Visible = false
+				displayMenu.Visible = false
+				overallMenu.EmptyNotifier.Visible = true
 			end
 		end
 	end
