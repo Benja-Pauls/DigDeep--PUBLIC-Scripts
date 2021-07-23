@@ -16,6 +16,7 @@ local researchData = require(game.ServerStorage.ResearchData)
 -----<|Events/Remote Functions|>--     (key of event order)
 local eventsFolder = game.ReplicatedStorage.Events
 
+local updateExperience = eventsFolder.GUI:WaitForChild("UpdateExperience")
 local UpdateInventory = eventsFolder.GUI:WaitForChild("UpdateInventory")
 local UpdateTycoonStorage = eventsFolder.GUI:WaitForChild("UpdateTycoonStorage")
 local UpdatePlayerMenu = eventsFolder.GUI:WaitForChild("UpdatePlayerMenu")
@@ -39,22 +40,22 @@ local DataStoreService = game:GetService("DataStoreService")
 local PlayerSave = DataStoreService:GetDataStore("Tycoon Test211") --Changing this will change the datastore info is taken from
 
 --When player joins
-game.Players.PlayerAdded:Connect(function(JoinedPlayer)
-	print(tostring(JoinedPlayer) .. " has joined the game")
+game.Players.PlayerAdded:Connect(function(joinedPlayer)
+	print(tostring(joinedPlayer) .. " has joined the game")
 	
-	if PlayerData:FindFirstChild(JoinedPlayer.UserId) == nil then --Server startup, make new folder
+	if PlayerData:FindFirstChild(joinedPlayer.UserId) == nil then --Server startup, make new folder
 		local PlayerDataStorage = Instance.new('Folder', PlayerData) 
-		PlayerDataStorage.Name = tostring(JoinedPlayer.UserId)
+		PlayerDataStorage.Name = tostring(joinedPlayer.UserId)
 	end
 
-	local playerDataFile = PlayerData:FindFirstChild(JoinedPlayer.UserId)
+	local playerDataFile = PlayerData:FindFirstChild(joinedPlayer.UserId)
 	
 	local isOwner = Instance.new("ObjectValue", playerDataFile)
 	isOwner.Name = "OwnsTycoon"
 
-	if game.Workspace:WaitForChild(tostring(JoinedPlayer)) then
-		print(tostring(JoinedPlayer),"'s CHARACTER WAS ASSIGNED TO PLAYERS FOLDER")
-		local character = game.Workspace:FindFirstChild(tostring(JoinedPlayer))
+	if game.Workspace:WaitForChild(tostring(joinedPlayer)) then
+		print(tostring(joinedPlayer),"'s CHARACTER WAS ASSIGNED TO PLAYERS FOLDER")
+		local character = game.Workspace:FindFirstChild(tostring(joinedPlayer))
 		
 		repeat wait() until character:FindFirstChild("LowerTorso") --Player has loaded in
 		character.Parent = game.Workspace:WaitForChild("Players")
@@ -70,15 +71,15 @@ game.Players.PlayerAdded:Connect(function(JoinedPlayer)
 		--**Insert ProxPrompt in Player Here? (if players need to interact with each other)
 	end
 	
-	FindPlayerData(JoinedPlayer)
+	FindPlayerData(joinedPlayer)
 end)
 
 --When player leaves
-game.Players.PlayerRemoving:Connect(function(JoinedPlayer)
-	local PlayerDataFile = PlayerData:FindFirstChild(tostring(JoinedPlayer.UserId))
+game.Players.PlayerRemoving:Connect(function(joinedPlayer)
+	local playerDataFile = PlayerData:FindFirstChild(tostring(joinedPlayer.UserId))
 	
-	if PlayerDataFile ~= nil then --Remove player from ServerStorage
-		PlayerDataFile:Destroy()
+	if playerDataFile ~= nil then --Remove player from ServerStorage
+		playerDataFile:Destroy()
 	end
 	--Tycoon is removed via TycoonHandler script
 end)
@@ -96,30 +97,30 @@ local function CheckSaveData(Save)
 end
 
 --Update ServerStorage Folders With Data
-local function ImportSaveData(data, SaveCheck, Folder, Stat, Single)
-	if SaveCheck == false then
-		if typeof(Stat.Value) == "number" then
-			Stat.Value = 0
-		elseif typeof(Stat.Value) == "boolean" then
-			Stat.Value = false
+local function ImportSaveData(data, previousSave, folder, stat, single)
+	if not previousSave then
+		if typeof(stat.Value) == "number" then
+			stat.Value = 0
+		elseif typeof(stat.Value) == "boolean" then
+			stat.Value = false
 		else
-			Stat.Value = ""
+			stat.Value = ""
 		end
 	end
 	
-	if not Single then
-		for i,v in pairs (Folder:GetChildren()) do
-			if data[tostring(v)] == nil then
-				data[tostring(v)] = Stat.Value --placeholder value to create (even if not interacted with yet)
+	if single == nil then
+		for _,refer in pairs (folder:GetChildren()) do
+			if data[tostring(refer)] == nil then
+				data[tostring(refer)] = stat.Value --placeholder value to create (even if not interacted with yet)
 			else
-				v.Value = data[tostring(v)]
+				refer.Value = data[tostring(refer)]
 			end
 		end
 	else
-		if data[tostring(Single)] == nil then
-			data[tostring(Single)] = Stat.Value --placeholder value to create (even if not interacted with yet)
+		if data[tostring(single)] == nil then
+			data[tostring(single)] = stat.Value --placeholder value to create (even if not interacted with yet)
 		else
-			Stat.Value = data[tostring(Single)]
+			stat.Value = data[tostring(single)]
 		end
 	end
 end
@@ -130,13 +131,13 @@ local function CreateSaveReference(ParentFolder, FolderName, InstanceType)
 	return NewFolder
 end
 
-local function FindAssociatedFolder(parentDataFolder, itemType, itemName)
-	if parentDataFolder:FindFirstChild(itemType) then --make this a check folder existence function (utility section at end or start of code?)
-		if not parentDataFolder:FindFirstChild(itemType):FindFirstChild(itemName) then --if item not already inputted from other location
-			return parentDataFolder:FindFirstChild(itemType)
+local function FindAssociatedFolder(parentDataFolder, itemTypeName, itemName)
+	if parentDataFolder:FindFirstChild(itemTypeName) then 
+		if not parentDataFolder:FindFirstChild(itemTypeName):FindFirstChild(itemName) then --if item not already inputted from other location
+			return parentDataFolder:FindFirstChild(itemTypeName)
 		end
 	else
-		return CreateSaveReference(parentDataFolder, itemType, "Folder")
+		return CreateSaveReference(parentDataFolder, itemTypeName, "Folder")
 	end
 end
 
@@ -144,8 +145,9 @@ local function SavePlayerData(playerUserId)
 	if sessionData[playerUserId] then
 		local success = pcall(function()
 			PlayerSave:SetAsync(playerUserId, sessionData[playerUserId]) --save sessionData as playerUserId
-			print(playerUserId .. "'s held data was SAVED!")
+			print(playerUserId .. "'s Data Was SAVED!")
 		end)
+		
 		if not success then
 			warn("Cannot save data for " .. tostring(playerUserId))
 		end
@@ -155,59 +157,44 @@ end
 ---------------------<|High-Traffic Functions|>--------------------------------------------------------------------------------------------------------------------------------------
 
 local function UpdateGUIForFile(saveFolder, player, statName, value, overFlow)
-	--print(saveFolder, player, statName, value, overFlow)
-	
-	--Problem are now out of server scripts! (Still need to check shop gui and tycoon)
-	--When done with dinner, fix the below errors having to do with displaying information after the player
-	--has mined a block (material and exp popups)
-	
 	local playerUserId = game.Players:FindFirstChild(tostring(player)).UserId
 	local playerDataFile = PlayerData:WaitForChild(tostring(playerUserId))
-	local dataFolder = playerDataFile:FindFirstChild(tostring(saveFolder))
+	local dataFolder = playerDataFile:FindFirstChild(saveFolder)
 	
 	for i,itemType in pairs (dataFolder:GetChildren()) do
 		if itemType:FindFirstChild(tostring(statName)) then --DataTab:FindFirstChild(file):FindFirstChild(statName)?
 			local total = sessionData[playerUserId][statName]
 			local amountAdded = value
 			
-			if tostring(saveFolder) == "Inventory" or tostring(saveFolder) == "Experience" then
-				local LocationOfAcquirement
-				if tostring(saveFolder) == "Inventory" then
-					LocationOfAcquirement = Utility:GetItemInfo(statName, true)
-					
-					--Update Bag
-					local TypeAmount = PlayerStatManager:getItemCount(player)
-					local maxItemAmount = PlayerStatManager:getEquippedData(player, LocationOfAcquirement:FindFirstChild(statName).Bag.Value .. "s", "Bags") --Bag capacity
-					if maxItemAmount then
-						if value ~= 0 and not overFlow then
-							UpdateItemCount:FireClient(player, TypeAmount+value, maxItemAmount, tostring(itemType))
-						elseif overFlow then
-							--put up popup showing how much has been payed
-							local expense = math.abs(value - overFlow)
-							UpdateItemCount:FireClient(player, TypeAmount-expense, maxItemAmount, tostring(itemType))
-							--remove tile from inventory
-							
-						else
-							UpdateItemCount:FireClient(player, 0, maxItemAmount, tostring(itemType), true)
-						end
+			if saveFolder == "Inventory" then
+				local itemTypeInfo = Utility:GetItemInfo(statName, true)
+				
+				--Update Bag
+				local TypeAmount = PlayerStatManager:getItemCount(player)
+				local maxItemAmount = PlayerStatManager:getEquippedData(player, itemTypeInfo:FindFirstChild(statName).Bag.Value .. "s", "Bags") --Bag capacity
+				if maxItemAmount then
+					if value ~= 0 and not overFlow then
+						UpdateItemCount:FireClient(player, TypeAmount+value, maxItemAmount, tostring(itemType))
+						
+					elseif overFlow then
+						local expense = math.abs(value - overFlow)
+						UpdateItemCount:FireClient(player, TypeAmount-expense, maxItemAmount, tostring(itemType))
+						
+					else
+						UpdateItemCount:FireClient(player, 0, maxItemAmount, tostring(itemType), true)
 					end
-				else
-					LocationOfAcquirement = "Skills"
 				end
 				
-				--Finally, update inventory information
-				if LocationOfAcquirement then	
-					UpdateInventory:FireClient(player, statName, tostring(itemType), tostring(total), amountAdded, tostring(saveFolder), tostring(LocationOfAcquirement))
-				else
-					warn("Item (" .. statName .. ") has no location of acquirement")
-				end
+				UpdateInventory:FireClient(player, statName, tostring(itemType), tostring(total), amountAdded, "Inventory")
 				
-			elseif tostring(saveFolder) == "TycoonStorage" then
-				local LocationOfAcquirement = Utility:GetItemInfo(string.gsub(statName, "TycoonStorage", ""), true)
-				--print(tostring(file), statName, tostring(total), amountAdded, LocationOfAcquirement)
-				UpdateTycoonStorage:FireClient(player, statName, tostring(total), tostring(LocationOfAcquirement))
+			elseif saveFolder == "Experience" then	
+
+				updateExperience:FireClient(player, statName, tostring(itemType), tostring(total), amountAdded, tostring(saveFolder))
 				
-			elseif tostring(saveFolder) == "Currencies" then
+			elseif saveFolder == "TycoonStorage" then
+				UpdateTycoonStorage:FireClient(player, statName, tostring(total), tostring(itemType))
+				
+			elseif saveFolder == "Currencies" then
 				Utility:UpdateMoneyDisplay(player, Utility:ConvertShort(total))
 			end
 			
@@ -243,10 +230,7 @@ function PlayerStatManager:ChangeStat(player, statName, value, saveFolder, itemT
 				else
 					UpdateGUIForFile(saveFolder, player, statName, value, overFlow)
 				end
-			end
-			
-			--**Possibly update the UpdateGUIForFile for all types of data and merge it for non stattype items
-			
+			end		
 		end
 		
 	elseif sessionData[playerUserId][statName] ~= value then
@@ -277,8 +261,8 @@ function PlayerStatManager:ChangeStat(player, statName, value, saveFolder, itemT
 					
 				elseif string.find(statName, "Discovered") then
 					local acquiredLocation = Utility:GetItemInfo(string.gsub(statName, "Discovered", ""), true)
-					UpdateTycoonStorage:FireClient(player, statName, value, tostring(acquiredLocation))
-					UpdateInventory:FireClient(player, statName, tostring(itemType), value, 1, "Discovered", tostring(acquiredLocation))
+					UpdateTycoonStorage:FireClient(player, statName, value, tostring(itemType))
+					UpdateInventory:FireClient(player, statName, tostring(itemType), value, 1, "Discovered")
 				end
 			end
 			
@@ -315,9 +299,9 @@ end
 
 ------------------------------<|Set Up Player Data|>-----------------------------------------------------------------------------------------------------------------------
 
-function FindPlayerData(JoinedPlayer)
-	local PlayerDataFile = PlayerData:FindFirstChild(tostring(JoinedPlayer.UserId))
-	local playerUserId = JoinedPlayer.UserId
+function FindPlayerData(joinedPlayer)
+	local PlayerDataFile = PlayerData:FindFirstChild(tostring(joinedPlayer.UserId))
+	local playerUserId = joinedPlayer.UserId
 	
 	local success,data = pcall(function()
 		return PlayerSave:GetAsync(playerUserId) --Get save data saved as playerUserId
@@ -326,47 +310,46 @@ function FindPlayerData(JoinedPlayer)
 	if success then
 		wait(5) --Allow tycoon to be categorized (change for all internet speeds)
 		if data then --load data
-			print("DataStore was Accessed for " .. JoinedPlayer.Name .. " (" .. tostring(JoinedPlayer.UserId) .. ")")
+			print("DataStore was Accessed for " .. joinedPlayer.Name .. " (" .. tostring(joinedPlayer.UserId) .. ")")
 			sessionData[playerUserId] = data
 			
-			local PlayerCash = LoadPlayerData(PlayerDataFile,data,JoinedPlayer)
-			SetTycoonPurchases(JoinedPlayer, PlayerCash, playerUserId)
+			local PlayerCash = LoadPlayerData(PlayerDataFile,data,joinedPlayer)
+			SetTycoonPurchases(joinedPlayer, PlayerCash, playerUserId)
 		else --New player
-			print(tostring(JoinedPlayer) .. " is a new player!")
+			print(tostring(joinedPlayer) .. " is a new player!")
 			sessionData[playerUserId] = {} --No data
 			
-			local PlayerCash = LoadPlayerData(PlayerDataFile,sessionData[playerUserId],JoinedPlayer)
-			SetTycoonPurchases(JoinedPlayer, PlayerCash, playerUserId)
+			local PlayerCash = LoadPlayerData(PlayerDataFile,sessionData[playerUserId],joinedPlayer)
+			SetTycoonPurchases(joinedPlayer, PlayerCash, playerUserId)
 		end	
 		print("SET TYCOON PURCHASES HAS FINISHED")
 	else
-		warn("Couldn't Get or Set-Up Player Data For " .. tostring(JoinedPlayer))
-		FindPlayerData(JoinedPlayer)
+		warn("Couldn't Get or Set-Up Player Data For " .. tostring(joinedPlayer))
+		FindPlayerData(joinedPlayer)
 	end		
 end
 
-function LoadPlayerData(PlayerDataFile, data, JoinedPlayer)
-	print("Loading " .. tostring(JoinedPlayer) .. "'s data")
+function LoadPlayerData(playerDataFile, data, joinedPlayer)
+	print("Loading " .. tostring(joinedPlayer) .. "'s data")
 	
-	local playerUserId = game.Players:FindFirstChild(tostring(JoinedPlayer)).UserId
-	local DataMenu = JoinedPlayer.PlayerGui:WaitForChild("DataMenu"):WaitForChild("DataMenu")
+	local playerUserId = joinedPlayer.UserId
+	local dataMenu = joinedPlayer.PlayerGui:WaitForChild("DataMenu"):WaitForChild("DataMenu")
 	
-	local PlayerInventory = CreateSaveReference(PlayerDataFile, "Inventory", "Folder")
-	local TycoonStorage = CreateSaveReference(PlayerDataFile, "TycoonStorage", "Folder")	
-	local playerResearch = CreateSaveReference(PlayerDataFile, "Research", "Folder")
-	local playerExperience = CreateSaveReference(PlayerDataFile, "Experience", "Folder")
-	local PlayerStatItems = CreateSaveReference(PlayerDataFile, "Player", "Folder")
+	local PlayerInventory = CreateSaveReference(playerDataFile, "Inventory", "Folder")
+	local TycoonStorage = CreateSaveReference(playerDataFile, "TycoonStorage", "Folder")	
+	local playerResearch = CreateSaveReference(playerDataFile, "Research", "Folder")
+	local playerExperience = CreateSaveReference(playerDataFile, "Experience", "Folder")
+	local PlayerStatItems = CreateSaveReference(playerDataFile, "Player", "Folder")
 	local EquippedItems = CreateSaveReference(PlayerStatItems, "CurrentlyEquipped", "Folder")
 	
 	local ResearchersAvailable = CreateSaveReference(playerResearch, "ResearchersAvailable", "NumberValue")
 	local SavedResearchers = CheckSaveData(data["ResearchersAvailable"])
-	ImportSaveData(data, SavedResearchers, playerResearch, ResearchersAvailable)
+	ImportSaveData(data, SavedResearchers, playerResearch, ResearchersAvailable, "ResearchersAvailable")
 	data["ResearchersAvailable"] = 5 --for testing right now
-	--UpdateResearch:FireClient(JoinedPlayer, nil, nil, nil, nil, 5) --put Researchers in front to prevent heavy nils
-	
+	--UpdateResearch:FireClient(joinedPlayer, nil, nil, nil, nil, 5) --put Researchers in front to prevent heavy nils
 	local researchersUsed = CreateSaveReference(playerResearch, "ResearchersUsed", "NumberValue")
 	local SavedResearcherUsage = CheckSaveData(data["ResearchersUsed"])
-	ImportSaveData(data, SavedResearcherUsage, playerResearch, researchersUsed)
+	ImportSaveData(data, SavedResearcherUsage, playerResearch, researchersUsed, "ResearchersUsed")
 	
 	for _,expType in pairs (experienceData) do
 		if expType["StatTypeName"] then
@@ -375,18 +358,19 @@ function LoadPlayerData(PlayerDataFile, data, JoinedPlayer)
 
 			for _,expInfo in pairs (expType) do
 				if expInfo["StatName"] then
+					
 					local expName = expInfo["StatName"]
+					local expRefer = CreateSaveReference(expSaveFolder, expName, "NumberValue")
+					local expSave = CheckSaveData(data[expName])
+					ImportSaveData(data, expSave, expSaveFolder, expRefer, expName)
 					
-					local exp = CreateSaveReference(expSaveFolder, expName, "NumberValue")
-					local savedValue = CheckSaveData(data[expName])
-					ImportSaveData(data, savedValue, expSaveFolder, exp, expName)
-					
-					local expLevel = CreateSaveReference(exp, expName .. "Level", "NumberValue")
-					expLevel.Value = GetPlayerLevel(JoinedPlayer, expInfo) --Ensure level matches expData
+					--Calculated reference, don't check data
+					local expLevel = CreateSaveReference(expRefer, expName .. "Level", "NumberValue")
+					expLevel.Value = GetPlayerLevel(joinedPlayer, expInfo) --Match data with exp amount
 					data[expName .. "Level"] = expLevel.Value
 
 					--Create exp tiles with value > 0
-					UpdateInventory:FireClient(JoinedPlayer, expName, expTypeName, tostring(data[expName]), nil, "Experience", expTypeName)
+					updateExperience:FireClient(joinedPlayer, expName, expTypeName, tostring(data[expName]), nil, "Experience")
 				end
 			end
 		end
@@ -401,45 +385,48 @@ function LoadPlayerData(PlayerDataFile, data, JoinedPlayer)
 		for r = 1,#researchType,1 do
 			if researchType[r] then
 				local researchInfo = researchType[r]
+				
 				local researchName = researchInfo["Research Name"]
-
-				local research = CreateSaveReference(researchTypeFolder, researchName, "BoolValue") --true if completed
-				local savedValue = CheckSaveData(data[researchName])
-				ImportSaveData(data, savedValue, researchTypeFolder, research)
+				local researchRefer = CreateSaveReference(researchTypeFolder, researchName, "BoolValue") --true if completed
+				local researchSave = CheckSaveData(data[researchName])
+				ImportSaveData(data, researchSave, researchTypeFolder, researchRefer, researchName)
 				
-				local purchasedBool = CreateSaveReference(research, researchName .. "Purchased", "BoolValue")
-				local savedPurchaseBool = CheckSaveData(data[researchName .. "Purchased"])
-				ImportSaveData(data, savedPurchaseBool, research, purchasedBool, researchName .. "Purchased")
+				local purchasedSaveName = researchName .. "Purchased"
+				local purchasedRefer = CreateSaveReference(researchRefer, purchasedSaveName, "BoolValue")
+				local purchasedSave = CheckSaveData(data[purchasedSaveName])
+				ImportSaveData(data, purchasedSave, researchRefer, purchasedRefer, purchasedSaveName)
 				
-				local finishTime = CreateSaveReference(research, researchName .. "FinishTime", "NumberValue")
-				local savedFinishTime = CheckSaveData(data[researchName .. "FinishTime"])
-				ImportSaveData(data, savedFinishTime, research, finishTime, researchName .. "FinishTime")
-
+				local finishedSaveName = researchName .. "FinishTime"
+				local finishTimeRefer = CreateSaveReference(researchRefer, finishedSaveName, "NumberValue")
+				local finishTimeSave = CheckSaveData(data[finishedSaveName])
+				ImportSaveData(data, finishTimeSave, researchRefer, finishTimeRefer, finishedSaveName)
+				
+				local skillMetSaveName = researchName .. "SkillMet"
 				if #researchInfo["Experience Cost"] > 0 then
-					local skillMetBool = CreateSaveReference(research, researchName .. "SkillMet", "BoolValue")
+					local skillMetBool = CreateSaveReference(researchRefer, skillMetSaveName, "BoolValue")
 					
 					for e = 1,#researchInfo["Experience Cost"] do --Ensure SkillMet matches expData
 						local expTable = researchInfo["Experience Cost"][e]
 						local expInfo = expTable[1]
 						local expRequirement = expTable[2]
 						
-						local playerLevel = GetPlayerLevel(JoinedPlayer, expInfo)
+						local playerLevel = GetPlayerLevel(joinedPlayer, expInfo)
 						if playerLevel >= expRequirement then --see if player already meets skill require
 							skillMetBool.Value = true
-							data[researchName .. "SkillMet"] = true
+							data[skillMetSaveName] = true
 						else
-							ImportSaveData(data, false, research, skillMetBool, researchName .. "SkillMet")
+							ImportSaveData(data, false, researchRefer, skillMetBool, skillMetSaveName)
 						end
 					end
 				end
 				
 				local clonedResearchInfo = Utility:CloneTable(researchInfo)
 				local completionValue = data[researchName]
-				local purchasedValue = data[researchName .. "Purchased"]
-				local finishTimeValue = data[researchName .. "FinishTime"]
-				local skillMetValue = data[researchName .. "SkillMet"]
+				local purchasedValue = data[purchasedSaveName]
+				local finishTimeValue = data[finishedSaveName]
+				local skillMetValue = data[skillMetSaveName]
 				
-				UpdateResearch:FireClient(JoinedPlayer, clonedResearchInfo, researchTypeName, completionValue, purchasedValue, finishTimeValue, skillMetValue)
+				UpdateResearch:FireClient(joinedPlayer, clonedResearchInfo, researchTypeName, completionValue, purchasedValue, finishTimeValue, skillMetValue)
 				
 				if purchasedValue and not completionValue then
 					usedResearcherCount += 1
@@ -447,102 +434,96 @@ function LoadPlayerData(PlayerDataFile, data, JoinedPlayer)
 			end
 		end
 	end
-	PlayerStatManager:ChangeStat(JoinedPlayer, "ResearchersUsed", usedResearcherCount, "Research")
+	PlayerStatManager:ChangeStat(joinedPlayer, "ResearchersUsed", usedResearcherCount, "Research")
 
 	--All Inventory Item Data
 	for _,itemType in pairs (game.ReplicatedStorage.InventoryItems:GetChildren()) do
 		for _,item in pairs (itemType:GetChildren()) do
-			local associatedSkill = item.AssociatedSkill.Value
-			local ItemType = string.gsub(item.AssociatedSkill.Value, " Skill", "")
-
-			local AssociatedFolder = FindAssociatedFolder(PlayerInventory, ItemType, tostring(item))
-			local AssociatedItemStorage = FindAssociatedFolder(TycoonStorage, "TycoonStorage" .. ItemType, "TycoonStorage" .. tostring(item))
+			local inventoryItemTypeFolder = FindAssociatedFolder(PlayerInventory, tostring(itemType), tostring(item))
+			local storageItemTypeFolder = FindAssociatedFolder(TycoonStorage, "TycoonStorage" .. tostring(itemType), "TycoonStorage" .. tostring(item))
 			
-			local Item = CreateSaveReference(AssociatedFolder, tostring(item), "NumberValue")
-			local SavedValue = CheckSaveData(data[tostring(item)])
-			ImportSaveData(data, SavedValue, AssociatedFolder, Item)
-			UpdateInventory:FireClient(JoinedPlayer, tostring(Item), AssociatedFolder.Name, tostring(data[tostring(Item)]), nil, "Inventory", tostring(itemType))
+			local itemRefer = CreateSaveReference(inventoryItemTypeFolder, tostring(item), "NumberValue")
+			local itemSave = CheckSaveData(data[tostring(item)])
+			ImportSaveData(data, itemSave, inventoryItemTypeFolder, itemRefer, tostring(item))
+			UpdateInventory:FireClient(joinedPlayer, tostring(item), tostring(itemType), tostring(data[tostring(item)]), nil, "Inventory")
 			
-			local ItemDiscovery = CreateSaveReference(Item, tostring(Item) .. "Discovered", "BoolValue")
-			local SavedDiscoverValue = CheckSaveData(data[tostring(ItemDiscovery)])
-			ImportSaveData(data, SavedDiscoverValue, Item, ItemDiscovery)
-			UpdateTycoonStorage:FireClient(JoinedPlayer, tostring(Item) .. "Discovered", data[tostring(ItemDiscovery)], tostring(itemType))
+			local discoveredSaveName = tostring(item) .. "Discovered"
+			local discoveredRefer = CreateSaveReference(itemRefer, discoveredSaveName, "BoolValue")
+			local discoveredSave = CheckSaveData(data[discoveredSaveName])
+			ImportSaveData(data, discoveredSave, item, discoveredRefer, discoveredSaveName)
+			UpdateTycoonStorage:FireClient(joinedPlayer, discoveredSaveName, data[discoveredSaveName], tostring(itemType))
 			
-			local TycoonStorageItem = CreateSaveReference(AssociatedItemStorage, "TycoonStorage" .. tostring(item), "NumberValue")
-			local SavedTycoonStorageValue = CheckSaveData(data[tostring(TycoonStorageItem)])
-			ImportSaveData(data, SavedTycoonStorageValue, AssociatedItemStorage, TycoonStorageItem)
-			UpdateTycoonStorage:FireClient(JoinedPlayer, tostring(TycoonStorageItem), tostring(data[tostring(TycoonStorageItem)]), tostring(itemType))   
+			local storageSaveName = "TycoonStorage" .. tostring(item)
+			local itemStorageRefer = CreateSaveReference(storageItemTypeFolder, storageSaveName, "NumberValue")
+			local itemStorageSave = CheckSaveData(data[storageSaveName])
+			ImportSaveData(data, itemStorageSave, storageItemTypeFolder, itemStorageRefer, storageSaveName)
+			UpdateTycoonStorage:FireClient(joinedPlayer, storageSaveName, tostring(data[storageSaveName]), tostring(itemType))   
 		end	
 	end
 	
-	--All Data For Equippables (bags, but pickaxes, boots, pets, etc.)
-	local Equippables = game.ReplicatedStorage.Equippable
-	for _,equiptype in pairs (Equippables:GetChildren()) do
-		local EquippedTypeFolder = CreateSaveReference(EquippedItems, "Equipped" .. tostring(equiptype), "Folder")
-		local EquipTypeFolder = CreateSaveReference(PlayerStatItems, tostring(equiptype), "Folder")
+	--Equippable Data
+	for _,equiptype in pairs (game.ReplicatedStorage.Equippable:GetChildren()) do
+		local equippedItemsFolder = CreateSaveReference(EquippedItems, "Equipped" .. tostring(equiptype), "Folder")
+		local equipTypeFolder = CreateSaveReference(PlayerStatItems, tostring(equiptype), "Folder")
 		
-		for _,itemtype in pairs (equiptype:GetChildren()) do
+		for _,itemType in pairs (equiptype:GetChildren()) do
 			
-			--data["Equipped" .. tostring(itemtype)] is the player's equipped item (string)
-			--data[tostring(item)] is if the item is purchased (boolean)
-			
-			local ItemTypeFolder = CreateSaveReference(EquipTypeFolder, tostring(itemtype), "Folder")
-			for _,item in pairs (itemtype:GetChildren()) do
-				local Item = CreateSaveReference(ItemTypeFolder, tostring(item), "BoolValue")
-				local SavedValue = CheckSaveData(data[tostring(item)])		
-				ImportSaveData(data, SavedValue, ItemTypeFolder, Item)
+			local itemTypeFolder = CreateSaveReference(equipTypeFolder, tostring(itemType), "Folder")
+			for _,item in pairs (itemType:GetChildren()) do
+				local itemRefer = CreateSaveReference(itemTypeFolder, tostring(item), "BoolValue")
+				local itemSave = CheckSaveData(data[tostring(item)])		
+				ImportSaveData(data, itemSave, itemTypeFolder, itemRefer, tostring(item))
 				
-				if SavedValue == true then --if previously purchased
-					UpdatePlayerMenu:FireClient(JoinedPlayer, tostring(equiptype), tostring(itemtype), tostring(item))
+				if itemSave == true then --if previously purchased, add to inventory
+					UpdatePlayerMenu:FireClient(joinedPlayer, tostring(equiptype), tostring(itemType), tostring(item))
 				end
 			end
 			
-			local EquippedItem = CreateSaveReference(EquippedTypeFolder, "Equipped" .. tostring(itemtype), "StringValue")
-			local SavedValue = CheckSaveData(data["Equipped" .. tostring(itemtype)])
-			ImportSaveData(data, SavedValue, EquippedTypeFolder, EquippedItem)
+			local equippedItemSaveName = "Equipped" .. tostring(itemType)
+			local equippedItemRefer = CreateSaveReference(equippedItemsFolder, equippedItemSaveName, "StringValue")
+			local equippedItemSave = CheckSaveData(data[equippedItemSaveName])
+			ImportSaveData(data, equippedItemSave, equippedItemsFolder, equippedItemRefer, equippedItemSaveName)
 			
-			local EquippedItem = itemtype:FindFirstChild(data["Equipped" .. tostring(itemtype)])
-			
-			if EquippedItem then
+			local equippedItem = itemType:FindFirstChild(data[equippedItemSaveName])
+			if equippedItem then
 				if tostring(equiptype) == "Bags" then --Update GUI Menus (Inventory Bag # Limits)
-					local MenuName = "MaterialsMenu"
-					local bagStats = equipmentData["Bags"][tostring(itemtype)][tostring(EquippedItem)]
-					DataMenu:WaitForChild("InventoryMenu"):FindFirstChild(MenuName):SetAttribute("BagCapacity", bagStats["Stats"]["Bag Capacity"])
+					local menuName = "MaterialsMenu"
+					local bagStats = equipmentData["Bags"][tostring(itemType)][tostring(equippedItem)]
+					dataMenu:WaitForChild("InventoryMenu"):FindFirstChild(menuName):SetAttribute("BagCapacity", bagStats["Stats"]["Bag Capacity"])
 
-					local ItemCount = PlayerStatManager:getItemCount(JoinedPlayer)
-					DataMenu:WaitForChild("InventoryMenu"):FindFirstChild(MenuName):SetAttribute("ItemCount", ItemCount)
+					local itemCount = PlayerStatManager:getItemCount(joinedPlayer)
+					dataMenu:WaitForChild("InventoryMenu"):FindFirstChild(menuName):SetAttribute("ItemCount", itemCount)
 				end
 				
 				if tostring(equiptype) == "Tools" then
-					UpdateToolbar(JoinedPlayer, tostring(itemtype), tostring(EquippedItem))
+					UpdateToolbar(joinedPlayer, tostring(itemType), tostring(equippedItem))
 				end
 
-				UpdateEquippedItem:FireClient(JoinedPlayer, tostring(equiptype), tostring(itemtype), tostring(EquippedItem))
+				UpdateEquippedItem:FireClient(joinedPlayer, tostring(equiptype), tostring(itemType), tostring(equippedItem))
 			else
-				UpdateEquippedItem:FireClient(JoinedPlayer, tostring(equiptype), tostring(itemtype), "")
+				UpdateEquippedItem:FireClient(joinedPlayer, tostring(equiptype), tostring(itemType), "")
 			end
 		end
 	end
 	
-	local CurrencyFolder = CreateSaveReference(PlayerDataFile, "Currencies", "Folder")
-	local UniversalCurrency = CreateSaveReference(CurrencyFolder, "UniversalCurrencies", "Folder")
-	local Currency = CreateSaveReference(UniversalCurrency, "Coins", "NumberValue")
+	local currencyFolder = CreateSaveReference(playerDataFile, "Currencies", "Folder")
+	local universalCurrencyFolder = CreateSaveReference(currencyFolder, "UniversalCurrencies", "Folder")
+	local coinsRefer = CreateSaveReference(universalCurrencyFolder, "Coins", "NumberValue")
 
-	local PlayerCash = UniversalCurrency:FindFirstChild("Coins")
-	
-	local SavedValue = CheckSaveData(data[tostring("Coins")])
-	if SavedValue == false then
-		PlayerCash.Value = 0
-		data[tostring("Coins")] = PlayerCash.Value
+	local playerCoins = universalCurrencyFolder.Coins.Value
+	local coinsSave = CheckSaveData(data["Coins"])
+	if coinsSave == false then
+		playerCoins = 0
+		data["Coins"] = 0
 	else
-		PlayerCash.Value = PlayerCash.Value + data[tostring("Coins")]
+		playerCoins = data["Coins"]
 	end
 	
-	print(tostring(JoinedPlayer) .. " has $" .. tostring(data["Coins"]))
-	return PlayerCash.Value
+	print(tostring(joinedPlayer) .. " Has " .. tostring(data["Coins"]) .. " Coins")
+	return playerCoins
 end
 
-function SetTycoonPurchases(JoinedPlayer, PlayerCash, playerUserId)
+function SetTycoonPurchases(joinedPlayer, PlayerCash, playerUserId)
 	for i = 1,#tycoons,1 do 
 		local TycoonAssetsHandler = require(tycoons[i]:WaitForChild("TycoonAssetsHandler")) --Tycoon's possible purchases (table)
 		local data = sessionData[playerUserId]
@@ -561,7 +542,7 @@ function SetTycoonPurchases(JoinedPlayer, PlayerCash, playerUserId)
 			end
 		end	
 
-		Utility:UpdateMoneyDisplay(JoinedPlayer, Utility:ConvertShort(PlayerCash))
+		Utility:UpdateMoneyDisplay(joinedPlayer, Utility:ConvertShort(PlayerCash))
 	end
 end
 
@@ -595,10 +576,10 @@ end
 
 function PlayerStatManager:getItemCount(player) --For Amount in Bag Checking
 	local playerUserId = player.UserId
-	local PlayerDataFile = game.ServerStorage.PlayerData:FindFirstChild(tostring(playerUserId))
+	local playerDataFile = game.ServerStorage.PlayerData:FindFirstChild(tostring(playerUserId))
 	
 	local inventoryAmount = 0
-	for _,itemTypeFolder in pairs (PlayerDataFile.Inventory:GetChildren()) do --if item type checks come back, it can be checked here
+	for _,itemTypeFolder in pairs (playerDataFile.Inventory:GetChildren()) do --if item type checks come back, it can be checked here
 		for _,statData in pairs (itemTypeFolder:GetChildren()) do
 			inventoryAmount += statData.Value
 		end
@@ -609,10 +590,10 @@ end
 
 function PlayerStatManager:getEquippedData(player, itemType, equipType)
 	local playerUserId = game.Players:FindFirstChild(tostring(player)).UserId
-	local PlayerDataFile = game.ServerStorage.PlayerData:FindFirstChild(tostring(playerUserId))
+	local playerDataFile = game.ServerStorage.PlayerData:FindFirstChild(tostring(playerUserId))
 	
-	if PlayerDataFile.Player.CurrentlyEquipped:FindFirstChild("Equipped" .. equipType):FindFirstChild("Equipped" .. itemType) then
-		local equippedItem = PlayerDataFile.Player.CurrentlyEquipped:FindFirstChild("Equipped" .. equipType):FindFirstChild("Equipped" .. itemType)
+	if playerDataFile.Player.CurrentlyEquipped:FindFirstChild("Equipped" .. equipType):FindFirstChild("Equipped" .. itemType) then
+		local equippedItem = playerDataFile.Player.CurrentlyEquipped:FindFirstChild("Equipped" .. equipType):FindFirstChild("Equipped" .. itemType)
 		local equipmentName = equippedItem.Value
 
 		if equipmentName ~= "" then
@@ -773,10 +754,10 @@ SellItem.OnServerEvent:Connect(function(Player, Menu, item, Percentage)--, Amoun
 end)
 
 DepositInventory.OnServerEvent:Connect(function(Player)
-	local PlayerDataFile = PlayerData:FindFirstChild(tostring(Player.UserId))
+	local playerDataFile = PlayerData:FindFirstChild(tostring(Player.UserId))
 	
-	if PlayerDataFile:FindFirstChild("Inventory") then
-		for i,folder in pairs (PlayerDataFile.Inventory:GetChildren()) do
+	if playerDataFile:FindFirstChild("Inventory") then
+		for i,folder in pairs (playerDataFile.Inventory:GetChildren()) do
 			for i,item in pairs (folder:GetChildren()) do
 				local InventoryValue = item.Value --the value of the item is one more than the actual value
 				if InventoryValue > 0 then
@@ -866,8 +847,8 @@ end
 --Fires when player equips new item (must be saved for when they join back)
 UpdateEquippedItem.OnServerEvent:Connect(function(Player, EquipType, ItemType, NewlyEquippedItem)
 	local playerUserId = Player.UserId
-	local PlayerDataFile = PlayerData:FindFirstChild(tostring(playerUserId))
-	local EquipValue = PlayerDataFile.Player.CurrentlyEquipped:FindFirstChild("Equipped" .. EquipType):FindFirstChild("Equipped" .. ItemType)
+	local playerDataFile = PlayerData:FindFirstChild(tostring(playerUserId))
+	local EquipValue = playerDataFile.Player.CurrentlyEquipped:FindFirstChild("Equipped" .. EquipType):FindFirstChild("Equipped" .. ItemType)
 
 	--Check if value selected is not already equipped
 	if NewlyEquippedItem then
@@ -894,8 +875,8 @@ end)
 local function HandleDropMaterials(Tycoon, Drop) --Update Tycoon Storage for drop's worth
 	local Player = Tycoon:FindFirstChild("Owner").Value
 	local playerUserId = game.Players:FindFirstChild(tostring(Player)).UserId
-	local PlayerDataFile = PlayerData:FindFirstChild(playerUserId)
-	local OwnedTycoon = PlayerDataFile:FindFirstChild("OwnsTycoon").Value
+	local playerDataFile = PlayerData:FindFirstChild(playerUserId)
+	local OwnedTycoon = playerDataFile:FindFirstChild("OwnsTycoon").Value
 	
 	--Match player with saved Tycoon value in player data storage (prevent exploiters)
 	if tostring(Tycoon) == tostring(OwnedTycoon) then
@@ -907,7 +888,7 @@ local function HandleDropMaterials(Tycoon, Drop) --Update Tycoon Storage for dro
 					print(file, material) --Change this so it grabs "Mining" to reference for item instead of mineshaft
 					local itemInfo = Utility:GetItemInfo(tostring(material), true)
 					
-					local discoverValue = PlayerDataFile.Inventory:FindFirstChild(tostring(itemInfo)):FindFirstChild(tostring(material)):FindFirstChild(tostring(material) .. "Discovered")
+					local discoverValue = playerDataFile.Inventory:FindFirstChild(tostring(itemInfo)):FindFirstChild(tostring(material)):FindFirstChild(tostring(material) .. "Discovered")
 					if discoverValue == false then
 						PlayerStatManager:ChangeStat(Player,tostring(material) .. "Discovered", true, tostring(file))
 					end
