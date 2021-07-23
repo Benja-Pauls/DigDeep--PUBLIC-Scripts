@@ -18,7 +18,8 @@ local insertItemViewerInfo = eventsFolder.GUI:WaitForChild("InsertItemViewerInfo
 local MoveAllBaseScreenUI = eventsFolder.GUI:WaitForChild("MoveAllBaseScreenUI")
 local ManageTilePlacementFunction = eventsFolder.GUI:FindFirstChild("ManageTilePlacement")
 local UpdateEquippedItem = eventsFolder.GUI:WaitForChild("UpdateEquippedItem")
-local UpdateInventory = eventsFolder.GUI:WaitForChild("UpdateInventory")
+local updateExperience = eventsFolder.GUI:WaitForChild("UpdateExperience")
+local updateInventory = eventsFolder.GUI:WaitForChild("UpdateInventory")
 local UpdatePlayerMenu = eventsFolder.GUI:WaitForChild("UpdatePlayerMenu")
 local UpdateItemCount = eventsFolder.GUI:WaitForChild("UpdateItemCount")
 
@@ -216,7 +217,7 @@ function ReadyMenuButtons(Menu)
 				local associatedMenuName = button:FindFirstChild("Menu").Value
 				local ButtonMenu = Menu:FindFirstChild(associatedMenuName)
 
-				print("Menu:",Menu, " ButtonMenu:",ButtonMenu)
+				--print("Menu:",Menu, " ButtonMenu:",ButtonMenu)
 
 				--First Time Default Menu Setup
 				if ButtonMenu.Name ~= "PlayerMenu" then
@@ -256,7 +257,7 @@ function ReadyMenuButtons(Menu)
 					end
 					EnableOnlyButtonMenu(ButtonMenu, true, true)
 
-					print("Menu:",Menu, " ButtonMenu:",ButtonMenu)
+					--print("Menu:",Menu, " ButtonMenu:",ButtonMenu)
 
 					if tostring(ButtonMenu) == "InventoryMenu" then
 						ButtonMenu.QuickViewMenu.Visible = true
@@ -1027,7 +1028,11 @@ local function InsertItemViewerInfo(tile, statMenu, Type, statName, statInfo, va
 		statMenu.ItemImageBorder.BackgroundColor3 = rarityInfo.Value
 
 		statMenu.ItemAmount.Text = tile.Amount.Text
-		statMenu.ItemWorth.Text = tostring(statInfo.CurrencyValue.Value)
+		statMenu.ItemWorth.Text = GuiUtility.ConvertShort(statInfo.CurrencyValue.Value)
+		
+		local expAmount = GuiUtility.ConvertShort(statInfo.Experience.Value)
+		statMenu.ExpAmount.Text = "+" .. expAmount .. " EXP"
+		statMenu.ExpAmountDropShadow.Text = "+" .. expAmount .. " EXP"
 
 		GuiUtility.Display3DModels(Player, statMenu.ItemImage, statInfo:Clone(), true, statInfo["GUI Info"].DisplayAngle.Value)
 
@@ -1254,10 +1259,10 @@ local function InsertTileInfo(Type, tile, statName, value, itemType, tileAlready
 		statMenu = inventoryQuickViewMenu
 		statInfo = game.ReplicatedStorage.InventoryItems:FindFirstChild(itemType):FindFirstChild(statName)
 		tile.Picture.Image = GuiUtility.GetStatImage(nil, statInfo)
-		tile.Amount.Text = tostring(value)
+		tile.Amount.Text = GuiUtility.ConvertShort(value)
 
-		if statName == statMenu.ItemName.Text then --Menu is currently open
-			statMenu.ItemAmount.Text = tostring(value)
+		if statName == statMenu.ItemName.Text then --Updating currently-open QuickViewMenu
+			statMenu.ItemAmount.Text = GuiUtility.ConvertShort(value)
 		end
 
 		--Do Rarity Imaging
@@ -1287,10 +1292,12 @@ local function InsertTileInfo(Type, tile, statName, value, itemType, tileAlready
 		tile.NextLevel.Text = tostring(nextLevel)
 
 		local ProgressBar = tile.ProgressBar
-		ProgressBar.Current.Text = tostring(value - currentLevelInfo["Exp Requirement"])
-		ProgressBar.Total.Text = tostring(nextLevelInfo["Exp Requirement"] - currentLevelInfo["Exp Requirement"])
+		local currentProgressExp = tonumber(value - currentLevelInfo["Exp Requirement"])
+		local totalLevelExp = tonumber(nextLevelInfo["Exp Requirement"] - currentLevelInfo["Exp Requirement"])
+		ProgressBar.Current.Text = GuiUtility.ConvertShort(currentProgressExp)
+		ProgressBar.Total.Text = GuiUtility.ConvertShort(totalLevelExp)
 
-		local percentage = tonumber(value - currentLevelInfo["Exp Requirement"]) / tonumber(nextLevelInfo["Exp Requirement"] - currentLevelInfo["Exp Requirement"])
+		local percentage = currentProgressExp / totalLevelExp
 		ProgressBar.Progress.Size = UDim2.new(percentage, 0, 1, 0)
 
 	else
@@ -1505,26 +1512,28 @@ end
 
 -------------------------------------<High-Traffic Events>-------------------------------------------------------------------------------------------------------------
 
-UpdateInventory.OnClientEvent:Connect(function(statName, folder, value, amountAdded, Type, itemType)
+local function FindItemMenus(statName, itemType, value, amountAdded, Type)
 	local typeFrame = dataMenu:FindFirstChild(tostring(Type) .. "Menu")
 
 	if typeFrame then
 		local slots
-		if folder then
-			if typeFrame == dataMenu.ExperienceMenu then
-				slots = typeFrame:FindFirstChild(folder .. "Menu") or typeFrame:FindFirstChild(folder)
+		if itemType then
+			if Type == "Experience" then
+				slots = typeFrame:FindFirstChild(itemType .. "Menu")
 			else
 				slots = typeFrame.MaterialsMenu
 			end
 		else
-			warn("No Folder associated with inventory update. Stat Name: " .. statName)
+			warn("No Folder associated with " .. Type .. " update. Stat Name: " .. statName)
 		end
 
 		if tonumber(value) ~= 0 then
 			ManageTiles(statName, slots, tonumber(value), Type, itemType)
 		end
 	end
-end)
+end
+updateInventory.OnClientEvent:Connect(FindItemMenus)
+updateExperience.OnClientEvent:Connect(FindItemMenus)
 
 UpdatePlayerMenu.OnClientEvent:Connect(function(EquipType, ItemType, Item)
 	local itemInfo = game.ReplicatedStorage.Equippable:FindFirstChild(EquipType):FindFirstChild(ItemType):FindFirstChild(Item)
