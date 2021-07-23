@@ -9,7 +9,10 @@ local ExperienceData = {
 			["StatName"] = "Mining Skill",
 			["StatType"] = "Skills",
 			["Description"] = "",
-			["StatImage"] = "",
+			["StatImage"] = "rbxassetid://7112102140",
+			["PrimaryColor"] = Color3.fromRGB(108, 108, 108),
+			["SecondaryColor"] = Color3.fromRGB(175, 175, 175),
+			["ThirdColor"] = Color3.fromRGB(57, 57, 57),
 			
 			["Levels"] = {
 				[1] = {
@@ -75,6 +78,9 @@ local ExperienceData = {
 			["StatType"] = "Skills",
 			["Description"] = "",
 			["StatImage"] = "",
+			["PrimaryColor"] = Color3.fromRGB(108, 108, 108),
+			["SecondaryColor"] = Color3.fromRGB(175, 175, 175),
+			["ThirdColor"] = Color3.fromRGB(57, 57, 57),
 			
 			["Levels"] = {
 				[1] = {
