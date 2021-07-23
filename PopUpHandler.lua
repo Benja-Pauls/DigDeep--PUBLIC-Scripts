@@ -12,18 +12,21 @@ local depositInteract = eventsFolder.HotKeyInteract:WaitForChild("DepositInterac
 local getItemStatTable = eventsFolder.Utility:WaitForChild("GetItemStatTable")
 local sellItem = eventsFolder.Utility:WaitForChild("SellItem")
 
+local updateExperience = eventsFolder.GUI:WaitForChild("UpdateExperience")
 local insertItemViewerInfo = eventsFolder.GUI:WaitForChild("InsertItemViewerInfo")
 local updateInventory = eventsFolder.GUI:WaitForChild("UpdateInventory")
 local updateItemCount = eventsFolder.GUI:WaitForChild("UpdateItemCount")
 
 local itemPopUpGui = script.Parent.ItemPopUp
-local expBarPopUpGui = script.Parent.EXPBarPopUp
+local expBarPopUpGui = script.Parent.ExpBarPopUp
 local mouseoverPopUpGui = script.Parent.MouseoverPopUp
 
 local dataMenu = script.Parent.Parent.DataMenu.DataMenu
 local playerModel = game.Workspace.Players:WaitForChild(tostring(player))
 
 local currentPopUpTweens = {}
+
+--------------------------<|Utility Functions|>----------------------------------------------------------------------------------------------------------------------------
 
 local function GetPopUpCount(popUpGui)
 	local popUpCount = 0
@@ -35,14 +38,52 @@ local function GetPopUpCount(popUpGui)
 	return popUpCount
 end
 
+local function SimpleMoveTween(gui, tweenInfo, position)
+	local tween = tweenService:Create(gui, tweenInfo, {Position = position})
+	tween:Play()
+end
+
+local function SimpleMoveDownTween(gui, tweenInfo, yPos)
+	gui.Position = UDim2.new(gui.Position.X.Scale, 0, -1, 0)
+	gui.Visible = true
+	local tween = tweenService:Create(gui, tweenInfo, {Position = UDim2.new(gui.Position.X.Scale, 0, yPos, 0)})
+	tween:Play()
+end
+
+local currentShines = {}
+local function AnimateShineEffect(gui, gradient)
+	local shineEffectInfo = TweenInfo.new(1.5, Enum.EasingStyle.Circular, Enum.EasingDirection.Out)
+	local shineTween = tweenService:Create(gradient, shineEffectInfo, {Offset = Vector2.new(0, 3)})
+	local startPos = Vector2.new(0, -3)
+	
+	if currentShines[gui] then
+		currentShines[gui]:Pause()
+	end
+	
+	currentShines[gui] = shineTween
+	gradient.Offset = startPos
+	shineTween:Play()
+	shineTween.Completed:Wait()
+	currentShines[gui]:Destroy()
+
+	--wait(1)
+	
+	--**Would be used to repeat the shine effect at a certain pace
+	--if gui then
+	--AnimateShineEffect(gui, gradient)
+	--end
+end
 
 ----------------------------<|Countdown Functions|>--------------------------------------------------------------------------------------------------------------------------
 local coinDisplay = script.Parent.Parent.MoneyDisplay["Coin Display"]
 local jumpDistance = coinDisplay.Size.Y.Scale/5.25
 local movePopUpTweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
-local xPos = 0.99
 
-local function CountdownPopUp(popUp, expireTime, dontDestroy) --xJump, yJump, xJump2, yJump2
+local xPos = 0.99
+local yPos = coinDisplay.Position.Y.Scale + coinDisplay.Size.Y.Scale + jumpDistance
+
+
+local function CountdownPopUp(popUp, expireTime, dontDestroy, specialHide) --xJump, yJump, xJump2, yJump2
 	local timer = popUp.TimeLeft
 	timer.Value = 0
 	
@@ -53,7 +94,7 @@ local function CountdownPopUp(popUp, expireTime, dontDestroy) --xJump, yJump, xJ
 			if sec == timer.Value + 1 then
 				timer.Value = sec
 				if sec == expireTime then
-					if string.match(popUp.Name, "PopUp") then
+					if popUp.Name ~= "Expired" then
 						popUp.Name = "Expired"
 						
 						if currentPopUpTweens[popUp] then
@@ -72,6 +113,11 @@ local function CountdownPopUp(popUp, expireTime, dontDestroy) --xJump, yJump, xJ
 									local tween = currentPopUpTweens[belowPopUp]
 
 									if currentPopUpTweens[belowPopUp] then
+									
+									
+									--**Was not working properly because I was not using tween.PlaybackState == Enum.PlaybackState.Playing
+									
+									
 										tween.Completed:Wait() --Moveup does not take priority over move down\
 									end
 
@@ -86,16 +132,44 @@ local function CountdownPopUp(popUp, expireTime, dontDestroy) --xJump, yJump, xJ
 						end
 						]]
 						
-						local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
-						local currentXSize = popUp.Size.X.Scale
-						local currentYPos = popUp.Position.Y.Scale
-						local hideTween = tweenService:Create(popUp, tweenInfo, {Position = UDim2.new(1 + currentXSize, 0, currentYPos, 0)})
-						hideTween:Play()
-						
-						wait(0.3)
+						if specialHide then
+							if specialHide == "ExpBar" then
+								--HideExpBar()
+							elseif specialHide == "Difference" then
+								local xSize = popUp.Size.X.Scale
+								local differenceTween = tweenService:Create(popUp, movePopUpTweenInfo, {Size = UDim2.new(xSize, 0, 1, 0)})
+								differenceTween:Play()
+								differenceTween.Completed:Wait()
+
+								local progressTween = tweenService:Create(popUp.Parent.Progress, movePopUpTweenInfo, {Size = UDim2.new(xSize, 0, 1, 0)})
+								progressTween:Play()
+								progressTween.Completed:Wait()
+							elseif specialHide == "ExpAmount" then
+								local imageBox = popUp.Parent.ImageBox
+								local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+								local moveTween = tweenService:Create(popUp, tweenInfo, {Position = UDim2.new(imageBox.Position.X.Scale, 0, imageBox.Position.Y.Scale, 0)})
+								local resizeTween = tweenService:Create(popUp, tweenInfo, {Size = UDim2.new(0, 0, 0, 0)})
+								
+								moveTween:Play()
+								resizeTween:Play()
+								
+								coroutine.resume(coroutine.create(function()
+									AnimateShineEffect(popUp.Parent, imageBox.UIStroke.UIGradient)
+								end))
+								wait(0.5)
+							end
+						else
+							local currentXSize = popUp.Size.X.Scale
+							local currentYPos = popUp.Position.Y.Scale
+							local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+							local hideTween = tweenService:Create(popUp, tweenInfo, {Position = UDim2.new(1 + currentXSize, 0, currentYPos, 0)})
+							hideTween:Play()
+							
+							wait(0.3)
+						end
 					end
-					
-					if dontDestroy then
+
+					if dontDestroy ~= nil then
 						popUp.Visible = dontDestroy
 					else
 						popUp:Destroy()
@@ -106,54 +180,8 @@ local function CountdownPopUp(popUp, expireTime, dontDestroy) --xJump, yJump, xJ
 	end))
 end
 
-local differenceEXPAdded = 0
+local differenceExpSum = 0
 local lastProgressAmount = 0
-local function CountdownEXPDifference(difference, progressBar, levelProgress, amountAdded, levelFinished)
-	print(difference, progressBar, levelProgress, amountAdded, levelFinished)
-	local expBar = difference.Parent.Parent
-
-	if expBar:FindFirstChild("TimeLeft") and amountAdded >= 1 then
-		differenceEXPAdded = differenceEXPAdded + amountAdded
-
-		if levelProgress < lastProgressAmount or levelProgress >= 1 or levelFinished then
-			lastProgressAmount = levelProgress
-			NewDiffPopUp(expBar, differenceEXPAdded, 1)
-			differenceEXPAdded = 0
-
-			progressBar:TweenSize(UDim2.new(levelProgress, 0, 0, 30), "Out", "Quint", .5)
-			difference:TweenSize(UDim2.new(levelProgress, 0, 0, 30), "Out", "Quint", .5)
-			local PreviousLevel = tonumber(expBar.CurrentLevel.Text)
-			expBar.CurrentLevel.Text = PreviousLevel + 1
-			expBar.NextLevel.Text = PreviousLevel + 2
-
-		else --Countdown to when difference bar is filled
-			lastProgressAmount = levelProgress
-
-			local timer = difference.TimeLeft
-			timer.Value = 0
-
-			coroutine.resume(coroutine.create(function()
-				for sec = 1,5,1 do
-					wait(1)
-
-					if timer then
-						if sec == timer.Value + 1 then
-							timer.Value = sec
-							if sec == 5 then
-								NewDiffPopUp(expBar, differenceEXPAdded, 3)
-								differenceEXPAdded = 0
-
-								progressBar:TweenSize(UDim2.new(0, difference.Size.X.Offset, difference.Size.Y.Scale, 30), "Out", "Quint", .5)
-								wait(.6)
-								difference:Destroy()
-							end
-						end
-					end
-				end
-			end))
-		end
-	end
-end
 
 ----------------------------<|Mouseover Info Functions|>---------------------------------------------------------------------------------------------------------
 local mouse = player:GetMouse()
@@ -195,11 +223,30 @@ mouse.Move:Connect(function()
 	end
 end)
 
+-----------------------------<|Frequent-Use Tweens|>-----------------------------------------------------------------------------------------
 
+local function ShakePopUp(popUp, expireTime)
+	if currentPopUpTweens[popUp] then
+		currentPopUpTweens[popUp]:Pause()
+	end
 
+	popUp.Position = UDim2.new(xPos, 0, yPos, 0)
+	local outXPos = xPos - popUp.Size.X.Scale/20
 
+	CountdownPopUp(popUp, expireTime)
 
+	local outShakeTweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+	local outShakeTween = tweenService:Create(popUp, outShakeTweenInfo, {Position = UDim2.new(outXPos, 0, yPos, 0)})
+	outShakeTween:Play()
+	currentPopUpTweens[popUp] = outShakeTween
 
+	wait(0.2)
+
+	local inShakeTweenInfo = TweenInfo.new(0.7, Enum.EasingStyle.Elastic, Enum.EasingDirection.Out)
+	local inShakeTween = tweenService:Create(popUp, inShakeTweenInfo, {Position = UDim2.new(xPos, 0, yPos, 0)})
+	inShakeTween:Play()
+	currentPopUpTweens[popUp] = inShakeTween
+end
 
 
 
@@ -220,113 +267,260 @@ function NewDiffPopUp(expBar, difference, pace)
 	wait(1.1)
 	newDiffPopUp:Destroy()
 end
-
-local function ShowEXPChange(currentLevel, nextLevel, skillInfo, expAmount, amountAdded)
-	local experienceBar = expPopUpGui.ExperienceBar
-	experienceBar.CurrentLevel.Text = tostring(currentLevel)
-	experienceBar.NextLevel.Text = tostring(nextLevel)
-
-	local currentLevelInfo = skillInfo["Levels"][currentLevel]
-	local nextLevelInfo = skillInfo["Levels"][nextLevel]
-	local progressBar = experienceBar.ProgressBar
-
-	local levelProgress = tonumber(expAmount - currentLevelInfo["Exp Requirement"]) / tonumber(nextLevelInfo["Exp Requirement"] - currentLevelInfo["Exp Requirement"])
-	if progressBar:FindFirstChild("EXPDifference") then --Difference Bar Check
-		local difference = progressBar.EXPDifference
-
-		if levelProgress < lastProgressAmount then
-			difference:TweenSize(UDim2.new(0, 276, 0, 30), "Out", "Quint", .2)
-			wait(.2)
-			progressBar.Progress:TweenSize(UDim2.new(0, 276, 0, 30), "Out", "Quint", .2)
-			wait(.2)
-			CountdownEXPDifference(difference, progressBar.Progress, levelProgress, amountAdded, true)
-
-			print("Level up") --** NEXT ON THE PROGRAMMING AGENDA
-		else
-			difference:TweenSize(UDim2.new(0, 276*levelProgress, 0, 30), "Out", "Quint", .2)
-			CountdownEXPDifference(difference, progressBar.Progress, levelProgress, amountAdded)
-		end
-
-	else
-		local difference = progressBar.Progress:Clone()
-		difference.ZIndex = 3 --Put behind progress frame
-		difference.Parent = progressBar
-		difference.Name = "EXPDifference"
-		difference.BackgroundColor3 = Color3.new(85, 255, 255)
-
-		local timeLeftValue = Instance.new("IntValue", difference)
-		timeLeftValue.Name = "TimeLeft"	
-
-		difference:TweenSize(UDim2.new(0, 276*levelProgress, 0, 30), "Out", "Quint", .2)
-
-		CountdownEXPDifference(difference, progressBar.Progress, levelProgress, levelProgress, amountAdded)
-	end
-end
-
-local function InsertNewEXPBar(skillInfo, statName, expAmount, currentLevel, nextLevel, popUpAlreadyExists)
-
-	if popUpAlreadyExists then
-		local oldExpPopUp = expPopUpGui.ExperienceBar
-		local namePlate = oldExpPopUp.NamePlate
-		namePlate:TweenPosition(UDim2.new(-12,0,0,0), "Out", "Quint", .15)
-		wait(.15)
-		oldExpPopUp:TweenPosition(UDim2.new(0.98, 0, 1.055, 0), "Out", "Quint", .2)
-		wait(.2)
-		oldExpPopUp:Destroy()
-	end
-
-	local newExpBar = expBarGui:Clone()
-	newExpBar.Parent = expPopUpGui
-	newExpBar.Position = UDim2.new(0.98, 0, 1.055, 0)
-	newExpBar.CurrentLevel.Text = tostring(currentLevel)
-	newExpBar.NextLevel.Text = tostring(nextLevel)
-
-	newExpBar:TweenPosition(UDim2.new(.98, 0, newExpBar.Position.Y.Scale - .1, 0), "Out", "Quint", .5)
-
-	local progressBar = expPopUpGui.ExperienceBar.ProgressBar
-
-	local currentLevelInfo = skillInfo["Levels"][currentLevel]
-	local nextLevelInfo = skillInfo["Levels"][nextLevel]
-	local levelProgress = tonumber(expAmount - currentLevelInfo["Exp Requirement"]) / tonumber(nextLevelInfo["Exp Requirement"] - currentLevelInfo["Exp Requirement"])
-
-	progressBar.Progress.Size = UDim2.new(0, 276*levelProgress, 0, 30)
-	CountdownPopUp(expPopUpGui, newExpBar, 12, .45, 0, 0, .9) --Start Countdown
-
-	local namePlate = newExpBar.NamePlate
-	namePlate.DisplayName.Text = tostring(statName)
-
-	wait(.5)
-	namePlate:TweenPosition(UDim2.new(-12, 0, -0.9, 0), "Out", "Quint", .3)
-end
-
-local function ManageEXPPopUp(statName, expAmount, amountAdded)
-	local skillInfo = getItemStatTable:InvokeServer("Experience", nil, "Skills", statName)
-	local simpleStatName = string.gsub(statName, " Skill", "")
-
-	local currentLevel, nextLevel = guiUtility.FindStatLevel(skillInfo, expAmount)
-
-	if #expPopUpGui:GetChildren() ~= 0 then
-		if expPopUpGui.ExperienceBar.NamePlate.DisplayName.Text == simpleStatName then --Old Exp Bar
-			ShowEXPChange(currentLevel, nextLevel, skillInfo, expAmount, amountAdded)
-			CountdownPopUp(expPopUpGui, expPopUpGui.ExperienceBar, 12, 0.5, 0, 0, 0.9)
-		else
-			InsertNewEXPBar(skillInfo, simpleStatName, expAmount, currentLevel, nextLevel, true)
-		end
-
-	else
-		InsertNewEXPBar(skillInfo, simpleStatName, expAmount, currentLevel, nextLevel)
-		ShowEXPChange(currentLevel, nextLevel, skillInfo, expAmount, amountAdded)
-	end
-end
-
 ]]
+
+local function NewExpAmountPopUp(expBar, expAmount)
+	local expAmountPopUp = guiElements.ExpAmountPopUp:Clone()
+	
+	expAmountPopUp.Parent = expBar
+	expAmountPopUp.Visible = true
+	expAmountPopUp.Text = "+" .. tostring(expAmount)
+	
+	expAmountPopUp.Position = UDim2.new(math.random(3, 8)/10, 0, math.random(-1, 11)/10, 0)
+	expAmountPopUp.Size = UDim2.new(0, 0, 0, 0)
+	
+	local showAmountTween = tweenService:Create(expAmountPopUp, movePopUpTweenInfo, {Size = UDim2.new(0.36, 0, 0.785, 0)})
+	showAmountTween:Play()
+	
+	CountdownPopUp(expAmountPopUp, 2, nil, "ExpAmount")
+end
+
+local function LevelUp(progressBar)
+	print("Player has leveled up")
+	
+	local expBar = progressBar.Parent.Parent.Parent
+	local difference = progressBar.Difference
+	local progress = progressBar.Progress
+	
+	expBar.TimeLeft.Value = 0
+	difference.TimeLeft.Value = 0
+	
+	local differenceTween = tweenService:Create(difference, movePopUpTweenInfo, {Size = UDim2.new(1, 0, 1, 0)})
+	differenceTween:Play()
+	differenceTween.Completed:Wait()
+
+	local progressTween = tweenService:Create(progressBar.Progress, movePopUpTweenInfo, {Size = UDim2.new(1, 0, 1, 0)})
+	progressTween:Play()
+	progressTween.Completed:Wait()
+	
+	difference:Destroy()
+	--CountdownExpDifference(difference, progress, 0, 0, true)
+	
+	
+	--Make a levelup popup
+end
+
+local function ShowExpChange(currentLevel, nextLevel, expInfo, expAmount, amountAdded)
+	local expBar = expBarPopUpGui.ExperienceBar
+	local progressBar = expBar.ClipDescendantsFrame.Background.ProgressBar
+	
+	local currentLevelInfo = expInfo["Levels"][currentLevel]
+	local nextLevelInfo = expInfo["Levels"][nextLevel]
+	local levelProgress = tonumber(expAmount - currentLevelInfo["Exp Requirement"]) / tonumber(nextLevelInfo["Exp Requirement"] - currentLevelInfo["Exp Requirement"])
+	
+	if progressBar:FindFirstChild("Difference") then --Difference Bar Check
+		local difference = progressBar.Difference
+		
+		if currentPopUpTweens[difference] then
+			currentPopUpTweens[difference]:Pause()
+		end
+		
+		if levelProgress < lastProgressAmount then --Player Leveled up
+			--Ensure player actually levelled up
+			
+			--if ensureLevelUp then
+			LevelUp(progressBar)
+			--end
+			
+		else
+			local differenceTween = tweenService:Create(difference, movePopUpTweenInfo, {Size = UDim2.new(levelProgress, 0, 1, 0)})
+			currentPopUpTweens[difference] = differenceTween
+			differenceTween:Play()
+			CountdownPopUp(difference, 5, nil, "Difference")
+			NewExpAmountPopUp(expBar, amountAdded)
+			--CountdownExpDifference(difference, progressBar.Progress, levelProgress, amountAdded)
+		end
+
+	else
+		--**Need to recognize is difference is in the process of being shut down (label expire but keep in progbar)
+		--(See if progress bar is being shut down)
+		
+		local difference = progressBar.Progress:Clone()
+		difference.ZIndex = 5
+		difference.Name = "Difference"
+		difference.Parent = progressBar
+		difference.BackgroundColor3 = expInfo["SecondaryColor"]
+
+		local timeLeft = Instance.new("IntValue", difference)
+		timeLeft.Name = "TimeLeft"	
+
+		local differenceTween = tweenService:Create(difference, movePopUpTweenInfo, {Size = UDim2.new(levelProgress, 0, 1, 0)})
+		currentPopUpTweens[difference] = differenceTween
+		differenceTween:Play()
+		
+		
+		
+		--**Need to create the +EXP sum number (number gets bigger as sum gets bigger, or will that make people nervous?)
+		--Create the text label that will show a numerical value for how much exp the player is getting
+		
+		
+		CountdownPopUp(difference, 5, nil, "Difference")
+		--CountdownExpDifference(difference, progressBar.Progress, levelProgress, levelProgress, amountAdded)
+	end
+end
+
+local function InsertNewEXPBar(expInfo, statName, expAmount, currentLevel, nextLevel, replaceOldPopUp)
+
+	if replaceOldPopUp then
+		expBarPopUpGui.ExperienceBar.TimeLeft.Value = 0
+		--HideExpBar()
+		--set TimeLeft of old exp bar to 0 and Countdown should handle it quickly
+	end
+	
+	local newExpBar = guiElements.ExperienceBar:Clone()
+	newExpBar.StatName.Value = statName
+	newExpBar.Parent = expBarPopUpGui
+	newExpBar.Position = UDim2.new(0.088, 0, -0.1, 0)
+	
+	--Manage Visibility
+	local background = newExpBar.ClipDescendantsFrame.Background
+	background.Visible = false
+	background.ProgressBar.Visible = false
+	background.CurrentLevel.Visible = false
+	background.NextLevel.Visible = false
+	background.StartupInfo.Visible = true
+	background.StartupInfo.StatName.Visible = true
+	background.StartupInfo.StatNameShadow.Visible = true
+	newExpBar.ImageBox.UIStroke.UIGradient.Offset = Vector2.new(0, -3)
+	
+	--Manage Colors
+	background.ProgressBar.Progress.BackgroundColor3 = expInfo["PrimaryColor"]
+	background.UIStroke.Color = expInfo["SecondaryColor"]
+	newExpBar.ImageBox.BackgroundColor3 = expInfo["ThirdColor"]
+	newExpBar.ImageBox.StatImage.Image = expInfo["StatImage"]
+	
+	--Show ExpImage
+	local moveExpTweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+	local quickMoveExpTweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+	local expBarTween = tweenService:Create(newExpBar, moveExpTweenInfo, {Position = UDim2.new(0.088, 0, 0.023, 0)})
+	expBarTween:Play()
+	currentPopUpTweens[newExpBar] = expBarTween
+	
+	wait(0.55) --Image Box Moving Down
+	
+	coroutine.resume(coroutine.create(function()
+		AnimateShineEffect(newExpBar, newExpBar.ImageBox.UIStroke.UIGradient)
+	end))
+	
+	wait(0.1)
+	
+	background.Position = UDim2.new(-0.5, 0, 0.5, 0)
+	background.Visible = true
+	SimpleMoveTween(background, quickMoveExpTweenInfo, UDim2.new(0.48, 0, 0.5, 0))
+	
+	wait(3)
+	
+	local currentLevelInfo = expInfo["Levels"][currentLevel]
+	local nextLevelInfo = expInfo["Levels"][nextLevel]
+	local levelProgress = tonumber(expAmount - currentLevelInfo["Exp Requirement"]) / tonumber(nextLevelInfo["Exp Requirement"] - currentLevelInfo["Exp Requirement"])
+	background.ProgressBar.Progress.Size = UDim2.new(1*levelProgress, 0, 1, 0)
+
+	SimpleMoveTween(background.StartupInfo, quickMoveExpTweenInfo, UDim2.new(background.StartupInfo.Position.X.Scale, 0, 1.5, 0))
+	SimpleMoveDownTween(background.ProgressBar, quickMoveExpTweenInfo, 0.5)
+	
+	background.CurrentLevel.Text = currentLevel
+	SimpleMoveDownTween(background.CurrentLevel, quickMoveExpTweenInfo, 0.5)
+	background.NextLevel.Text = nextLevel
+	SimpleMoveDownTween(background.NextLevel, quickMoveExpTweenInfo, 0.5)
+	
+	wait(0.5)
+	
+	--[[
+	wait(0.5)
+	background:TweenSize(UDim2.new(0.895, 0, 1, 0), "Out", "Quint", 0.5)
+	wait(0.2)
+	
+	--Show Experience Info
+	background.StartupInfo.Visible = true
+	local statNameGui = background.StartupInfo.StatName
+	SimpleMoveDownTween(statNameGui, quickMoveExpTweenInfo, 0.042)
+	statNameGui.Text = statName
+
+	local statNameShadow = background.StartupInfo.StatNameShadow
+	SimpleMoveDownTween(statNameShadow, quickMoveExpTweenInfo, 0.084)
+	statNameShadow.Text = statName
+	wait(0.1)
+	
+	local currentLevelGui = background.StartupInfo.CurrentLevel
+	currentLevelGui.Visible = true
+	SimpleMoveDownTween(currentLevelGui, quickMoveExpTweenInfo, 0.5)
+	currentLevelGui.Text = currentLevel
+	
+	--Load Arrow Image
+	local toLevelArrow = background.StartupInfo.ToLevelArrow
+	toLevelArrow.Position = UDim2.new(toLevelArrow.Position.X.Scale, 0, -1, 0)
+	toLevelArrow.Visible = true
+	wait(0.05)
+	
+	SimpleMoveDownTween(toLevelArrow, quickMoveExpTweenInfo, 0.5)
+	wait(0.05)
+	
+	local upcomingLevel = background.UpcomingLevel
+	upcomingLevel.Visible = true
+	SimpleMoveDownTween(upcomingLevel, quickMoveExpTweenInfo, 0.5)
+	upcomingLevel.Text = nextLevel
+	wait(3)
+	
+	--Swap StartupInfo with ProgressBar
+	local startupInfo = background.StartupInfo
+	SimpleMoveTween(startupInfo, moveExpTweenInfo, UDim2.new(startupInfo.Position.X.Scale, 0, -1, 0))
+	
+	local progressBar = background.ProgressBar
+	progressBar.Visible = true
+	progressBar.Position = UDim2.new(progressBar.Position.X.Scale, 0, 1.5, 0)
+	SimpleMoveTween(progressBar, moveExpTweenInfo, UDim2.new(progressBar.Position.X.Scale, 0, 0.5, 0))
+	]]
+	
+	CountdownPopUp(newExpBar, 10, nil, true) --Start Countdown
+end
+
+local function ManageExpPopUp(levelType, statName, expAmount, amountAdded)
+	local expInfo = getItemStatTable:InvokeServer("Experience", nil, levelType, statName)
+	
+	local nonPluralType = levelType
+	if string.sub(levelType, -1) == "s" then
+		nonPluralType = string.sub(nonPluralType, 1, -2)
+	end
+	
+	local simpleStatName = string.gsub(statName, " " .. nonPluralType, "")
+	local currentLevel, nextLevel = guiUtility.FindStatLevel(expInfo, expAmount)
+
+	if expBarPopUpGui:FindFirstChild("ExperienceBar") then
+		local expBar = expBarPopUpGui.ExperienceBar
+		
+		if expBar.StatName.Value == simpleStatName then --Old Exp Bar
+			--coroutine.resume(coroutine.create(function()
+				--AnimateShineEffect(expBar, expBar.ImageBox.UIStroke.UIGradient)
+			--end))
+			
+			ShowExpChange(currentLevel, nextLevel, expInfo, expAmount, amountAdded)
+			CountdownPopUp(expBarPopUpGui.ExperienceBar, 10, nil, true)
+		else
+			InsertNewEXPBar(expInfo, simpleStatName, expAmount, currentLevel, nextLevel, true)
+		end
+
+	else
+		InsertNewEXPBar(expInfo, simpleStatName, expAmount, currentLevel, nextLevel)
+	end
+end
+
 
 local rarityTweenInfo = TweenInfo.new(1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
 local function AnimateRarityShine(popUp, rarityInfo)
 	for _,rarityFrame in pairs (popUp:GetChildren()) do
 		if string.match(rarityFrame.Name, "RarityFrame") then
-			rarityFrame.BackgroundColor3 = Color3.new(255, 255, 255)
+			rarityFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 			if rarityFrame:FindFirstChild("RarityGradient") then
 				rarityFrame.RarityGradient:Destroy()
 			end
@@ -357,7 +551,7 @@ local function ShowDataMenu(itemInfo, itemName, rarityInfo, overallMenu, display
 	--value is required for equipment and exp while itemType is only equipment
 	
 	if dataMenu.Visible == false then
-		guiUtility.OpenDataMenu(player, playerModel, dataMenu, tostring(overallMenu))
+		guiUtility.OpenDataMenu(player, playerModel, dataMenu, tostring(overallMenu), displayMenu)
 	end
 	
 	if itemInfo then
@@ -406,15 +600,17 @@ local function ShowDataMenu(itemInfo, itemName, rarityInfo, overallMenu, display
 		--since their tiles will likely directly open their "item's" info menu
 		
 		--Change to page with tile of item
+		local pageManager = dataMenu.PageManager
 		if displayMenu:FindFirstChild("Page1") and pageFound then
+			displayMenu.Visible = true
 			pageFound.Visible = true
-
-			local pageManager = dataMenu.PageManager
+			
 			pageManager.CurrentPage.Value = pageFound
 			pageManager.Menu.Value = displayMenu
-			pageManager.Visible = true
-			pageManager.PartialBottomDisplay.Visible = true
-			pageManager.FullBottomDisplay.Visible = false
+			
+			if pageFound.Name ~= "Page1" then
+				displayMenu.Page1.Visible = false
+			end
 		end
 	end
 end
@@ -422,7 +618,6 @@ end
 ---------------------<|RightSide PopUp Management|>---------------------------------------------------------------------
 
 local function CreateRightSidePopUp(newPopUp, popUpType, statName, itemTypeName, amountAdded)
-	local yPos = coinDisplay.Position.Y.Scale + coinDisplay.Size.Y.Scale + jumpDistance
 	
 	--Insert Tile Info
 	local newTweenInfo
@@ -461,7 +656,7 @@ local function CreateRightSidePopUp(newPopUp, popUpType, statName, itemTypeName,
 			local statInfo = getItemStatTable("Experience", nil, itemTypeName, statName)
 			--Change statImage of stat
 			--Change colors for stat
-			--Display what level the player is not at
+			newPopUp.FullText.Text = "Level" .. tostring(amountAdded)
 			
 			newPopUp.Activated:Connect(function()
 				print("Open Exp Menu and the tile of the skill that was pressed")
@@ -471,12 +666,12 @@ local function CreateRightSidePopUp(newPopUp, popUpType, statName, itemTypeName,
 			
 		elseif popUpType == "EquipBagNotify" then
 			newPopUp.Activated:Connect(function()
-				ShowDataMenu(nil, "Display", nil, dataMenu.PlayerMenu, dataMenu.PlayerMenu.MaterialBagsMenu)
+				ShowDataMenu(nil, nil, nil, dataMenu.PlayerMenu, dataMenu.PlayerMenu.MaterialBagsMenu)
 			end)
 			
 		else --BagCapacityNotify, ItemsStoredNotify
 			newPopUp.Activated:Connect(function()
-				ShowDataMenu(nil, "Display", nil, dataMenu.InventoryMenu, dataMenu.InventoryMenu.MaterialsMenu)
+				ShowDataMenu(nil, nil, nil, dataMenu.InventoryMenu, dataMenu.InventoryMenu.MaterialsMenu)
 			end)
 		end	
 		
@@ -542,7 +737,7 @@ sellItem.OnClientEvent:Connect(function()
 	CreateRightSidePopUp(sellItemNotify:Clone(), "SellItemNotify") --Should this, if clicked, open notify menu? **Will notify contain transaction history?
 end)
 
-updateInventory.OnClientEvent:Connect(function(statName, folder, value, amountAdded, Type, itemTypeName)
+updateInventory.OnClientEvent:Connect(function(statName, itemTypeName, value, amountAdded, Type)
 	--folder = "Material", "Arcade Level", "Skill", etc...
 
 	if amountAdded ~= nil and amountAdded ~= 0 then
@@ -598,9 +793,20 @@ updateInventory.OnClientEvent:Connect(function(statName, folder, value, amountAd
 			
 			wait(0.1)
 			CreateRightSidePopUp(newItemTile, "Item", statName, itemTypeName)
+		end
+	end
+end)
+
+updateExperience.OnClientEvent:Connect(function(expName, expTypeName, value, amountAdded, Type, levelUp)
+	if amountAdded ~= nil and amountAdded ~= 0 then
+		if levelUp then
+			CreateRightSidePopUp(guiElements.NotifyPopUps.LevelUpNotify, "LevelUpNotify", expName, expTypeName, levelUp)
 			
-		elseif Type == "Experience" then 
-			--ManageEXPPopUp(statName, value, amountAdded)
+			--See if exp pop up exists and do not update it to next level yet, instead update it to show the
+			--level up animation alongside the LevelUpNotify PopUp
+			
+		else
+			ManageExpPopUp(expTypeName, expName, value, amountAdded)
 		end
 	end
 end)
@@ -619,14 +825,30 @@ updateItemCount.OnClientEvent:Connect(function(itemTypeCount, bagCapacity, bagTy
 		local fillPercent = itemTypeCount/bagCapacity
 		
 		if previousFillPercent then
-			if fillPercent-previousFillPercent > 0 then
+			if fillPercent-previousFillPercent >= 0 then
 				for _,poi in pairs (bagInterestCapacities) do
 					if (fillPercent > poi and previousFillPercent < poi) or fillPercent == poi then
 						local interestPoint = tostring(poi*100)
 						local bagNotify = guiElements.NotifyPopUps:FindFirstChild("Bag" .. interestPoint .. "%Notify") 
 						
+						local popUpDebounce = false
+						if interestPoint == "100" then
+							if itemPopUpGui:FindFirstChild("PopUp1") then --Ensure capacity pop up is not already on screen
+								if itemPopUpGui.PopUp1:FindFirstChild("CapacityText") then
+									if itemPopUpGui.PopUp1.CapacityText.Text == "100%" then
+										popUpDebounce = true
+										
+										--Shake 100% PopUp
+										ShakePopUp(itemPopUpGui.PopUp1, 5)
+									end
+								end
+							end
+						end
+						
 						wait(0.1)
-						CreateRightSidePopUp(bagNotify:Clone(), "Notify") --Remember to :Clone()
+						if not popUpDebounce then
+							CreateRightSidePopUp(bagNotify:Clone(), "Notify")
+						end
 					end
 				end	
 			end
