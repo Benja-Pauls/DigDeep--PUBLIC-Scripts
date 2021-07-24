@@ -250,8 +250,6 @@ function GuiUtility.OpenDataMenu(player, playerModel, dataMenu, overallMenuName,
 	openDataMenuButton.Active = false
 
 	--CheckForNewItems()
-	
-	dataMenu:TweenPosition(UDim2.new(0.159, 0, 0.173, 0), "Out", "Quint", 0.5)
 
 	--Reset Tab Selection
 	for _,tab in pairs (menuTabs) do
@@ -296,12 +294,11 @@ function GuiUtility.OpenDataMenu(player, playerModel, dataMenu, overallMenuName,
 				displayMenu.Page1.Visible = true
 				overallMenu.EmptyNotifier.Visible = false
 				
+				pageManager.FullBottomDisplay.Visible = false
 				if overallMenu:FindFirstChild("QuickViewMenu") then
 					pageManager.PartialBottomDisplay.Visible = true
-					pageManager.FullBottomDisplay.Visible = false
 				else
-					pageManager.PartialBottomdipslay.Visible = false
-					pageManager.FullBottomDisplay.Visible = true
+					pageManager.PartialBottomDisplay.Visible = false
 				end
 			else
 				pageManager.Visible = false
@@ -309,10 +306,20 @@ function GuiUtility.OpenDataMenu(player, playerModel, dataMenu, overallMenuName,
 				overallMenu.EmptyNotifier.Visible = true
 			end
 		end
+		
+		if overallMenuName == "Experience" then
+			--Display reward menu
+			
+			--Should the reward menu be a full screen menu, a text appearance, or the highlighting of what
+			--level the player just reached
+			
+		end
 	end
 
 	GuiUtility.Display3DModels(player, dataMenu.PlayerMenu.PlayerInfo.PlayerView, playerModel:Clone(), true, 178)
-
+	
+	dataMenu:TweenPosition(UDim2.new(0.159, 0, 0.173, 0), "Out", "Quint", 0.5)
+	
 	wait(0.5)
 	openDataMenuButton.Active = true
 end
