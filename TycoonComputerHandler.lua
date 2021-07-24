@@ -849,11 +849,12 @@ UpdateTycoonStorage.OnClientEvent:Connect(function(statName, statValue, itemType
 	end
 		
 	if typeof(statValue) == "string" or typeof(statValue) == "number" then
-		--folder = string.gsub(folder, "TycoonStorage", "")
 		statName = string.gsub(statName, "TycoonStorage", "")
+		itemType = string.gsub(itemType, "TycoonStorage", "")
 	else --Bool for Discovered
 		wait(1)
 		statName = string.gsub(statName, "Discovered", "")
+		itemType = string.gsub(itemType, "Discovered", "")
 	end
 	
 	local itemInfo = game.ReplicatedStorage.InventoryItems:FindFirstChild(itemType):FindFirstChild(statName)
@@ -863,10 +864,10 @@ UpdateTycoonStorage.OnClientEvent:Connect(function(statName, statValue, itemType
 	
 	--Find tile representation of stat
 	local foundTile
-	for i,page in pairs (ItemsPreview.Materials:GetChildren()) do
+	for _,page in pairs (ItemsPreview.Materials:GetChildren()) do
 		if page:IsA("Frame") and string.find(page.Name, "Page") then
 			if tostring(page.Rarity.Value) == rarityName then
-				for i,tile in pairs (page:GetChildren()) do
+				for _,tile in pairs (page:GetChildren()) do
 					if (tile:IsA("TextButton") or tile:IsA("ImageButton")) and string.find(tile.Name, "Slot") then
 						if tile.ItemName.Value == statName then
 							foundTile = tile
