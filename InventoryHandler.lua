@@ -1156,6 +1156,10 @@ local function InsertItemViewerInfo(tile, statMenu, Type, statName, statInfo, va
 									rewardPreviewTile.Size = UDim2.new(previewWidth, 0, 0.678, 0)
 									rewardPreviewTile.Name = "Reward" .. tostring(r)
 								end
+								
+								--Resize and RePosition Level TextLabel
+								rewardTile.Level.Position = UDim2.new(0.251, 0, 1.243, 0)
+								rewardTile.Level.Size = UDim2.new(0.479, 0, 0.58, 0)
 							else
 								local rewardPreviewTile = guiElements.ExpRewardPreviewTile:Clone()
 								rewardPreviewTile.Parent = rewardTile
@@ -1479,6 +1483,7 @@ local function ManageTiles(statName, Menu, value, Type, itemType)
 		else
 			statLocation = game.ReplicatedStorage.Equippable:FindFirstChild(Type):FindFirstChild(itemType):FindFirstChild(statName)
 		end
+		
 		local rarityName = statLocation["GUI Info"].RarityName.Value
 		rarityInfo = guiElements.RarityColors:FindFirstChild(rarityName)
 	end
