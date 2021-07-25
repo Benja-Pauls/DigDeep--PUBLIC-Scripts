@@ -91,7 +91,6 @@ local movePopUpTweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quint, Enum.Easin
 local xPos = 0.99
 local yPos = coinDisplay.Position.Y.Scale + coinDisplay.Size.Y.Scale + jumpDistance
 
-
 local function CountdownPopUp(popUp, expireTime, dontDestroy, specialHide) --xJump, yJump, xJump2, yJump2
 	local timer = popUp.TimeLeft
 	timer.Value = 0
@@ -111,7 +110,7 @@ local function CountdownPopUp(popUp, expireTime, dontDestroy, specialHide) --xJu
 							currentPopUpTweens[popUp]:Destroy()
 						end
 						
-						--[[ --Move popups below back up (MAY COMPLICATE THINGS WITH NO BENEFIT, TILES ALREADY MOVE IF PUSHED DOWN)
+						local popUpNumber = GetPopUpCount(itemPopUpGui)
 						for _,belowPopUp in pairs (itemPopUpGui:GetChildren()) do
 							if belowPopUp:IsA("TextButton") and string.match(belowPopUp.Name, "PopUp") then
 								local p = string.gsub(belowPopUp.Name, "PopUp", "")
@@ -122,12 +121,9 @@ local function CountdownPopUp(popUp, expireTime, dontDestroy, specialHide) --xJu
 									local tween = currentPopUpTweens[belowPopUp]
 
 									if currentPopUpTweens[belowPopUp] then
-									
-									
-									--**Was not working properly because I was not using tween.PlaybackState == Enum.PlaybackState.Playing
-									
-									
-										tween.Completed:Wait() --Moveup does not take priority over move down\
+										if currentPopUpTweens[belowPopUp].PlaybackState == Enum.PlaybackState.Playing then
+											tween.Completed:Wait()
+										end
 									end
 
 									if currentPopUpTweens[belowPopUp] == tween then --Check waited for tween is still last tween
@@ -139,7 +135,6 @@ local function CountdownPopUp(popUp, expireTime, dontDestroy, specialHide) --xJu
 								end
 							end
 						end
-						]]
 						
 						if specialHide then
 							if specialHide == "ExpBar" then
