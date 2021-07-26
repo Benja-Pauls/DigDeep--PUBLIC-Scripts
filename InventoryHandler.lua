@@ -25,6 +25,7 @@ local UpdateItemCount = eventsFolder.GUI:WaitForChild("UpdateItemCount")
 
 local CheckResearchDepends = eventsFolder.Utility:WaitForChild("CheckResearchDepends")
 local DepositInventory = eventsFolder.Utility:WaitForChild("DepositInventory")
+local getCurrentPlayerLevel = eventsFolder.Utility:WaitForChild("GetCurrentPlayerLevel")
 local GetItemCountSum = eventsFolder.Utility:WaitForChild("GetItemCountSum")
 local getItemStatTable = eventsFolder.Utility:WaitForChild("GetItemStatTable")
 ----------------------------------------
@@ -102,7 +103,7 @@ OpenDataMenuButton.Activated:Connect(function()
 		GuiUtility.OpenDataMenu(Player, PlayerModel, dataMenu, "PlayerMenu")
 	elseif dataMenu.Visible == true then
 		OpenDataMenuButton.Active = false
-		dataMenu:TweenPosition(UDim2.new(0.159, 0, -0.8, 0), "Out", "Quint", 0.5)
+		dataMenu:TweenPosition(UDim2.new(0.5, 0, -0.8, 0), "Out", "Quint", 0.5)
 		wait(0.5)
 		dataMenu.Visible = false
 		dataMenu.Position = UDim2.new(0.159, 0, 0.141, 0)
@@ -156,14 +157,14 @@ local equipmentQuickViewMenu = dataMenu.PlayerMenu.QuickViewMenu.QuickViewMenu
 
 local function EnableOnlyButtonMenu(buttonMenu, bool, descendantsSeek)
 	if descendantsSeek then
-		for i,button in pairs (buttonMenu:GetDescendants()) do
+		for _,button in pairs (buttonMenu:GetDescendants()) do
 			if button:IsA("ImageButton") or button:IsA("TextButton") then
 				button.Active = bool
 				button.Selectable = bool
 			end
 		end
 	else
-		for i,button in pairs (buttonMenu:GetChildren()) do
+		for _,button in pairs (buttonMenu:GetChildren()) do
 			if button:IsA("ImageButton") or button:IsA("TextButton") then
 				button.Active = bool
 				button.Selectable = bool
@@ -211,7 +212,7 @@ function ReadyMenuButtons(Menu)
 	
 	if MenuAcceptance == true then
 		MenuAcceptance = false
-		for i,button in pairs(Menu:GetChildren()) do
+		for _,button in pairs(Menu:GetChildren()) do
 			if (button:IsA("TextButton") or button:IsA("ImageButton")) and button:FindFirstChild("Menu") then
 				ButtonPresses[button] = 0
 				local associatedMenuName = button:FindFirstChild("Menu").Value
@@ -233,12 +234,8 @@ function ReadyMenuButtons(Menu)
 				end
 
 				button.Activated:Connect(function()
-					--Reset new item notifiers
-					if button:FindFirstChild("NewItem") then
-						button.NewItem.Value = false
-					end
 
-					for i,v in pairs (ButtonMenu.Parent:GetChildren()) do
+					for _,v in pairs (ButtonMenu.Parent:GetChildren()) do
 						if v:IsA("Frame") and not v:FindFirstChild("Menu") then
 							if tostring(v) ~= "TopTabBar" and tostring(v) ~= "AccentBorder" and tostring(v) ~= "SelectedBagInfo" then
 								v.Visible = false
@@ -250,7 +247,7 @@ function ReadyMenuButtons(Menu)
 					ButtonMenu.Visible = true
 
 					--Enable only current menu's buttons
-					for i,menu in pairs (dataMenu:GetChildren()) do
+					for _,menu in pairs (dataMenu:GetChildren()) do
 						if string.find(menu.Name, "Menu") and menu:IsA("Frame") then
 							EnableOnlyButtonMenu(menu, false, true)
 						end
@@ -299,9 +296,10 @@ function ReadyMenuButtons(Menu)
 						end
 
 						ButtonMenu.SideButtonBar.BackgroundColor3 = ButtonMenu.SkillsMenuButton.Color.Value
+						ButtonMenu.SideButtonBar.UIStroke.Color = ButtonMenu.SkillsMenuButton.Color.AccentColor.Value
 						for _,page in pairs (skillsMenu:GetChildren()) do
 							if page:IsA("Frame") and string.match(page.Name, "Page") then
-								page.BackgroundColor3 = ButtonMenu.SkillsMenuButton.Color.AccentColor.Value
+								page.BackgroundColor3 = ButtonMenu.SkillsMenuButton.Color.Value
 							end
 						end
 
@@ -323,9 +321,10 @@ function ReadyMenuButtons(Menu)
 
 						Menu.SideButtonBar.Visible = true
 						Menu.SideButtonBar.BackgroundColor3 = button.Color.Value
+						Menu.SideButtonBar.UIStroke.Color = button.Color.AccentColor.Value
 						for _,page in pairs (ButtonMenu:GetChildren()) do
 							if page:IsA("Frame") and string.match(page.Name, "Page") then
-								page.BackgroundColor3 = button.Color.AccentColor.Value
+								page.BackgroundColor3 = button.Color.Value
 							end
 						end
 						Menu.ExpInfoViewerMenu.Visible = false
@@ -367,28 +366,6 @@ end
 GuiUtility.Reset3DObject(Player, PlayerViewport, PlayerModel, 178)
 GuiUtility.Reset3DObject(Player, equipmentQuickViewMenu.ItemImage)
 GuiUtility.Reset3DObject(Player, inventoryQuickViewMenu.ItemImage)
-
-function CheckForNewItems()
-	local NewItemButtons = {}
-
-	for _,button in pairs (dataMenu.PlayerMenu:GetChildren()) do
-		if button:IsA("ImageButton") then
-			button.UIGradient.Offset = Vector2.new(1.5, 0)
-			if button.NewItem.Value == true then
-				table.insert(NewItemButtons, button)
-			end
-		end
-	end
-
-	--Put something in the corner of the tile to alert there is something new (only in equipment)
-	--openning the menu alone is enough to show that it has been "seen": player does not need to click on the item
-
-	--Show that tile has something new
-	--coroutine.resume(coroutine.create(function()
-	--for button = 1,#NewItemButtons,1 do
-		--AnimateShine(NewItemButtons[button])
-	--end))
-end
 
 local function GetLevelCounts(statInfo)
 	if statInfo["Levels"] then
@@ -851,6 +828,66 @@ researchRewardViewer.ExitButton.Activated:Connect(function()
 end)
 
 local expInfoViewerMenu = dataMenu.ExperienceMenu.ExpInfoViewerMenu
+local levelRewards = expInfoViewerMenu.LevelRewards
+
+local currentPageChangeTweens = {}
+local pageChangeTweenInfo = TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+local function MoveRewardBackFrame(change)
+	local currentLevel = levelRewards.CurrentDisplayLevel.Value
+	local levelTile = levelRewards.BackFrame:FindFirstChild("Level" .. tostring(currentLevel))
+	local rewardFrameRefer = levelRewards.AbsoluteSize.X/2
+	local xPos = rewardFrameRefer - levelTile.Position.X.Offset - levelTile.Size.X.Offset/2
+	
+	levelRewards.BackFrame.Position = UDim2.new(0, xPos, 0, 0)
+	
+	if change then
+		local changeToLevel = currentLevel + change
+		local newLevelTile = levelRewards.BackFrame:FindFirstChild("Level" .. tostring(changeToLevel))
+		
+		if currentPageChangeTweens[levelRewards] then
+			currentPageChangeTweens[levelRewards]:Pause()
+		end
+		
+		if newLevelTile then
+			local newCenterTile = newLevelTile.Size.X.Offset/2
+			local newPos = rewardFrameRefer - newLevelTile.Position.X.Offset - newCenterTile
+			
+			levelRewards.CurrentDisplayLevel.Value += change
+			local pageChangeTween = TweenService:Create(levelRewards.BackFrame, pageChangeTweenInfo, {Position = UDim2.new(0, newPos, 0, 0)})
+			currentPageChangeTweens[levelRewards] = pageChangeTween
+			pageChangeTween:Play()
+			
+		else --Bounce Effect
+			local levelTileSize = levelTile.Size.X.Offset/2
+			
+			local oppositeChange = 1
+			if change == 1 then
+				oppositeChange = -1
+			end
+			
+			local bounceTweenInfo = TweenInfo.new(0.1, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+			local bounceTween = TweenService:Create(levelRewards.BackFrame, bounceTweenInfo, {Position = UDim2.new(0, xPos + levelTileSize*oppositeChange, 0, 0)})
+			currentPageChangeTweens[levelRewards] = bounceTween
+			bounceTween:Play()
+			
+			wait(0.25)
+			
+			local backBounceTweenInfo = TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+			local backBounceTween = TweenService:Create(levelRewards.BackFrame, backBounceTweenInfo, {Position = UDim2.new(0, xPos, 0, 0)})
+			currentPageChangeTweens[levelRewards] = backBounceTween
+			backBounceTween:Play()
+		end
+	end
+end
+
+levelRewards.NextPage.Activated:Connect(function()
+	MoveRewardBackFrame(1)
+end)
+
+levelRewards.PreviousPage.Activated:Connect(function()
+	MoveRewardBackFrame(-1)
+end)
+
 local itemRewardViewer = expInfoViewerMenu.ItemRewardViewer
 itemRewardViewer.ExitButton.Activated:Connect(function()
 	itemRewardViewer.Visible = false
@@ -881,6 +918,40 @@ local function ManageEquipButton(currentlyEquipped, statName, Equip)
 	end
 
 	equipButton.Visible = true
+end
+
+local function DisplayLevelUp(tile, expInfo, unseenRewardCount, currentLevel)
+
+	if unseenRewardCount > 0 then
+		local level = currentLevel - unseenRewardCount
+		local levelInfo = expInfo["Levels"][level]
+
+		--Set up top half of screen to display levelup rather than expInfo
+		
+		
+		--Begin moving Bottom frame to bring new level reward tile into view
+		
+		
+		--Roll numbers for 
+		
+		print("displaying level up info for ", tile)
+
+
+		
+		
+		
+
+
+		--**Ensure animation has been finished and menu is still open before updating save w/ PSM	
+		--Send a signal to playerstatmanage to update the unseen reward count. Since it is only
+		--a visual change, don't have too much security other than making sure the server script cannot
+		--be broken
+		
+		--Do function  again with new unseenRewardCount
+	end
+
+	--If the exp finishes displaying the last unseen level, then update the updatenotify icon
+	--at each of the steps: from tab to tile
 end
 
 local function DisplayExpRewardInfo(rewardInfo)
@@ -1059,7 +1130,7 @@ local function InsertItemViewerInfo(tile, statMenu, Type, statName, statInfo, va
 			end
 		end
 
-		if statMenu.ItemName.Text ~= statInfo["StatName"] then
+		if statMenu.ItemName.Text ~= statInfo["StatName"] then --Reupdate menu
 			statMenu.ItemImage.Image = statInfo["StatImage"]
 			statMenu.ItemName.Text = statInfo["StatName"]
 			statMenu.TotalExp.Text = 'Total Exp: <font color="#FFFFFF">' .. value .. '</font>'
@@ -1105,7 +1176,8 @@ local function InsertItemViewerInfo(tile, statMenu, Type, statName, statInfo, va
 			local levelCount,skewedRewardCount = GetLevelCounts(statInfo)
 			local pageChangeCount = math.ceil(skewedRewardCount/10)
 			backFrame.Size = UDim2.new(1*pageChangeCount, 0, 1, 0) --Size backFrame properly
-
+			
+			--Update reward tiles roadmap
 			for l = 1,levelCount,1 do
 				local rewardTile = guiElements.ExpRewardTile:Clone()
 				rewardTile.Parent = backFrame
@@ -1217,7 +1289,27 @@ local function InsertItemViewerInfo(tile, statMenu, Type, statName, statInfo, va
 				--so reward preview tiles don't have a different looking corner radius depending on their size
 			end
 		end
+		
+		statMenu.LevelRewards.CurrentDisplayLevel.Value = tonumber(statMenu.CurrentLevel.Text)
+		MoveRewardBackFrame()
 
+		
+		
+		--Position bottom BackFrame so currentLevel is the middle reward tile with a selection triangle over it
+		--(no animation to display, that will only be for leveling up)
+		
+		--See if ExperienceMenu must display NewLevel Animation Sequence
+		if tile:FindFirstChild("UpdateNotify") then
+			if tile.UpdateNotify.Visible == true then
+				statMenu.LevelRewards.CurrentDisplayLevel.Value = 1
+				MoveRewardBackFrame() --Position bottom BackFrame at Level1 so it can be "rolled up"
+				
+				local unseenRewardCount = getCurrentPlayerLevel:InvokeServer(statInfo, nil, true)
+				local currentLevel = getCurrentPlayerLevel:InvokeServer(statInfo)
+				DisplayLevelUp(tile, statInfo, unseenRewardCount, currentLevel)
+			end
+		end
+		
 	else --Equipment
 		statMenu.EquipType.Value = Type
 		statMenu.ItemType.Value = itemType
@@ -1282,7 +1374,11 @@ local function InsertTileInfo(Type, tile, statName, value, itemType, tileAlready
 		if expMenuButton then
 			tile.Image = expMenuButton.TileStaticImage.Value
 			tile.HoverImage = expMenuButton.TileHoverImage.Value
+			
 			expMenuButton.Color.UIGradient:Clone().Parent = tile.ProgressBar.Progress
+			tile.ProgressBar.BackgroundColor3 = expMenuButton.Color.Value
+			tile.ProgressBar.UIStroke.Color = expMenuButton.Color.AccentColor.Value
+			tile.PictureBorder.UIStroke.Color = expMenuButton.Color.AccentColor.Value
 		end
 
 		statInfo = getItemStatTable:InvokeServer("Experience", nil, itemType, statName)
@@ -1291,7 +1387,8 @@ local function InsertTileInfo(Type, tile, statName, value, itemType, tileAlready
 		local nextLevelInfo = statInfo["Levels"][nextLevel]
 
 		tile.DisplayName.Text = statName
-		tile.Picture.Image = statInfo["StatImage"]
+		tile.PictureBorder.Picture.Image = statInfo["StatImage"]
+		tile.PictureBorder.BackgroundColor3 = statInfo["PrimaryColor"]
 		tile.CurrentLevel.Text = tostring(currentLevel)
 		tile.NextLevel.Text = tostring(nextLevel)
 
@@ -1303,6 +1400,13 @@ local function InsertTileInfo(Type, tile, statName, value, itemType, tileAlready
 
 		local percentage = currentProgressExp / totalLevelExp
 		ProgressBar.Progress.Size = UDim2.new(percentage, 0, 1, 0)
+		
+		local unseenRewardCount = getCurrentPlayerLevel:InvokeServer(statInfo, nil, true)
+		if unseenRewardCount > 0 then
+			GuiUtility.UpdateNotifySymbols(dataMenu.ExperienceMenu:FindFirstChild(itemType .. "Menu"), tile)
+		else
+			tile.NotifySymbol.Visible = false
+		end
 
 	else
 		statMenu = equipmentQuickViewMenu
@@ -1318,7 +1422,7 @@ local function InsertTileInfo(Type, tile, statName, value, itemType, tileAlready
 	end
 
 	--ItemViewerMenu GUI Management
-	if tileAlreadyPresent == nil then
+	if not tileAlreadyPresent then
 		tile.Activated:Connect(function()
 			if Type == "Experience" then
 				pageManager.Visible = false
@@ -1472,7 +1576,7 @@ end
 
 -----------------<Overall ManageTiles Function|>----------------------------------------------------------------------
 
-local function ManageTiles(statName, Menu, value, Type, itemType)
+local function ManageTiles(statName, Menu, value, Type, itemType, updateNotify)
 	--print(Stat,Menu,Value,Type,AcquiredLocation) = Stone,OresMenu,2,Inventory,Mineshaft
 
 	local rarityInfo
@@ -1488,7 +1592,7 @@ local function ManageTiles(statName, Menu, value, Type, itemType)
 		rarityInfo = guiElements.RarityColors:FindFirstChild(rarityName)
 	end
 
-	local tileAlreadyPresent
+	local tile
 	for _,page in pairs (Menu:GetChildren()) do
 		if page:IsA("Frame") and string.find(page.Name, "Page") then
 
@@ -1497,48 +1601,50 @@ local function ManageTiles(statName, Menu, value, Type, itemType)
 					local slotItemName = slot.StatName.Value
 
 					if slotItemName == statName then
-						tileAlreadyPresent = slot
+						tile = slot
 					end
 				end
 			end
 		end
 	end
-
-	if tileAlreadyPresent then
-		InsertTileInfo(Type, tileAlreadyPresent, statName, value, itemType, tileAlreadyPresent)
+	
+	if tile then
+		InsertTileInfo(Type, tile, statName, value, itemType, true)
 	else
 		local newTile = ManageTilePlacement(Menu, Type, rarityInfo)
+		tile = newTile
 		newTile.Active = true
 		newTile.Selectable = true
 		InsertTileInfo(Type, newTile, statName, value, itemType)
 	end
-
+	
+	if updateNotify and tile then
+		GuiUtility.UpdateNotifySymbols(Menu, tile)
+	end
 end
 
 -------------------------------------<High-Traffic Events>-------------------------------------------------------------------------------------------------------------
 
-local function FindItemMenus(statName, itemType, value, amountAdded, Type)
-	local typeFrame = dataMenu:FindFirstChild(tostring(Type) .. "Menu")
-
-	if typeFrame then
-		local slots
-		if itemType then
-			if Type == "Experience" then
-				slots = typeFrame:FindFirstChild(itemType .. "Menu")
-			else
-				slots = typeFrame.MaterialsMenu
-			end
-		else
-			warn("No Folder associated with " .. Type .. " update. Stat Name: " .. statName)
-		end
-
-		if tonumber(value) ~= 0 then
-			ManageTiles(statName, slots, tonumber(value), Type, itemType)
-		end
+updateInventory.OnClientEvent:Connect(function(statName, itemType, value, Type)
+	local menu = dataMenu.InventoryMenu.MaterialsMenu
+	
+	if tonumber(value) ~= 0 then
+		ManageTiles(statName, menu, tonumber(value), Type, itemType)
 	end
-end
-updateInventory.OnClientEvent:Connect(FindItemMenus)
-updateExperience.OnClientEvent:Connect(FindItemMenus)
+end)
+
+updateExperience.OnClientEvent:Connect(function(expName, expType, expAmount, Type, amountAdded, levelUp)
+	local menu = dataMenu.ExperienceMenu:FindFirstChild(expType .. "Menu")
+	
+	--**Separate from updateinventory so levelup can be used by this function to manage the new notify
+	--New notify will probably be different to prepare for each of these types, so parameters will start to diverge
+	--However, they probably will use the same function that changes the new notify symbol visibilty of the menu
+	--and the parent menus
+
+	if tonumber(expAmount) ~= 0 then --Mix this with menu existence check in ManageTiles function
+		ManageTiles(expName, menu, tonumber(expAmount), Type, expType, levelUp)
+	end
+end)
 
 UpdatePlayerMenu.OnClientEvent:Connect(function(EquipType, ItemType, Item)
 	local itemInfo = game.ReplicatedStorage.Equippable:FindFirstChild(EquipType):FindFirstChild(ItemType):FindFirstChild(Item)
