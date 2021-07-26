@@ -203,6 +203,24 @@ end
 
 -----------------------<|Info Display Functions|>---------------------------------------------------------------------------------------------
 
+local function ChangeNotifySymbol(gui)
+	if gui then
+		if gui:FindFirstChild("NotifySymbol") then
+			gui.NotifySymbol.Visible = true
+		end
+	end
+end
+
+function GuiUtility.UpdateNotifySymbols(itemMenu, itemTile)
+	ChangeNotifySymbol(itemTile)
+	
+	ChangeNotifySymbol(itemMenu.Parent:FindFirstChild(tostring(itemMenu) .. "Button"))
+	
+	if itemMenu.Parent.Parent.Name == "DataMenu" then
+		ChangeNotifySymbol(itemMenu.Parent.Parent:FindFirstChild(tostring(itemMenu.Parent) .. "Button"))
+	end
+end
+
 function GuiUtility.CleanupMenuDefaults(player, menu)
 	local dataMenu = player.PlayerGui.DataMenu.DataMenu
 	
@@ -243,7 +261,7 @@ function GuiUtility.OpenDataMenu(player, playerModel, dataMenu, overallMenuName,
 		dataMenu.JournalMenuButton
 	}
 	
-	dataMenu.Position = UDim2.new(0.159, 0, -.8, 0)
+	dataMenu.Position = UDim2.new(0.5, 0, -0.8, 0)
 	dataMenu.Visible = true
 	dataMenu.PlayerMenu.EmptyNotifier.Visible = false
 	dataMenu.TopTabBar.CloseMenu.Active = true
@@ -318,7 +336,7 @@ function GuiUtility.OpenDataMenu(player, playerModel, dataMenu, overallMenuName,
 
 	GuiUtility.Display3DModels(player, dataMenu.PlayerMenu.PlayerInfo.PlayerView, playerModel:Clone(), true, 178)
 	
-	dataMenu:TweenPosition(UDim2.new(0.159, 0, 0.173, 0), "Out", "Quint", 0.5)
+	dataMenu:TweenPosition(UDim2.new(0.5, 0, 0.525, 0), "Out", "Quint", 0.5)
 	
 	wait(0.5)
 	openDataMenuButton.Active = true
