@@ -175,7 +175,7 @@ local function UpdateGUIForFile(saveFolder, player, statName, value, overFlow)
 					end
 				end
 				
-				UpdateInventory:FireClient(player, statName, tostring(itemType), tostring(total), amountAdded, "Inventory")
+				UpdateInventory:FireClient(player, statName, tostring(itemType), tostring(total), "Inventory", amountAdded)
 				
 			elseif saveFolder == "Experience" then	
 				
@@ -196,22 +196,16 @@ local function UpdateGUIForFile(saveFolder, player, statName, value, overFlow)
 					--**It will work by saving how many levels have to be displayed (counting down from current)
 					--**So if the player hasn't checked since level 3 and is now level 7, there will be a value of 
 					--4 saved so when the menu is openned it will know to display 7-4, 7-3, 7-2, 7-1, and 7
-					--They would also be displayed in order of lowest to greatest 
+					--They would also be displayed in order of lowest level not checked to greatest 
+
+					--**Award Player with level's rewards
 					
-					--**I may also have to redo how the reward is shown since the player probably wants to see and overview
-					--and the reward tiles on the bottom roadmap will just be used to see what's ahead, what they
-					--have gotten, or how to check what they got from recently leveling up, not how they usually
-					--access it right on a fresh level up (that will be a reward screen within the dataMenu completed
-					--dedicated to showing the player they leveled up and what they unlocked)
 					
-					--Each expTile in each of the different expTypeMenus will have a notifier symbol next to them
-					--Once the player clicks on those tiles, it will display that they leveled up, if they haven't
-					--seen it already, and will be shown a clickable list of what they have been rewarded
 					
 					levelUp = expLevel
 				end
 				
-				updateExperience:FireClient(player, statName, tostring(itemType), tostring(total), amountAdded, tostring(saveFolder), levelUp)
+				updateExperience:FireClient(player, statName, tostring(itemType), tostring(total), tostring(saveFolder), amountAdded, levelUp)
 				
 			elseif saveFolder == "TycoonStorage" then
 				UpdateTycoonStorage:FireClient(player, statName, tostring(total), tostring(itemType))
@@ -284,7 +278,7 @@ function PlayerStatManager:ChangeStat(player, statName, value, saveFolder, itemT
 				elseif string.find(statName, "Discovered") then
 					local itemType = Utility:GetItemInfo(string.gsub(statName, "Discovered", ""), true)
 					UpdateTycoonStorage:FireClient(player, statName, value, tostring(itemType))
-					UpdateInventory:FireClient(player, statName, tostring(itemType), value, 1, "Discovered")
+					UpdateInventory:FireClient(player, statName, tostring(itemType), value, "Discovered", 1)
 				end
 			end
 			
@@ -398,7 +392,7 @@ function LoadPlayerData(playerDataFile, data, joinedPlayer)
 					data[expName .. "Level"] = expLevel.Value
 
 					--Create exp tiles with value > 0
-					updateExperience:FireClient(joinedPlayer, expName, expTypeName, tostring(data[expName]), nil, "Experience")
+					updateExperience:FireClient(joinedPlayer, expName, expTypeName, tostring(data[expName]), "Experience")
 				end
 			end
 		end
@@ -473,7 +467,7 @@ function LoadPlayerData(playerDataFile, data, joinedPlayer)
 			local itemRefer = CreateSaveReference(inventoryItemTypeFolder, tostring(item), "NumberValue")
 			local itemSave = CheckSaveData(data[tostring(item)])
 			ImportSaveData(data, itemSave, tostring(item), itemRefer)
-			UpdateInventory:FireClient(joinedPlayer, tostring(item), tostring(itemType), tostring(data[tostring(item)]), nil, "Inventory")
+			UpdateInventory:FireClient(joinedPlayer, tostring(item), tostring(itemType), tostring(data[tostring(item)]), "Inventory")
 			
 			local discoveredSaveName = tostring(item) .. "Discovered"
 			local discoveredRefer = CreateSaveReference(itemRefer, discoveredSaveName, "BoolValue")
@@ -730,35 +724,46 @@ function GetItemCountSum.OnServerInvoke(player, statName)
 	end
 end
 
-function GetPlayerLevel(player, expInfo, onlyExpAmount) --Use total exp to find level, not level saved value
+function GetPlayerLevel(player, expInfo, onlyExpAmount, onlyRewardCount) --Use total exp to find level, not level saved value
 	local playerUserId = player.UserId
 	local expName = expInfo["StatName"]
 	
 	if sessionData[playerUserId][expName] then
-		local expAmount = sessionData[playerUserId][expName]
-		
-		if onlyExpAmount then
-			return expAmount
+		if onlyRewardCount then
+			local unseenRewards = sessionData[playerUserId][expName .. "UnseenRewards"]
+			return unseenRewards
 		else
-			local highestLevel
-			for l = 1,#expInfo["Levels"] do
-				if expInfo["Levels"][l]["Exp Requirement"] <= expAmount then
-					if highestLevel then
-						if l > highestLevel then
+			local expAmount = sessionData[playerUserId][expName]
+
+			if onlyExpAmount then
+				return expAmount
+			else
+				local highestLevel
+				for l = 1,#expInfo["Levels"] do
+					if expInfo["Levels"][l]["Exp Requirement"] <= expAmount then
+						if highestLevel then
+							if l > highestLevel then
+								highestLevel = l
+							end
+						else
 							highestLevel = l
 						end
-					else
-						highestLevel = l
 					end
 				end
+				
+				if onlyRewardCount then	
+					
+				else
+					
+				end
+				return highestLevel
 			end
-			return highestLevel
 		end
 	end
 end
 
-function GetCurrentPlayerLevel.OnServerInvoke(player, expInfo, onlyExpAmount)
-	return GetPlayerLevel(player, expInfo, onlyExpAmount) --Both PSM and client need to access this function
+function GetCurrentPlayerLevel.OnServerInvoke(player, expInfo, onlyExpAmount, onlyRewardCount)
+	return GetPlayerLevel(player, expInfo, onlyExpAmount, onlyRewardCount) --Both PSM and client need to access this function
 end
 
 SellItem.OnServerEvent:Connect(function(Player, Menu, item, Percentage)--, Amount)
