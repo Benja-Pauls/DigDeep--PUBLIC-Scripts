@@ -263,7 +263,7 @@ local ResearchData = {
 	
 }
 
---Input researches that have exp requirements as notifiers in experience data
+--Input research that have exp requirements as rewards in experience data
 for _,researchType in pairs (ResearchData["Research"]) do
 	local researchTypeName = researchType["Research Type Name"]
 	
@@ -314,9 +314,9 @@ for _,researchType in pairs (ResearchData["Research"]) do
 		end
 	end	
 end
-print("Done putting all information from researchData into experienceData")
-print(experienceData)
-print(ResearchData)
+--print("Done putting all information from researchData into experienceData")
+--print(experienceData)
+--print(ResearchData)
 
 
 
