@@ -16,6 +16,7 @@ local researchData = require(game.ServerStorage.ResearchData)
 -----<|Events/Remote Functions|>--     (key of event order)
 local eventsFolder = game.ReplicatedStorage.Events
 
+local awardLevelRewards = eventsFolder.GUI:WaitForChild("AwardLevelRewards")
 local updateExperience = eventsFolder.GUI:WaitForChild("UpdateExperience")
 local UpdateInventory = eventsFolder.GUI:WaitForChild("UpdateInventory")
 local UpdateTycoonStorage = eventsFolder.GUI:WaitForChild("UpdateTycoonStorage")
@@ -191,17 +192,7 @@ local function UpdateGUIForFile(saveFolder, player, statName, value, overFlow)
 					local expRefer = playerDataFile.Experience:FindFirstChild(tostring(itemType)):FindFirstChild(statName)
 					expRefer.Value = expLevel
 					expRefer:FindFirstChild(statName .. "UnseenRewards").Value += 1
-						
-					--Probably add to level up count of notifications that have yet to appear
-					--**It will work by saving how many levels have to be displayed (counting down from current)
-					--**So if the player hasn't checked since level 3 and is now level 7, there will be a value of 
-					--4 saved so when the menu is openned it will know to display 7-4, 7-3, 7-2, 7-1, and 7
-					--They would also be displayed in order of lowest level not checked to greatest 
 
-					--**Award Player with level's rewards
-					
-					
-					
 					levelUp = expLevel
 				end
 				
@@ -766,6 +757,69 @@ function GetCurrentPlayerLevel.OnServerInvoke(player, expInfo, onlyExpAmount, on
 	return GetPlayerLevel(player, expInfo, onlyExpAmount, onlyRewardCount) --Both PSM and client need to access this function
 end
 
+function awardLevelRewards.OnServerInvoke(player, expName, expTypeName)
+	local playerUserId = player.UserId
+	local playerDataFile = game.ServerStorage.PlayerData:FindFirstChild(tostring(playerUserId))
+	
+	if experienceData[expTypeName] then
+		if experienceData[expTypeName][expName] then
+			local expInfo = experienceData[expTypeName][expName]
+			local unseenRewardsCount = sessionData[playerUserId][expName .. "UnseenRewards"]
+			
+			if unseenRewardsCount > 0 then
+				local currentLevel = sessionData[playerUserId][expName .. "Level"]
+				local rewardLevel = currentLevel - unseenRewardsCount + 1
+				local levelInfo = expInfo["Levels"][rewardLevel]
+				
+				if sessionData[playerUserId][expName] > levelInfo["Exp Requirement"] then
+					for r = 1,#levelInfo["Rewards"] do
+						local rewardInfo = levelInfo["Rewards"][r]
+						local rewardType = rewardInfo[1]
+						local statInfo = rewardInfo[2]
+						
+						if rewardType == "Item" then
+							local amount = rewardInfo[3]
+							PlayerStatManager:ChangeStat(player, tostring(statInfo), amount, "Inventory")
+							
+							local discoveredValue = sessionData[playerUserId][tostring(statInfo) .. "Discovered"]
+							if discoveredValue == false then
+								PlayerStatManager:ChangeStat(player, tostring(statInfo) .. "Discovered", true, "Inventory")
+							end
+						elseif rewardType == "Equipment" then
+							PlayerStatManager:ChangeStat(player, tostring(statInfo), true, "Equipment")
+							
+							
+							--Possibly equip item?
+							
+							--Should a pop up come up for newly gained equipment?
+							--Should store bought items always be equipped or should clicking the pop up equip it?
+							
+							--This is now asked because getting a piece of equipment as a level reward may go unseen
+							--without being shown as a popup, but they may also not mostly be what the player wants
+							--to equip, unlike what can generally be assumed when they purchase new equipment
+						end
+					end
+					
+					sessionData[playerUserId][expName .. "UnseenRewards"] -= 1
+					print(playerDataFile)
+					if playerDataFile.Experience:FindFirstChild(expTypeName) then
+						local expFolder = player.Experience:FindFirstChiled(expTypeName):FindFirstChild(expName)
+						if expFolder then
+							if expFolder:FindFirstChild(expName .. "UnseenRewards") then
+								expFolder:FindFirstChild(expName .. "UnseenRewards").Value -= 1
+							end
+						end
+					end
+					
+					return true
+				end
+			end
+		end
+	end
+	
+	return false
+end
+
 SellItem.OnServerEvent:Connect(function(Player, Menu, item, Percentage)--, Amount)
 	if Percentage >= 0 and Percentage <= 1 then
 		local playerUserId = game.Players:FindFirstChild(tostring(Player)).UserId
@@ -934,7 +988,7 @@ local function HandleDropMaterials(Tycoon, Drop) --Update Tycoon Storage for dro
 					
 					local itemInfo = Utility:GetItemInfo(tostring(material), true)
 					
-					local discoverValue = playerDataFile.Inventory:FindFirstChild(tostring(itemInfo)):FindFirstChild(tostring(material)):FindFirstChild(tostring(material) .. "Discovered")
+					local discoverValue = sessionData[playerUserId][tostring(material) .. "Discovered"]
 					if discoverValue == false then
 						PlayerStatManager:ChangeStat(Player, tostring(material) .. "Discovered", true, tostring(file))
 					end
