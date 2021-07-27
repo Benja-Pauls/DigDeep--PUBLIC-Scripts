@@ -14,6 +14,7 @@ local pageManager = dataMenu.PageManager
 -----------<|Remote Events/Functions|>--
 local eventsFolder = game.ReplicatedStorage.Events
 
+local awardLevelRewards = eventsFolder.GUI:WaitForChild("AwardLevelRewards")
 local insertItemViewerInfo = eventsFolder.GUI:WaitForChild("InsertItemViewerInfo")
 local MoveAllBaseScreenUI = eventsFolder.GUI:WaitForChild("MoveAllBaseScreenUI")
 local ManageTilePlacementFunction = eventsFolder.GUI:FindFirstChild("ManageTilePlacement")
@@ -831,8 +832,7 @@ local expInfoViewerMenu = dataMenu.ExperienceMenu.ExpInfoViewerMenu
 local levelRewards = expInfoViewerMenu.LevelRewards
 
 local currentPageChangeTweens = {}
-local pageChangeTweenInfo = TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
-local function MoveRewardBackFrame(change)
+local function MoveRewardBackFrame(change, waitAmount)
 	local currentLevel = levelRewards.CurrentDisplayLevel.Value
 	local levelTile = levelRewards.BackFrame:FindFirstChild("Level" .. tostring(currentLevel))
 	local rewardFrameRefer = levelRewards.AbsoluteSize.X/2
@@ -849,6 +849,8 @@ local function MoveRewardBackFrame(change)
 		end
 		
 		if newLevelTile then
+			local pageChangeTweenInfo = TweenInfo.new(waitAmount, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+			
 			local newCenterTile = newLevelTile.Size.X.Offset/2
 			local newPos = rewardFrameRefer - newLevelTile.Position.X.Offset - newCenterTile
 			
@@ -872,7 +874,7 @@ local function MoveRewardBackFrame(change)
 			
 			wait(0.25)
 			
-			local backBounceTweenInfo = TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+			local backBounceTweenInfo = TweenInfo.new(0.25, Enum.EasingStyle.Bounce, Enum.EasingDirection.Out)
 			local backBounceTween = TweenService:Create(levelRewards.BackFrame, backBounceTweenInfo, {Position = UDim2.new(0, xPos, 0, 0)})
 			currentPageChangeTweens[levelRewards] = backBounceTween
 			backBounceTween:Play()
@@ -881,11 +883,11 @@ local function MoveRewardBackFrame(change)
 end
 
 levelRewards.NextPage.Activated:Connect(function()
-	MoveRewardBackFrame(1)
+	MoveRewardBackFrame(1, 0.25)
 end)
 
 levelRewards.PreviousPage.Activated:Connect(function()
-	MoveRewardBackFrame(-1)
+	MoveRewardBackFrame(-1, 0.25)
 end)
 
 local itemRewardViewer = expInfoViewerMenu.ItemRewardViewer
@@ -920,38 +922,121 @@ local function ManageEquipButton(currentlyEquipped, statName, Equip)
 	equipButton.Visible = true
 end
 
+local levelUpNotify = expInfoViewerMenu.LevelUpNotify
 local function DisplayLevelUp(tile, expInfo, unseenRewardCount, currentLevel)
+	
+	local newLevel = currentLevel - unseenRewardCount + 1
+	local levelInfo = expInfo["Levels"][newLevel]
+	local prevLevelInfo = expInfo["Levels"][newLevel - 1]
 
-	if unseenRewardCount > 0 then
-		local level = currentLevel - unseenRewardCount
-		local levelInfo = expInfo["Levels"][level]
-
-		--Set up top half of screen to display levelup rather than expInfo
+	--Set up top half of screen to display levelup rather than expInfo
+	levelUpNotify.Visible = true
+	levelUpNotify.BackgroundColor3 = expInfo["ThirdColor"]
+	levelUpNotify.LevelDisplay.Level.Text = tostring(newLevel - 1)
 		
-		
-		--Begin moving Bottom frame to bring new level reward tile into view
-		
-		
-		--Roll numbers for 
-		
-		print("displaying level up info for ", tile)
-
-
-		
-		
-		
-
-
-		--**Ensure animation has been finished and menu is still open before updating save w/ PSM	
-		--Send a signal to playerstatmanage to update the unseen reward count. Since it is only
-		--a visual change, don't have too much security other than making sure the server script cannot
-		--be broken
-		
-		--Do function  again with new unseenRewardCount
+	if prevLevelInfo then
+		levelUpNotify.LevelName.Text = prevLevelInfo["Level Name"]
 	end
+	
+	local levelUpDisplay = levelUpNotify.LevelUpDisplay
+	levelUpDisplay.Size = UDim2.new(0, 0, 0, 0)
+	
+	tile.Parent.Parent.Parent.ExpInfoViewerMenu.Visible = true
+	wait(1)
 
-	--If the exp finishes displaying the last unseen level, then update the updatenotify icon
-	--at each of the steps: from tab to tile
+	--Roll bottom frame to new level
+	MoveRewardBackFrame(1, 1.5)
+	
+	if levelUpNotify.LevelDisplay:FindFirstChild("PreviousLevel") then
+		levelUpNotify.LevelDisplay.PreviousLevel:Destroy()
+	end
+	
+	--Roll number to next level
+	local rollToText = levelUpNotify.LevelDisplay.Level:Clone()
+	rollToText.Parent = levelUpNotify.LevelDisplay
+	rollToText.Text = tostring(newLevel)
+	levelUpNotify.LevelDisplay.Level.Name = "PreviousLevel"
+	rollToText.Name = "Level"
+		
+	local rollTextTweenInfo = TweenInfo.new(3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+	local rollPrevTween = TweenService:Create(levelUpNotify.LevelDisplay.PreviousLevel, rollTextTweenInfo, {Position = UDim2.new(0.5, 0, -0.6, 0)})
+	rollPrevTween:Play()
+		
+	rollToText.Position = UDim2.new(0.5, 0, 1.5, 0)
+	local rollTween = TweenService:Create(rollToText, rollTextTweenInfo, {Position = UDim2.new(0.5, 0, 0.4, 0)})
+	rollTween:Play()
+
+	--Fill progress bar of level reward tile
+	local levelTile = levelRewards.BackFrame:FindFirstChild("Level" .. tostring(currentLevel))
+	if levelTile then
+		levelTile.Progress.Size = UDim2.new(0, 0, 1, 0)
+		levelTile.Progress.Visible = true
+			
+		local fillTweenInfo = TweenInfo.new(1.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+		local fillTween = TweenService:Create(levelTile.Progress, fillTweenInfo, {Size = UDim2.new(1, 0, 1, 0)})
+		fillTween:Play()
+	end
+		
+	rollTween.Completed:Wait()
+		
+	--Bounce effect for new number and extra effects (rotating images, sounds, ui rays, etc.)
+	local extraBounceTweenInfo = TweenInfo.new(1.5, Enum.EasingStyle.Elastic, Enum.EasingDirection.Out)
+	local extraBounceTween = TweenService:Create(rollToText, extraBounceTweenInfo, {Position = UDim2.new(0.5, 0, 0.5, 0)})
+	extraBounceTween:Play()
+		
+	--Move Pointer
+	local pointer = levelRewards.Pointer
+	local bouncePointerTweenInfo = TweenInfo.new(0.6, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+	local bouncePointerTween = TweenService:Create(pointer, bouncePointerTweenInfo, {Position = UDim2.new(0.5, 0, 0.15, 0)})
+	bouncePointerTween:Play()
+		
+	--Change LevelName
+	local expandTweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+	local expandTween = TweenService:Create(levelUpNotify.LevelName, expandTweenInfo, {Size = UDim2.new(0.9, 0, 0.23, 0)})
+	expandTween:Play()
+		
+	wait(0.1)
+	levelUpNotify.LevelName.Text = levelInfo["Level Name"]
+		
+	expandTween.Completed:Wait()
+		
+	local contractTween = TweenService:Create(levelUpNotify.LevelName, expandTweenInfo, {Size = UDim2.new(0.9, 0, 0.2, 0)})
+	contractTween:Play()
+		
+	local contractPointerTweenInfo = TweenInfo.new(0.85, Enum.EasingStyle.Elastic, Enum.EasingDirection.Out)
+	local contractPointerTween = TweenService:Create(pointer, contractPointerTweenInfo, {Position = UDim2.new(0.5, 0, 0.125, 0)})
+	contractPointerTween:Play()
+	
+	local levelUpTweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+	local levelUpTween = TweenService:Create(levelUpDisplay, levelUpTweenInfo, {Size = UDim2.new(0.75, 0, 0.31, 0)})
+	levelUpTween:Play()
+	
+	levelUpTween.Completed:Wait()
+	
+	local retractLevelUpTweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Elastic, Enum.EasingDirection.Out)
+	local retractLevelUpTween = TweenService:Create(levelUpDisplay, retractLevelUpTweenInfo, {Size = UDim2.new(0.75, 0, 0.27, 0)})
+	retractLevelUpTween:Play()
+		
+	--Udpate unseenReward Count & Give Player Level Rewards
+	if dataMenu.Visible == true then
+		local moreRewards = awardLevelRewards:InvokeServer(expInfo["StatName"], expInfo["StatType"])
+			
+		if moreRewards then
+			wait(2)
+			local hideLevelUpTweenInfo = TweenInfo.new(2, Enum.EasingStyle.Back, Enum.EasingDirection.In)
+			local hideLevelUpTween = TweenService:Create(levelUpDisplay, hideLevelUpTweenInfo, {Size = UDim2.new(0, 0, 0, 0)})
+			hideLevelUpTween:Play()
+			
+			hideLevelUpTween.Completed:Wait()
+			
+			local newUnseenRewardCount = getCurrentPlayerLevel:InvokeServer(expInfo, nil, true)
+			DisplayLevelUp(tile, expInfo, newUnseenRewardCount, getCurrentPlayerLevel:InvokeServer(expInfo))
+		else
+			GuiUtility.UpdateNotifySymbols(tile.Parent.Parent.Parent, tile, false)
+			wait(5)
+			levelUpNotify.Visible = false
+		end
+	end
 end
 
 local function DisplayExpRewardInfo(rewardInfo)
@@ -1129,184 +1214,207 @@ local function InsertItemViewerInfo(tile, statMenu, Type, statName, statInfo, va
 				end
 			end
 		end
+		
+		local levelRewards = statMenu.LevelRewards
+		local backFrame = levelRewards.BackFrame
+		
+		statMenu.ItemImage.Image = statInfo["StatImage"]
+		statMenu.ItemName.Text = statInfo["StatName"]
+		statMenu.TotalExp.Text = 'Total Exp: <font color="#FFFFFF">' .. value .. '</font>'
 
-		if statMenu.ItemName.Text ~= statInfo["StatName"] then --Reupdate menu
-			statMenu.ItemImage.Image = statInfo["StatImage"]
-			statMenu.ItemName.Text = statInfo["StatName"]
-			statMenu.TotalExp.Text = 'Total Exp: <font color="#FFFFFF">' .. value .. '</font>'
+		statMenu.CurrentLevel.Text = tile.CurrentLevel.Text
+		statMenu.NextLevel.Text = tile.NextLevel.Text
+		
+		--backFrame.OverallProgress.BackgroundColor3 = statInfo["PrimaryColor"]
+		--backFrame.OverallProgress.UIStroke.Color = statInfo["SecondaryColor"]
+		
+		if statMenu:FindFirstChild("ProgressBar") then
+			statMenu.ProgressBar:Destroy()
+		end
 
-			statMenu.CurrentLevel.Text = tile.CurrentLevel.Text
-			statMenu.NextLevel.Text = tile.NextLevel.Text
+		local progressBar = tile.ProgressBar:Clone() --Grab progress bar from activated expTile
+		progressBar.Parent = statMenu
+		progressBar.Position = UDim2.new(0.34, 0, 0.241, 0)
+		progressBar.Size = UDim2.new(0.562, 0, 0.109, 0)
 
-			if statMenu:FindFirstChild("ProgressBar") then
-				statMenu.ProgressBar:Destroy()
-			end
+		----Update LevelRewards Display----
+		local noRewardYPos = 0.369
+		local noRewardYSize = 0.18
+		local noRewardSizeConversion = 1/3 --xSize is 1/3 of ySize ({0.06,0}{0.18,0} = square)
 
-			local progressBar = tile.ProgressBar:Clone() --Grab progress bar from activated expTile
-			progressBar.Parent = statMenu
-			progressBar.Position = UDim2.new(0.34, 0, 0.241, 0)
-			progressBar.Size = UDim2.new(0.562, 0, 0.109, 0)
-
-			----Update LevelRewards Display----
-			local noRewardYPos = 0.369
-			local noRewardYSize = 0.18
-			local noRewardSizeConversion = 1/3 --xSize is 1/3 of ySize ({0.06,0}{0.18,0} = square)
-
-			local rewardYPos = 0.278
-			local rewardYSize = 0.36
-			local rewardSizeConversion = 1/6 --xSize is 1/6 of ySize ({0.06}{0.36,0} = tall rectangle)
+		local rewardYPos = 0.278
+		local rewardYSize = 0.36
+		local rewardSizeConversion = 1/6 --xSize is 1/6 of ySize ({0.06}{0.36,0} = tall rectangle)
 
 			--**Use previouspage arrow as xDistance reference for xPos of first tile (yPos is constant)
 			--**xSize will be calculated with sizeConversion variable from expRewardTile's constant ySize
 
-			local levelRewards = statMenu.LevelRewards
-			local backFrame = levelRewards.BackFrame
-			local prevPagePosDiff = 1.22
-			local prevPageXPos = levelRewards.PreviousPage.AbsolutePosition.X
+		local prevPagePosDiff = 1.22
+		local prevPageXPos = levelRewards.PreviousPage.AbsolutePosition.X
 
-			local xSize = levelRewards.PreviousPage.AbsoluteSize.X * 1.05
-			local jumpDistance = 1/3*xSize + 0.003*backFrame.Parent.AbsoluteSize.X
+		local xSize = levelRewards.PreviousPage.AbsoluteSize.X * 1.05
+		local jumpDistance = 1/3*xSize + 0.003*backFrame.Parent.AbsoluteSize.X
 
-			for _,gui in pairs (backFrame:GetChildren()) do
-				if gui:IsA("Frame") and string.match(gui.Name, "Level") then
-					gui:Destroy()
-				end
+		for _,gui in pairs (backFrame:GetChildren()) do
+			if gui:IsA("Frame") and string.match(gui.Name, "Level") then
+				gui:Destroy()
 			end
+		end
 
-			local levelCount,skewedRewardCount = GetLevelCounts(statInfo)
-			local pageChangeCount = math.ceil(skewedRewardCount/10)
-			backFrame.Size = UDim2.new(1*pageChangeCount, 0, 1, 0) --Size backFrame properly
+		local levelCount,skewedRewardCount = GetLevelCounts(statInfo)
+		local pageChangeCount = math.ceil(skewedRewardCount/10)
+		backFrame.Size = UDim2.new(1*pageChangeCount, 0, 1, 0) --Size backFrame properly
 			
-			--Update reward tiles roadmap
-			for l = 1,levelCount,1 do
-				local rewardTile = guiElements.ExpRewardTile:Clone()
-				rewardTile.Parent = backFrame
-				rewardTile.Name = "Level" .. tostring(l)
-				rewardTile.Level.Text = tostring(l)
+		if backFrame:FindFirstChild("Progress") then
+			backFrame.Progress:Destroy()
+		end
+			
+		--Update reward tiles roadmap
+		for l = 1,levelCount,1 do
+			local rewardTile = guiElements.ExpRewardTile:Clone()
+			rewardTile.Parent = backFrame
+			rewardTile.Name = "Level" .. tostring(l)
+			rewardTile.Level.Text = tostring(l)
+			
+			--rewardTile.BackgroundColor3 = backFrame.OverallProgress.BackgroundColor3
+			--rewardTile.UIStroke.Color = backFrame.OverallProgress.UIStroke.Color
+			--rewardTile.Progress.BackgroundColor3 = backFrame.OverallProgress.UIStroke.Color
 
-				local levelInfo = statInfo["Levels"][l]
-				if l == 1 then --First tile uses prevPageButton to find xPos
-					local xPos = (prevPageXPos * prevPagePosDiff) - backFrame.AbsolutePosition.X --+ levelRewards.LeftBorderFrame.AbsoluteSize.X
+			local levelInfo = statInfo["Levels"][l]
+			if l == 1 then --First tile uses prevPageButton to find xPos
+				local xPos = (prevPageXPos * prevPagePosDiff) - backFrame.AbsolutePosition.X --+ levelRewards.LeftBorderFrame.AbsoluteSize.X
 
-					rewardTile.Position = UDim2.new(0, xPos, noRewardYPos, 0)
-					rewardTile.Size = UDim2.new(0, xSize, noRewardYSize, 0)
+				rewardTile.Position = UDim2.new(0, xPos, noRewardYPos, 0)
+				rewardTile.Size = UDim2.new(0, xSize, noRewardYSize, 0)
 
-				else --All other tiles use previous level's tile to find xPos
-					if backFrame:FindFirstChild("Level" .. tostring(l-1)) then
-						local previousLevelTile = backFrame:FindFirstChild("Level" .. tostring(l-1))
-						local xPos = previousLevelTile.Position.X.Offset + previousLevelTile.Size.X.Offset + jumpDistance
+			else --All other tiles use previous level's tile to find xPos
+				if backFrame:FindFirstChild("Level" .. tostring(l-1)) then
+					local previousLevelTile = backFrame:FindFirstChild("Level" .. tostring(l-1))
+					local xPos = previousLevelTile.Position.X.Offset + previousLevelTile.Size.X.Offset + jumpDistance
 
-						local rewardCount = #levelInfo["Rewards"]
-						if rewardCount > 0 then
-							rewardTile.Position = UDim2.new(0, xPos, rewardYPos, 0)
+					local rewardCount = #levelInfo["Rewards"]
+					if rewardCount > 0 then
+						rewardTile.Position = UDim2.new(0, xPos, rewardYPos, 0)
 
-							local xSize = rewardCount*xSize + (rewardCount-1)*jumpDistance
-							rewardTile.Size = UDim2.new(0, xSize, rewardYSize, 0)
+						local xSize = rewardCount*xSize + (rewardCount-1)*jumpDistance
+						rewardTile.Size = UDim2.new(0, xSize, rewardYSize, 0)
 
-							--position reward preview tiles
-							--(a rewardPreview is 46x59 on a 1271x697 screen (.036,.085))
+						--position reward preview tiles
+						--(a rewardPreview is 46x59 on a 1271x697 screen (.036,.085))
 
-							if rewardCount > 1 then
+						if rewardCount > 1 then
 
-								--must find previewWidth since rewardTile xSize changes based on rewardCount
-								local jumpSum = 0.56
-								for j = 2,rewardCount,1 do
-									jumpSum += .56/((j-1)*2) --0.56, 0.28, 0.14, 0.07...
-								end
-								local previewWidth = 1.237 - jumpSum --Example: 0.56+0.28+0.14 --> 1.237 - .98 = .257
+							--must find previewWidth since rewardTile xSize changes based on rewardCount
+							local jumpSum = 0.56
+							for j = 2,rewardCount,1 do
+								jumpSum += .56/((j-1)*2) --0.56, 0.28, 0.14, 0.07...
+							end
+							local previewWidth = 1.237 - jumpSum --Example: 0.56+0.28+0.14 --> 1.237 - .98 = .257
 
-								for r = 1,rewardCount,1 do
-									local rewardPreviewTile = guiElements.ExpRewardPreviewTile:Clone()
-
-									local leftoverSpace = 1 - previewWidth*rewardCount
-									local diff = leftoverSpace/(rewardCount + 1)
-
-									local previewXPos = r*diff + previewWidth*(r-1) + previewWidth/2 --previewWidth/2 added since anchor is .5,.5
-
-									rewardPreviewTile.Parent = rewardTile
-									rewardPreviewTile.Position = UDim2.new(previewXPos, 0, 0.5, 0)
-									rewardPreviewTile.Size = UDim2.new(previewWidth, 0, 0.678, 0)
-									rewardPreviewTile.Name = "Reward" .. tostring(r)
-								end
-								
-								--Resize and RePosition Level TextLabel
-								rewardTile.Level.Position = UDim2.new(0.251, 0, 1.243, 0)
-								rewardTile.Level.Size = UDim2.new(0.479, 0, 0.58, 0)
-							else
+							for r = 1,rewardCount,1 do
 								local rewardPreviewTile = guiElements.ExpRewardPreviewTile:Clone()
+
+								local leftoverSpace = 1 - previewWidth*rewardCount
+								local diff = leftoverSpace/(rewardCount + 1)
+
+								local previewXPos = r*diff + previewWidth*(r-1) + previewWidth/2 --previewWidth/2 added since anchor is .5,.5
+
 								rewardPreviewTile.Parent = rewardTile
-								rewardPreviewTile.Position = UDim2.new(0.5, 0, 0.5, 0)
-								rewardPreviewTile.Size = UDim2.new(1, 0, 1, 0)
-								rewardPreviewTile.Name = "Reward1"
-
-								--local mouseoverInfo = Instance.new("StringValue", rewardPreviewTile)
-								--mouseoverInfo.Name = "MouseoverInfo"
-								--**MouseoverInfo function must be updated for this to work
+								rewardPreviewTile.Position = UDim2.new(previewXPos, 0, 0.5, 0)
+								rewardPreviewTile.Size = UDim2.new(previewWidth, 0, 0.678, 0)
+								rewardPreviewTile.Name = "Reward" .. tostring(r)
 							end
+								
+							--Resize and RePosition Level TextLabel
+							rewardTile.Level.Position = UDim2.new(0.251, 0, 1.243, 0)
+							rewardTile.Level.Size = UDim2.new(0.479, 0, 0.58, 0)
+						else
+							local rewardPreviewTile = guiElements.ExpRewardPreviewTile:Clone()
+							rewardPreviewTile.Parent = rewardTile
+							rewardPreviewTile.Position = UDim2.new(0.5, 0, 0.5, 0)
+							rewardPreviewTile.Size = UDim2.new(1, 0, 1, 0)
+							rewardPreviewTile.Name = "Reward1"
 
-							--Last tile will be a research notifier (if a research's skill was met)
-							local rewardTilesToFill = rewardCount
-							if levelInfo["Rewards"][rewardCount]["Research List"] then
-								rewardTilesToFill -= 1
-
-								local researchListTile = rewardTile:FindFirstChild("Reward" .. tostring(rewardCount))
-								researchListTile.RewardImage.Image = "rbxassetid://7080090511"
-
-								researchListTile.Activated:Connect(function()
-									DisplayExpRewardInfo(levelInfo["Rewards"][rewardCount])
-								end)
-							end
-
-							--Put reward in tile
-							for r = 1,rewardTilesToFill,1 do
-								local rewardInfo = levelInfo["Rewards"][r]
-
-								local rewardPreviewTile = rewardTile:FindFirstChild("Reward" .. tostring(r))
-								rewardPreviewTile.RewardImage.Image = rewardInfo[2]["GUI Info"].StatImage.Value
-
-								rewardPreviewTile.Activated:Connect(function()
-									DisplayExpRewardInfo(rewardInfo)
-								end)
-							end
-
-						else --noReward
-							rewardTile.Position = UDim2.new(0, xPos, noRewardYPos, 0)
-							rewardTile.Size = UDim2.new(0, xSize, noRewardYSize, 0)
+							--local mouseoverInfo = Instance.new("StringValue", rewardPreviewTile)
+							--mouseoverInfo.Name = "MouseoverInfo"
+							--**MouseoverInfo function must be updated for this to work
 						end
+
+						--Last tile will be a research notifier (if a research's skill was met)
+						local rewardTilesToFill = rewardCount
+						if levelInfo["Rewards"][rewardCount]["Research List"] then
+							rewardTilesToFill -= 1
+
+							local researchListTile = rewardTile:FindFirstChild("Reward" .. tostring(rewardCount))
+							researchListTile.RewardImage.Image = "rbxassetid://7080090511"
+
+							researchListTile.Activated:Connect(function()
+								DisplayExpRewardInfo(levelInfo["Rewards"][rewardCount])
+							end)
+						end
+
+						--Put reward in tile
+						for r = 1,rewardTilesToFill,1 do
+							local rewardInfo = levelInfo["Rewards"][r]
+
+							local rewardPreviewTile = rewardTile:FindFirstChild("Reward" .. tostring(r))
+							rewardPreviewTile.RewardImage.Image = rewardInfo[2]["GUI Info"].StatImage.Value
+
+							rewardPreviewTile.Activated:Connect(function()
+								DisplayExpRewardInfo(rewardInfo)
+							end)
+						end
+
+					else --noReward
+						rewardTile.Position = UDim2.new(0, xPos, noRewardYPos, 0)
+						rewardTile.Size = UDim2.new(0, xSize, noRewardYSize, 0)
 					end
 				end
-
-				rewardTile.Progress.Visible = true
-				if l < tonumber(statMenu.CurrentLevel.Text) then
-					rewardTile.Progress.Size = UDim2.new(1, 0, 1, 0)
-				elseif l == tonumber(statMenu.CurrentLevel.Text) then
-					rewardTile.Progress.Size = UDim2.new(progressBar.Progress.Size.X.Scale, 0, 1, 0)
-				else
-					rewardTile.Progress.Visible = false
-				end
-
-				--Calculate scale of reward tile to offset then change that for reward preview too
-				--so reward preview tiles don't have a different looking corner radius depending on their size
 			end
+
+			rewardTile.Progress.Visible = true
+			if l <= tonumber(statMenu.CurrentLevel.Text) then
+				rewardTile.Progress.Size = UDim2.new(1, 0, 1, 0)
+			else
+				rewardTile.Progress.Visible = false
+			end
+		end
+		
+		backFrame.OverallProgress.Visible = true
+		backFrame.OverallProgress.Position = UDim2.new(0, backFrame.Level1.Position.X.Offset, 0.457, 0)
+		local xSize = backFrame:FindFirstChild("Level" .. tostring(levelCount)).Position.X.Offset - backFrame.Level1.Position.X.Offset
+		backFrame.OverallProgress.Size = UDim2.new(0, xSize, 0.062, 0)
+
+		local levelTile = backFrame:FindFirstChild("Level" .. tostring(tonumber(statMenu.CurrentLevel.Text)))
+		if levelTile then
+			local progress = backFrame.OverallProgress:Clone()
+			progress.Parent = backFrame
+			progress.Name = "Progress"
+			progress.BackgroundColor3 = backFrame.OverallProgress.UIStroke.Color
+			local progressSize = (levelTile.Position.X.Offset + levelTile.Size.X.Offset) - backFrame.Level1.Position.X.Offset
+			progress.Size = UDim2.new(0, progressSize, backFrame.OverallProgress.Size.Y.Scale, 0)
+
+			local currentTile = backFrame:FindFirstChild("Level" .. tostring(tonumber(statMenu.CurrentLevel.Text) + 1))
+			local percent = statMenu.ProgressBar.Progress.Size.X.Scale
+			local xDiff = currentTile.Position.X.Offset - (levelTile.Position.X.Offset + levelTile.Size.X.Offset)
+			backFrame.Progress.Size = UDim2.new(0, progress.Size.X.Offset + (xDiff * percent), backFrame.OverallProgress.Size.Y.Scale, 0)
 		end
 		
 		statMenu.LevelRewards.CurrentDisplayLevel.Value = tonumber(statMenu.CurrentLevel.Text)
 		MoveRewardBackFrame()
-
-		
-		
-		--Position bottom BackFrame so currentLevel is the middle reward tile with a selection triangle over it
-		--(no animation to display, that will only be for leveling up)
 		
 		--See if ExperienceMenu must display NewLevel Animation Sequence
-		if tile:FindFirstChild("UpdateNotify") then
-			if tile.UpdateNotify.Visible == true then
-				statMenu.LevelRewards.CurrentDisplayLevel.Value = 1
-				MoveRewardBackFrame() --Position bottom BackFrame at Level1 so it can be "rolled up"
-				
+		if tile:FindFirstChild("NotifySymbol") then
+			if tile.NotifySymbol.Visible == true then
 				local unseenRewardCount = getCurrentPlayerLevel:InvokeServer(statInfo, nil, true)
 				local currentLevel = getCurrentPlayerLevel:InvokeServer(statInfo)
+				statMenu.LevelRewards.CurrentDisplayLevel.Value = currentLevel - unseenRewardCount
+				MoveRewardBackFrame() --Position bottom BackFrame at Level1 so it can be "rolled up"
+				
+				statMenu.Visible = true
 				DisplayLevelUp(tile, statInfo, unseenRewardCount, currentLevel)
+			else
+				levelUpNotify.Visible = false
 			end
 		end
 		
@@ -1403,7 +1511,7 @@ local function InsertTileInfo(Type, tile, statName, value, itemType, tileAlready
 		
 		local unseenRewardCount = getCurrentPlayerLevel:InvokeServer(statInfo, nil, true)
 		if unseenRewardCount > 0 then
-			GuiUtility.UpdateNotifySymbols(dataMenu.ExperienceMenu:FindFirstChild(itemType .. "Menu"), tile)
+			GuiUtility.UpdateNotifySymbols(dataMenu.ExperienceMenu:FindFirstChild(itemType .. "Menu"), tile, true)
 		else
 			tile.NotifySymbol.Visible = false
 		end
@@ -1619,7 +1727,7 @@ local function ManageTiles(statName, Menu, value, Type, itemType, updateNotify)
 	end
 	
 	if updateNotify and tile then
-		GuiUtility.UpdateNotifySymbols(Menu, tile)
+		GuiUtility.UpdateNotifySymbols(Menu, tile, true)
 	end
 end
 
