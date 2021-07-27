@@ -203,21 +203,21 @@ end
 
 -----------------------<|Info Display Functions|>---------------------------------------------------------------------------------------------
 
-local function ChangeNotifySymbol(gui)
+local function ChangeNotifySymbol(gui, visibility)
 	if gui then
 		if gui:FindFirstChild("NotifySymbol") then
-			gui.NotifySymbol.Visible = true
+			gui.NotifySymbol.Visible = visibility
 		end
 	end
 end
 
-function GuiUtility.UpdateNotifySymbols(itemMenu, itemTile)
-	ChangeNotifySymbol(itemTile)
+function GuiUtility.UpdateNotifySymbols(itemMenu, itemTile, visibility)
+	ChangeNotifySymbol(itemTile, visibility)
 	
-	ChangeNotifySymbol(itemMenu.Parent:FindFirstChild(tostring(itemMenu) .. "Button"))
+	ChangeNotifySymbol(itemMenu.Parent:FindFirstChild(tostring(itemMenu) .. "Button"), visibility)
 	
 	if itemMenu.Parent.Parent.Name == "DataMenu" then
-		ChangeNotifySymbol(itemMenu.Parent.Parent:FindFirstChild(tostring(itemMenu.Parent) .. "Button"))
+		ChangeNotifySymbol(itemMenu.Parent.Parent:FindFirstChild(tostring(itemMenu.Parent) .. "Button"), visibility)
 	end
 end
 
