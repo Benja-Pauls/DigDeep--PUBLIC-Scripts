@@ -56,7 +56,7 @@ local ExperienceData = {
 					["Rewards"] = {}
 				},
 				[8] = {
-					["Level Name"] = "",
+					["Level Name"] = "HellDiver",
 					["Exp Requirement"] = 2000,
 					["Rewards"] = {}
 				},
