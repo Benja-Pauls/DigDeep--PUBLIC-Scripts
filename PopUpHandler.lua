@@ -91,6 +91,43 @@ local movePopUpTweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quint, Enum.Easin
 local xPos = 0.99
 local yPos = coinDisplay.Position.Y.Scale + coinDisplay.Size.Y.Scale + jumpDistance
 
+local function HideGeneralPopUp(popUp)
+	local currentXSize = popUp.Size.X.Scale
+	local currentYPos = popUp.Position.Y.Scale
+	local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+	local hideTween = tweenService:Create(popUp, tweenInfo, {Position = UDim2.new(1 + currentXSize, 0, currentYPos, 0)})
+	hideTween:Play()
+	
+	--Move other popups below now-hidden popup
+	if popUp.Parent == itemPopUpGui then
+		local popUpNumber = GetPopUpCount(itemPopUpGui)
+		for _,belowPopUp in pairs (itemPopUpGui:GetChildren()) do
+			if belowPopUp:IsA("TextButton") and string.match(belowPopUp.Name, "PopUp") then
+				local p = string.gsub(belowPopUp.Name, "PopUp", "")
+				p = tonumber(p)
+
+				if p > popUpNumber then
+					popUp.Name = "PopUp" .. tostring(p - 1)
+					local tween = currentPopUpTweens[belowPopUp]
+
+					if currentPopUpTweens[belowPopUp] then
+						if currentPopUpTweens[belowPopUp].PlaybackState == Enum.PlaybackState.Playing then
+							tween.Completed:Wait()
+						end
+					end
+
+					if currentPopUpTweens[belowPopUp] == tween then --Check waited for tween is still last tween
+						local yPos = belowPopUp.Position.Y.Scale - popUp.Size.Y.Scale - jumpDistance
+						local moveUpTween = tweenService:Create(belowPopUp, movePopUpTweenInfo, {Position = UDim2.new(xPos, 0, yPos, 0)})
+						moveUpTween:Play()
+						currentPopUpTweens[belowPopUp] = moveUpTween
+					end
+				end
+			end
+		end
+	end
+end
+
 local function CountdownPopUp(popUp, expireTime, dontDestroy, specialHide) --xJump, yJump, xJump2, yJump2
 	local timer = popUp.TimeLeft
 	timer.Value = 0
@@ -108,32 +145,6 @@ local function CountdownPopUp(popUp, expireTime, dontDestroy, specialHide) --xJu
 						if currentPopUpTweens[popUp] then
 							currentPopUpTweens[popUp]:Pause()
 							currentPopUpTweens[popUp]:Destroy()
-						end
-						
-						local popUpNumber = GetPopUpCount(itemPopUpGui)
-						for _,belowPopUp in pairs (itemPopUpGui:GetChildren()) do
-							if belowPopUp:IsA("TextButton") and string.match(belowPopUp.Name, "PopUp") then
-								local p = string.gsub(belowPopUp.Name, "PopUp", "")
-								p = tonumber(p)
-								
-								if p > popUpNumber then
-									popUp.Name = "PopUp" .. tostring(p - 1)
-									local tween = currentPopUpTweens[belowPopUp]
-
-									if currentPopUpTweens[belowPopUp] then
-										if currentPopUpTweens[belowPopUp].PlaybackState == Enum.PlaybackState.Playing then
-											tween.Completed:Wait()
-										end
-									end
-
-									if currentPopUpTweens[belowPopUp] == tween then --Check waited for tween is still last tween
-										local yPos = belowPopUp.Position.Y.Scale - popUp.Size.Y.Scale - jumpDistance
-										local moveUpTween = tweenService:Create(belowPopUp, movePopUpTweenInfo, {Position = UDim2.new(xPos, 0, yPos, 0)})
-										moveUpTween:Play()
-										currentPopUpTweens[belowPopUp] = moveUpTween
-									end
-								end
-							end
 						end
 						
 						if specialHide then
@@ -165,12 +176,7 @@ local function CountdownPopUp(popUp, expireTime, dontDestroy, specialHide) --xJu
 								wait(0.5)
 							end
 						else
-							local currentXSize = popUp.Size.X.Scale
-							local currentYPos = popUp.Position.Y.Scale
-							local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
-							local hideTween = tweenService:Create(popUp, tweenInfo, {Position = UDim2.new(1 + currentXSize, 0, currentYPos, 0)})
-							hideTween:Play()
-							
+							HideGeneralPopUp(popUp)
 							wait(0.3)
 						end
 					end
@@ -632,7 +638,7 @@ end
 
 ---------------------<|RightSide PopUp Management|>---------------------------------------------------------------------
 
-local function CreateRightSidePopUp(newPopUp, popUpType, statName, itemTypeName, amountAdded)
+local function CreateRightSidePopUp(newPopUp, popUpType, statName, itemTypeName, amountAdded, levelUp)
 	
 	--Insert Tile Info
 	local newTweenInfo
@@ -664,6 +670,7 @@ local function CreateRightSidePopUp(newPopUp, popUpType, statName, itemTypeName,
 		
 		newPopUp.Activated:Connect(function()
 			ShowDataMenu(itemInfo, statName, rarityInfo, dataMenu.InventoryMenu, dataMenu.InventoryMenu.MaterialsMenu)
+			HideGeneralPopUp(newPopUp)
 		end)
 		
 	elseif string.match(popUpType, "Notify") then --LevelUp, ItemsSold, BagCapacity, EquipBag, ItemsStored
@@ -679,18 +686,22 @@ local function CreateRightSidePopUp(newPopUp, popUpType, statName, itemTypeName,
 			end
 			newPopUp.ExpName.Text = string.gsub(statName, " " .. nonPluralType, "")
 			
+			local expAmount = amountAdded
 			newPopUp.Activated:Connect(function()
-				ShowDataMenu(statInfo, statName, nil, dataMenu.ExperienceMenu, dataMenu.ExperienceMenu:FindFirstChild(itemTypeName .. "Menu"), itemTypeName)
+				ShowDataMenu(statInfo, statName, nil, dataMenu.ExperienceMenu, dataMenu.ExperienceMenu:FindFirstChild(itemTypeName .. "Menu"), expAmount, itemTypeName)
+				HideGeneralPopUp(newPopUp)
 			end)
 			
 		elseif popUpType == "EquipBagNotify" then
 			newPopUp.Activated:Connect(function()
 				ShowDataMenu(nil, nil, nil, dataMenu.PlayerMenu, dataMenu.PlayerMenu.MaterialBagsMenu)
+				HideGeneralPopUp(newPopUp)
 			end)
 			
 		else --BagCapacityNotify, ItemsStoredNotify
 			newPopUp.Activated:Connect(function()
 				ShowDataMenu(nil, nil, nil, dataMenu.InventoryMenu, dataMenu.InventoryMenu.MaterialsMenu)
+				HideGeneralPopUp(newPopUp)
 			end)
 		end	
 		
@@ -756,7 +767,7 @@ sellItem.OnClientEvent:Connect(function()
 	CreateRightSidePopUp(sellItemNotify:Clone(), "SellItemNotify") --Should this, if clicked, open notify menu? **Will notify contain transaction history?
 end)
 
-updateInventory.OnClientEvent:Connect(function(statName, itemTypeName, value, amountAdded, Type)
+updateInventory.OnClientEvent:Connect(function(statName, itemTypeName, value, Type, amountAdded)
 	
 	if amountAdded ~= nil and amountAdded ~= 0 then
 		if Type == "Inventory" then
@@ -818,7 +829,7 @@ updateInventory.OnClientEvent:Connect(function(statName, itemTypeName, value, am
 end)
 
 local levelUpDebounce = false
-updateExperience.OnClientEvent:Connect(function(expName, expTypeName, value, amountAdded, Type, levelUp)
+updateExperience.OnClientEvent:Connect(function(expName, expTypeName, value, Type, amountAdded, levelUp)
 	if amountAdded ~= nil and amountAdded ~= 0 then
 		local expInfo = getItemStatTable:InvokeServer("Experience", nil, expTypeName, expName)
 
@@ -833,12 +844,12 @@ updateExperience.OnClientEvent:Connect(function(expName, expTypeName, value, amo
 				ShowExpChange(nil, expInfo, amountAdded)
 			end))
 			
-			CreateRightSidePopUp(guiElements.NotifyPopUps.LevelUpNotify:Clone(), "LevelUpNotify", expName, expTypeName, levelUp)
+			local expAmount = getCurrentPlayerLevel:InvokeServer(expInfo, true)
+			CreateRightSidePopUp(guiElements.NotifyPopUps.LevelUpNotify:Clone(), "LevelUpNotify", expName, expTypeName, expAmount, levelUp)
 			
 			local expBar = expBarPopUpGui.ExperienceBar
 			LevelUp(expBar, expName, levelUp)
 			
-			local expAmount = getCurrentPlayerLevel:InvokeServer(expInfo, true)
 			local currentLevel = tonumber(expBar.ClipDescendantsFrame.Background.CurrentLevel.Text)
 			local nextLevel = tonumber(expBar.ClipDescendantsFrame.Background.NextLevel.Text)
 			local levelProgress = CalculateLevelProgress(expInfo, expAmount, currentLevel, nextLevel)
