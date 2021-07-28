@@ -962,26 +962,26 @@ end
 
 ------------------------<|Time Management|>-----------------------------
 
-local function ManageTileTimer(Tile, ResearchData, FinishTime)
-	Tile.CompleteResearch.Visible = false
-	Tile.CompleteResearch.Active = false
-	Tile.SkipTime.Visible = true
-	Tile.SkipTime.Active = true
+local function ManageTileTimer(tile, researchData, finishTime)
+	tile.CompleteResearch.Visible = false
+	tile.CompleteResearch.Active = false
+	tile.SkipTime.Visible = true
+	tile.SkipTime.Active = true
 	
-	local ProgressBar = Tile.TimerBar.ProgressBar
+	local ProgressBar = tile.TimerBar.ProgressBar
 	coroutine.resume(coroutine.create(function()
-		while Tile do
+		while tile do
 			wait(1) --update every second
-			if os.time() <= FinishTime then
-				local SecondsLeft = FinishTime - os.time()
-				local RoundedPercentage = math.ceil(100 * (1 - (SecondsLeft / ResearchData["Research Length"])))
+			if os.time() <= finishTime then
+				local SecondsLeft = finishTime - os.time()
+				local RoundedPercentage = math.ceil(100 * (1 - (SecondsLeft / researchData["Research Length"])))
 				local PercentFinished = RoundedPercentage/100
 						
 				ProgressBar.Timer.Text = "<b>" .. GuiUtility.ToDHMS(SecondsLeft) .. "</b>"
 				ProgressBar.Progress:TweenSize(UDim2.new(PercentFinished, 0, 1, 0), "Out", "Quint", 0.8)
 
-				local GemCost = CalculateGemCost(FinishTime)
-				Tile.SkipTime.PaymentAmount.Text = GuiUtility.ConvertShort(GemCost)
+				local GemCost = CalculateGemCost(finishTime)
+				tile.SkipTime.PaymentAmount.Text = GuiUtility.ConvertShort(GemCost)
 				
 				
 				--SOME EFFECT TO LOOK LIKE PROGRESS IS BEING MADE, EVEN WITH HUGE TIMERS (something moving)?
@@ -991,11 +991,13 @@ local function ManageTileTimer(Tile, ResearchData, FinishTime)
 				ProgressBar.Progress.Size = UDim2.new(1, 0, 1, 0)
 				ProgressBar.Timer.Text = "<b>Completed!</b>"
 				
-				Tile.SkipTime.Visible = false
-				Tile.SkipTime.Active = false
-				Tile.CompleteResearch.Visible = true
-				Tile.CompleteResearch.Active = true
-
+				tile.SkipTime.Visible = false
+				tile.SkipTime.Active = false
+				tile.CompleteResearch.Visible = true
+				tile.CompleteResearch.Active = true
+				
+				
+				
 				break
 			end
 		end
@@ -1849,6 +1851,7 @@ UpdateResearch.OnClientEvent:Connect(function(researchData, researchType, comple
 			local AllDependenciesMet = CheckResearchDepends:InvokeServer(researchData)
 			
 			if AllDependenciesMet then
+				print("Research Unlocked: ", researchData)
 				ManageResearchTile(AvailableResearch, researchData, researchType)
 			elseif skillMet == true then
 				ManageResearchTile(ResearchMenu.AvailableResearch, researchData, researchType, nil, nil, skillMet)
