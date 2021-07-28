@@ -938,6 +938,9 @@ local function DisplayLevelUp(tile, expInfo, unseenRewardCount, currentLevel)
 		levelUpNotify.LevelName.Text = prevLevelInfo["Level Name"]
 	end
 	
+	local levelTile = levelRewards.BackFrame:FindFirstChild("Level" .. tostring(currentLevel))
+	levelTile.Progress.Size = UDim2.new(0, 0, 1, 0)
+	
 	local levelUpDisplay = levelUpNotify.LevelUpDisplay
 	levelUpDisplay.Size = UDim2.new(0, 0, 0, 0)
 	
@@ -967,15 +970,12 @@ local function DisplayLevelUp(tile, expInfo, unseenRewardCount, currentLevel)
 	rollTween:Play()
 
 	--Fill progress bar of level reward tile
-	local levelTile = levelRewards.BackFrame:FindFirstChild("Level" .. tostring(currentLevel))
-	if levelTile then
-		levelTile.Progress.Size = UDim2.new(0, 0, 1, 0)
-		levelTile.Progress.Visible = true
+	levelTile.Progress.Size = UDim2.new(0, 0, 1, 0)
+	levelTile.Progress.Visible = true
 			
-		local fillTweenInfo = TweenInfo.new(1.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
-		local fillTween = TweenService:Create(levelTile.Progress, fillTweenInfo, {Size = UDim2.new(1, 0, 1, 0)})
-		fillTween:Play()
-	end
+	local fillTweenInfo = TweenInfo.new(1.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+	local fillTween = TweenService:Create(levelTile.Progress, fillTweenInfo, {Size = UDim2.new(1, 0, 1, 0)})
+	fillTween:Play()
 		
 	rollTween.Completed:Wait()
 		
@@ -1428,7 +1428,7 @@ local function InsertItemViewerInfo(tile, statMenu, Type, statName, statInfo, va
 		statMenu.ItemImageBorder.BackgroundColor3 = rarity.Value
 
 		ManageStatBars(equipmentQuickViewMenu, value)
-		ManageEquipButton(dataMenu.PlayerMenu:FindFirstChild(itemType).CurrentlyEquipped.Value, statName)
+		ManageEquipButton(dataMenu.PlayerMenu:FindFirstChild(Type .. "MenuButton").CurrentlyEquipped.Value, statName)
 
 		--local ItemModel = game.ReplicatedStorage.Equippable:FindFirstChild(Type):FindFirstChild(AcquiredLocation):FindFirstChild(Stat)
 
@@ -1736,7 +1736,7 @@ end
 updateInventory.OnClientEvent:Connect(function(statName, itemType, value, Type)
 	local menu = dataMenu.InventoryMenu.MaterialsMenu
 	
-	if tonumber(value) ~= 0 then
+	if tonumber(value) ~= 0 and not string.match(statName, "Discovered") then
 		ManageTiles(statName, menu, tonumber(value), Type, itemType)
 	end
 end)
@@ -1754,17 +1754,17 @@ updateExperience.OnClientEvent:Connect(function(expName, expType, expAmount, Typ
 	end
 end)
 
-UpdatePlayerMenu.OnClientEvent:Connect(function(EquipType, ItemType, Item)
-	local itemInfo = game.ReplicatedStorage.Equippable:FindFirstChild(EquipType):FindFirstChild(ItemType):FindFirstChild(Item)
-	local AssociatedMenu = PlayerMenu:FindFirstChild(ItemType .. "Menu")
-	local AssociatedButton = PlayerMenu:FindFirstChild(ItemType)
+UpdatePlayerMenu.OnClientEvent:Connect(function(equipType, itemType, itemName)
+	local itemInfo = game.ReplicatedStorage.Equippable:FindFirstChild(equipType):FindFirstChild(itemType):FindFirstChild(itemName)
+	local AssociatedMenu = PlayerMenu:FindFirstChild(equipType .. "Menu")
+	local AssociatedButton = PlayerMenu:FindFirstChild(equipType .. "MenuButton")
 
-	local itemStats = getItemStatTable:InvokeServer("Equipment", EquipType, ItemType, Item)
-	ManageTiles(Item, AssociatedMenu, itemStats, EquipType, ItemType)
+	local itemStats = getItemStatTable:InvokeServer("Equipment", equipType, itemType, itemName)
+	ManageTiles(itemName, AssociatedMenu, itemStats, equipType, itemType)
 end)
 
 UpdateEquippedItem.OnClientEvent:Connect(function(equipType, itemType, item)
-	local defaultMenuButton = PlayerMenu:FindFirstChild(itemType)
+	local defaultMenuButton = PlayerMenu:FindFirstChild(equipType .. "MenuButton")
 	defaultMenuButton.CurrentlyEquipped.Value = item
 
 	if item and item ~= "" then
@@ -1777,8 +1777,8 @@ UpdateEquippedItem.OnClientEvent:Connect(function(equipType, itemType, item)
 	end
 
 	--Highlight Equipped Item
-	for i,page in pairs (PlayerMenu:FindFirstChild(itemType .. "Menu"):GetChildren()) do
-		for i,tile in pairs (page:GetChildren()) do
+	for _,page in pairs (PlayerMenu:FindFirstChild(equipType .. "Menu"):GetChildren()) do
+		for _,tile in pairs (page:GetChildren()) do
 			if tile:IsA("TextButton") then
 				if tile.StatName.Value == item then
 					tile.BackgroundColor3 = Color3.fromRGB(85, 170, 255) --Brighter blue (or player's fav color later)
