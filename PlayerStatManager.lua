@@ -17,6 +17,7 @@ local researchData = require(game.ServerStorage.ResearchData)
 local eventsFolder = game.ReplicatedStorage.Events
 
 local awardLevelRewards = eventsFolder.GUI:WaitForChild("AwardLevelRewards")
+local displayCurrencyPopUp = eventsFolder.GUI:WaitForChild("DisplayCurrencyPopUp")
 local updateExperience = eventsFolder.GUI:WaitForChild("UpdateExperience")
 local UpdateInventory = eventsFolder.GUI:WaitForChild("UpdateInventory")
 local UpdateTycoonStorage = eventsFolder.GUI:WaitForChild("UpdateTycoonStorage")
@@ -203,6 +204,9 @@ local function UpdateGUIForFile(saveFolder, player, statName, value, overFlow)
 				
 			elseif saveFolder == "Currencies" then
 				Utility:UpdateMoneyDisplay(player, Utility:ConvertShort(total))
+				
+				--**Later send what type of currency (coin/gem)
+				displayCurrencyPopUp:FireClient("Coin", value)
 			end
 			
 			--Finally, update DataStore value
@@ -263,7 +267,7 @@ function PlayerStatManager:ChangeStat(player, statName, value, saveFolder, itemT
 		if typeof(sessionData[playerUserId][statName]) == "boolean" then
 			if saveFolder then
 				if game.ReplicatedStorage.Equippable:FindFirstChild(saveFolder) then --Player Item Purchase Bool
-					UpdatePlayerMenu:FireClient(player, saveFolder, itemType, statName)
+					UpdatePlayerMenu:FireClient(player, saveFolder, itemType, statName, true)
 					playerDataFile.Player:FindFirstChild(saveFolder):FindFirstChild(itemType):FindFirstChild(statName).Value = value
 					
 				elseif string.find(statName, "Discovered") then
@@ -439,7 +443,7 @@ function LoadPlayerData(playerDataFile, data, joinedPlayer)
 				local finishTimeValue = data[finishedSaveName]
 				local skillMetValue = data[skillMetSaveName]
 				
-				UpdateResearch:FireClient(joinedPlayer, clonedResearchInfo, researchTypeName, completionValue, purchasedValue, finishTimeValue, skillMetValue)
+				UpdateResearch:FireClient(joinedPlayer, clonedResearchInfo, researchTypeName, completionValue, purchasedValue, finishTimeValue, skillMetValue, nil, true)
 				
 				if purchasedValue and not completionValue then
 					usedResearcherCount += 1
@@ -488,7 +492,7 @@ function LoadPlayerData(playerDataFile, data, joinedPlayer)
 				ImportSaveData(data, itemSave, tostring(item), itemRefer)
 				
 				if itemSave == true then --if previously purchased, add to inventory
-					UpdatePlayerMenu:FireClient(joinedPlayer, tostring(equiptype), tostring(itemType), tostring(item))
+					UpdatePlayerMenu:FireClient(joinedPlayer, tostring(equiptype), tostring(itemType), tostring(item), true)
 				end
 			end
 			
@@ -771,7 +775,7 @@ function awardLevelRewards.OnServerInvoke(player, expName, expTypeName)
 				local rewardLevel = currentLevel - unseenRewardsCount + 1
 				local levelInfo = expInfo["Levels"][rewardLevel]
 				
-				if sessionData[playerUserId][expName] > levelInfo["Exp Requirement"] then
+				if sessionData[playerUserId][expName] >= levelInfo["Exp Requirement"] then
 					for r = 1,#levelInfo["Rewards"] do
 						local rewardInfo = levelInfo["Rewards"][r]
 						local rewardType = rewardInfo[1]
@@ -785,25 +789,35 @@ function awardLevelRewards.OnServerInvoke(player, expName, expTypeName)
 							if discoveredValue == false then
 								PlayerStatManager:ChangeStat(player, tostring(statInfo) .. "Discovered", true, "Inventory")
 							end
+							
 						elseif rewardType == "Equipment" then
 							PlayerStatManager:ChangeStat(player, tostring(statInfo), true, "Equipment")
 							
-							
-							--Possibly equip item?
-							
-							--Should a pop up come up for newly gained equipment?
-							--Should store bought items always be equipped or should clicking the pop up equip it?
-							
-							--This is now asked because getting a piece of equipment as a level reward may go unseen
-							--without being shown as a popup, but they may also not mostly be what the player wants
-							--to equip, unlike what can generally be assumed when they purchase new equipment
+						else --Research List
+							for r = 1,rewardInfo do
+								local researchName = rewardInfo[r]["Research Name"]
+								local researchType = rewardInfo[r]["Resarch Type"]
+								
+								local researchTypeInfo = researchData["Research"][string.gsub(researchType, " Research") .. " Improvements"]
+								for rd = 1,researchTypeInfo do
+									if researchTypeInfo[rd]["Research Name"] == researchName then
+										local researchInfo = Utility:CloneTable(researchTypeInfo[rd])
+										
+										local completed = sessionData[playerUserId][researchName]
+										local purchased = sessionData[playerUserId][researchName .. "Purchased"]
+										local finishTime = sessionData[playerUserId][researchName .. "FinishTime"]
+										local skillMet = sessionData[playerUserId][researchName .. "SkillMet"]
+										
+										UpdateResearch:FireClient(researchInfo, researchType, completed, purchased, finishTime, skillMet, nil, true)
+									end
+								end
+							end
 						end
 					end
 					
 					sessionData[playerUserId][expName .. "UnseenRewards"] -= 1
-					print(playerDataFile)
 					if playerDataFile.Experience:FindFirstChild(expTypeName) then
-						local expFolder = player.Experience:FindFirstChiled(expTypeName):FindFirstChild(expName)
+						local expFolder = playerDataFile.Experience:FindFirstChild(expTypeName):FindFirstChild(expName)
 						if expFolder then
 							if expFolder:FindFirstChild(expName .. "UnseenRewards") then
 								expFolder:FindFirstChild(expName .. "UnseenRewards").Value -= 1
@@ -811,7 +825,11 @@ function awardLevelRewards.OnServerInvoke(player, expName, expTypeName)
 						end
 					end
 					
-					return true
+					if sessionData[playerUserId][expName .. "UnseenRewards"] > 0 then
+						return true
+					else
+						return false
+					end
 				end
 			end
 		end
