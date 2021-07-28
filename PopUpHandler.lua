@@ -13,10 +13,13 @@ local getCurrentPlayerLevel = eventsFolder.Utility:WaitForChild("GetCurrentPlaye
 local getItemStatTable = eventsFolder.Utility:WaitForChild("GetItemStatTable")
 local sellItem = eventsFolder.Utility:WaitForChild("SellItem")
 
-local updateExperience = eventsFolder.GUI:WaitForChild("UpdateExperience")
+local displayCurrencyPopUp = eventsFolder.GUI:WaitForChild("DisplayCurrencyPopUp")
 local insertItemViewerInfo = eventsFolder.GUI:WaitForChild("InsertItemViewerInfo")
+local updateExperience = eventsFolder.GUI:WaitForChild("UpdateExperience")
 local updateInventory = eventsFolder.GUI:WaitForChild("UpdateInventory")
 local updateItemCount = eventsFolder.GUI:WaitForChild("UpdateItemCount")
+local updatePlayerMenu = eventsFolder.GUI:WaitForChild("UpdatePlayerMenu")
+local updateResearch = eventsFolder.GUI:WaitForChild("UpdateResearch")
 
 local itemPopUpGui = script.Parent.ItemPopUp
 local expBarPopUpGui = script.Parent.ExpBarPopUp
@@ -643,9 +646,15 @@ local function CreateRightSidePopUp(newPopUp, popUpType, statName, itemTypeName,
 	--Insert Tile Info
 	local newTweenInfo
 	local expireTime
-	if popUpType == "Item" then
-		statName = string.gsub(statName, "Discovered", "") --in case newly discovered
-		local itemInfo = replicatedStorage.InventoryItems:FindFirstChild(itemTypeName):FindFirstChild(statName)
+	if popUpType == "Item" or "Equipment" then
+		local itemInfo
+		if popUpType == "Item" then
+			statName = string.gsub(statName, "Discovered", "") --in case newly discovered
+			itemInfo = replicatedStorage.InventoryItems:FindFirstChild(itemTypeName):FindFirstChild(statName)
+		else
+			itemInfo = replicatedStorage.Equippable:FindFirstChild(amountAdded):FindFirstChild(itemTypeName):FindFirstChild(statName)
+		end
+		
 		local rarityInfo = guiElements.RarityColors:FindFirstChild(itemInfo["GUI Info"].RarityName.Value)
 		local itemImage = itemInfo["GUI Info"].StatImage.Value
 		
@@ -654,7 +663,8 @@ local function CreateRightSidePopUp(newPopUp, popUpType, statName, itemTypeName,
 			newTweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
 			expireTime = 2 --possibly 3? Check with timing
 		else --Discovered Item PopUp
-			newPopUp.UnlockSymbol.ImageColor3 = rarityInfo.Value
+			newPopUp.ItemTypeSymbol.ImageColor3 = rarityInfo.Value
+			newPopUp.ItemTypeSymbol.Image = itemInfo["GUI Info"].BadgeImage.Value
 			newTweenInfo = TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 			expireTime = 6
 		end
@@ -669,10 +679,14 @@ local function CreateRightSidePopUp(newPopUp, popUpType, statName, itemTypeName,
 		--end))
 		
 		newPopUp.Activated:Connect(function()
-			ShowDataMenu(itemInfo, statName, rarityInfo, dataMenu.InventoryMenu, dataMenu.InventoryMenu.MaterialsMenu)
+			if popUpType == "Item" then
+				ShowDataMenu(itemInfo, statName, rarityInfo, dataMenu.InventoryMenu, dataMenu.InventoryMenu.MaterialsMenu)
+			else
+				ShowDataMenu(itemInfo, statName, rarityInfo, dataMenu.PlayerMenu, dataMenu.PlayerMenu:FindFirstChild(tostring(itemInfo.Parent.Parent)))
+			end
 			HideGeneralPopUp(newPopUp)
 		end)
-		
+
 	elseif string.match(popUpType, "Notify") then --LevelUp, ItemsSold, BagCapacity, EquipBag, ItemsStored
 		if popUpType == "LevelUpNotify" then
 			local statInfo = getItemStatTable:InvokeServer("Experience", nil, itemTypeName, statName)
@@ -694,7 +708,20 @@ local function CreateRightSidePopUp(newPopUp, popUpType, statName, itemTypeName,
 			
 		elseif popUpType == "EquipBagNotify" then
 			newPopUp.Activated:Connect(function()
-				ShowDataMenu(nil, nil, nil, dataMenu.PlayerMenu, dataMenu.PlayerMenu.MaterialBagsMenu)
+				ShowDataMenu(nil, nil, nil, dataMenu.PlayerMenu, dataMenu.PlayerMenu.BagsMenu)
+				HideGeneralPopUp(newPopUp)
+			end)
+			
+		elseif string.match(popUpType, "Research") then
+			local rarityName = statName
+			local rarityInfo = guiElements.RarityColors:FindFirstChild(rarityName)
+			
+			newPopUp.RarityFrame.BackgroundColor3 = rarityInfo.Value
+			newPopUp.RarityFrame2.BackgroundColor3 = rarityInfo.Value
+			newPopUp.ChangeTypeSymbol.ImageColor3 = rarityInfo.Value
+			
+			newPopUp.Activated:Connect(function()
+				--Show notification in JournalMenu of research being completed/unlocked
 				HideGeneralPopUp(newPopUp)
 			end)
 			
@@ -876,7 +903,6 @@ updateExperience.OnClientEvent:Connect(function(expName, expTypeName, value, Typ
 end)
 
 local equipBagNotify = guiElements.NotifyPopUps.EquipBagNotify
-
 local bagInterestCapacities = {0.5,0.75,1}
 
 local previousFillPercent
@@ -928,6 +954,43 @@ updateItemCount.OnClientEvent:Connect(function(itemTypeCount, bagCapacity, bagTy
 		
 	elseif bagCapacity == 0 then
 		CreateRightSidePopUp(equipBagNotify:Clone(), "EquipBagNotify")
+	end
+end)
+
+updatePlayerMenu.OnClientEvent:Connect(function(equipType, itemType, itemName, load)
+	if not load then
+		local newItemNotify = guiElements.NotifyPopUps.NewItemNotify:Clone()
+		CreateRightSidePopUp(newItemNotify, "Equipment", itemName, itemType, equipType)
+	end
+end)
+
+updateResearch.OnClientEvent:Connect(function(researchData, researchType, completed, purchased, finishTime, skillMet, researchers, load)
+	if not load then
+		--**Should a popup also be created when a research is ready to be completed?
+		--If so, may have to use new bindable event from TycoonComputerHandler within both
+		--UpdateResearch() and ManageTileTimer()
+		
+		if not purchased and not completed then
+			local unlockedResearchPopUp = guiElements.NotifyPopUps.ResearchUnlockedNotify:Clone()
+			local researchRarity = researchData["Rarity"]
+			CreateRightSidePopUp(unlockedResearchPopUp, "ResearchUnlockedPopUp", researchRarity)
+		end
+	end
+end)
+
+displayCurrencyPopUp.OnClientEvent:Connect(function(currencyType, amount)
+	if amount ~= 0 then
+		local popUpText
+		if amount > 0 then
+			local simpleAmount = guiUtility.ConvertShort(amount)
+			popUpText = "+" .. amount
+		else
+			local simpleAmount = guiUtility.ConverShort(math.abs(amount))
+			popUpText = "-" .. amount
+		end
+		
+		local currencyPopUp = guiElements.NotifyPopUps:FindFirstChild(currencyType .. "ChangeNotify"):Clone()
+		CreateRightSidePopUp(currencyPopUp, tostring(currencyPopUp))
 	end
 end)
 
