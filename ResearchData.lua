@@ -27,7 +27,27 @@ local ResearchData = {
 				["Rarity"] = "Rare",
 				["Description"] = "If you find some Glow Shrooms, our scientists may be able to analyze their structure and form alloys from the glowing cells",
 				
-				["Research Length"] = 10,
+				["Research Length"] = 2700,
+				["Material Cost"] = {
+					{RS.InventoryItems.Foraging["Glow Shroom"], 5},
+				},
+				["Experience Cost"] = {
+					{experienceData["Skills"]["Mining Skill"], 5, "Skill"},
+					{experienceData["Skills"]["Foraging Skill"], 2, "Skill"}
+				},
+				["Dependencies"] = {},
+				
+				
+				
+			},
+			
+			[2] = {
+				["Research Name"] = "ACOG Rifle Sight",
+				["Research Image"] = "",
+				["Rarity"] = "Rare",
+				["Description"] = "Using some more advanced components, we can alter the reflex sight to see farther than normal.",
+
+				["Research Length"] = 3600,
 				["Material Cost"] = {
 					{RS.InventoryItems.Foraging["Glow Shroom"], 5},
 				},
@@ -36,8 +56,7 @@ local ResearchData = {
 					{experienceData["Skills"]["Foraging Skill"], 2, "Skill"}
 				},
 				["Dependencies"] = {}
-				
-				
+
 			}
 				
 		},
@@ -47,11 +66,11 @@ local ResearchData = {
 			
 			[1] = {
 				["Research Name"] = "Room Temperature Superconductors",
-				["Research Image"] = "rbxassetid://6708071453",
+				["Research Image"] = "rbxassetid://7236558599",
 				["Rarity"] = "Legendary",
 				["Description"] = "After extensive testing, our researchers believe they can create a superconductor that can operate at room temperature. It will take some time, but the results will be worth it.",
 				
-				["Research Length"] = 60,
+				["Research Length"] = 43200,
 				["Material Cost"] = {
 					{RS.InventoryItems.Mining.Stone, 5},
 				},
@@ -63,7 +82,7 @@ local ResearchData = {
 					"Fuel Cells",
 					"Fuel Cells2",
 					"Fuel Cells3",
-					"Fuel Cells4"
+					"4th Tier Fuel Cell"
 				}
 			},
 			
@@ -90,7 +109,7 @@ local ResearchData = {
 				["Rarity"] = "Common",
 				["Description"] = "This is a placeholder description for this research",
 				
-				["Research Length"] = 108000,
+				["Research Length"] = 10,
 				["Material Cost"] = {
 					{RS.InventoryItems.Mining.Stone, 5},
 					{RS.InventoryItems.Mining["Scrap Metal"], 5}
@@ -104,10 +123,10 @@ local ResearchData = {
 			[4] = {
 				["Research Name"] = "Fuel Cells2",
 				["Research Image"] = "",
-				["Rarity"] = "Rare",
+				["Rarity"] = "Common",
 				["Description"] = "This is a placeholder description for this research",
 				
-				["Research Length"] = 4500,
+				["Research Length"] = 120,
 				["Material Cost"] = {
 					{RS.InventoryItems.Mining.Stone, 5}
 				},
@@ -123,7 +142,7 @@ local ResearchData = {
 				["Rarity"] = "Common",
 				["Description"] = "This is a placeholder description for this research",
 				
-				["Research Length"] = 30,
+				["Research Length"] = 600,
 				["Material Cost"] = {
 					{RS.InventoryItems.Mining.Stone, 5}
 				},
@@ -134,12 +153,12 @@ local ResearchData = {
 			},
 			
 			[6] = {
-				["Research Name"] = "Fuel Cells4",
-				["Research Image"] = "",
-				["Rarity"] = "Common",
+				["Research Name"] = "4th Tier Fuel Cell",
+				["Research Image"] = "rbxassetid://6708256984",
+				["Rarity"] = "Uncommon",
 				["Description"] = "This is a placeholder description for this research",
 				
-				["Research Length"] = 60,
+				["Research Length"] = 1980,
 				["Material Cost"] = {
 					{RS.InventoryItems.Mining.Stone, 5}
 				},
@@ -150,14 +169,15 @@ local ResearchData = {
 			},
 			
 			[7] = {
-				["Research Name"] = "Fuel Cells5",
+				["Research Name"] = "Fixed-Up Televator",
 				["Research Image"] = "",
 				["Rarity"] = "Common",
-				["Description"] = "This is a placeholder description for this research",
+				["Description"] = "Your found a televator exit! Some stone and a small power source would get it running so you can start deeper in the mines.",
 				
-				["Research Length"] = 120,
+				["Research Length"] = 900,
 				["Material Cost"] = {
-					{RS.InventoryItems.Mining.Stone, 5}
+					{RS.InventoryItems.Mining.Stone, 5},
+					{RS.InventoryItems.Mining.Coal, 2}
 				},
 				["Experience Cost"] = {
 					{experienceData["Skills"]["Mining Skill"], 3}
@@ -166,12 +186,12 @@ local ResearchData = {
 			},
 			
 			[8] = {
-				["Research Name"] = "Fuel Cells6",
-				["Research Image"] = "",
+				["Research Name"] = "Tuned Conveyors",
+				["Research Image"] = "rbxassetid://6708071453",
 				["Rarity"] = "Uncommon",
-				["Description"] = "This is a placeholder description for this research",
+				["Description"] = "Fixing the support walls and using a better lubricant will surely increase our conveyor speed!",
 				
-				["Research Length"] = 300,
+				["Research Length"] = 1800,
 				["Material Cost"] = {
 					{RS.InventoryItems.Mining.Stone, 5}
 				},
@@ -183,7 +203,7 @@ local ResearchData = {
 			
 			[9] = {
 				["Research Name"] = "Fuel Cells7",
-				["Research Image"] = "",
+				["Research Image"] = "rbxassetid://6708161904",
 				["Rarity"] = "Legendary",
 				["Description"] = "This is a placeholder description for this research",
 				
@@ -196,54 +216,7 @@ local ResearchData = {
 				},
 				["Dependencies"] = {}
 			},
-			
-			[10] = {
-				["Research Name"] = "Fuel Cells8",
-				["Research Image"] = "",
-				["Rarity"] = "Rare",
-				["Description"] = "This is a placeholder description for this research",
-				
-				["Research Length"] = 300,
-				["Material Cost"] = {
-					{RS.InventoryItems.Mining.Stone, 5}
-				},
-				["Experience Cost"] = {
-					{experienceData["Skills"]["Mining Skill"], 3}
-				},
-				["Dependencies"] = {}
-			},
-			
-			[11] = {
-				["Research Name"] = "Fuel Cells9",
-				["Research Image"] = "",
-				["Rarity"] = "Uncommon",
-				["Description"] = "This is a placeholder description for this research",
-				
-				["Research Length"] = 300,
-				["Material Cost"] = {
-					{RS.InventoryItems.Mining.Stone, 5}
-				},
-				["Experience Cost"] = {
-					{experienceData["Skills"]["Mining Skill"], 3}
-				},
-				["Dependencies"] = {}
-			},
-			
-			[12] = {
-				["Research Name"] = "Fuel Cells10",
-				["Research Image"] = "",
-				["Rarity"] = "Uncommon",
-				["Description"] = "This is a placeholder description for this research",
 
-				["Research Length"] = 300,
-				["Material Cost"] = {
-					{RS.InventoryItems.Mining.Stone, 5}
-				},
-				["Experience Cost"] = {
-					{experienceData["Skills"]["Mining Skill"], 3}
-				},
-				["Dependencies"] = {}
-			}
 		},
 
 		["Town Improvements"] = {
