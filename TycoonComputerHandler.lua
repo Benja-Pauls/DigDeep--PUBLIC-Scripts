@@ -1729,12 +1729,23 @@ local function ChangePage(Menu, X1, X2, X3)
 
 		if HighPage ~= 1 then
 			local NewPage
-			if Menu.CurrentPage.Value + 1 > HighPage then
-				NewPage = Menu:FindFirstChild("Page1")
-				Menu.CurrentPage.Value = 1
-			else
-				NewPage = Menu:FindFirstChild("Page" .. tostring(Menu.CurrentPage.Value + 1))
-				Menu.CurrentPage.Value = Menu.CurrentPage.Value + 1
+			if X2 > 0 then
+				if Menu.CurrentPage.Value + 1 > HighPage then
+					NewPage = Menu:FindFirstChild("Page1")
+					Menu.CurrentPage.Value = 1
+				else
+					NewPage = Menu:FindFirstChild("Page" .. tostring(Menu.CurrentPage.Value + 1))
+					Menu.CurrentPage.Value += 1
+				end
+				
+			elseif X2 < 0 then
+				if Menu.CurrentPage.Value - 1 <= 0 then
+					NewPage = Menu:FindFirstChild("Page" .. tostring(HighPage))
+					Menu.CurrentPage.Value = HighPage
+				else
+					NewPage = Menu:FindFirstChild("Page" .. tostring(Menu.CurrentPage.Value - 1))
+					Menu.CurrentPage.Value -= 1
+				end
 			end
 			
 			UpdatePageDisplay(Menu)
@@ -1851,7 +1862,7 @@ UpdateResearch.OnClientEvent:Connect(function(researchData, researchType, comple
 			local AllDependenciesMet = CheckResearchDepends:InvokeServer(researchData)
 			
 			if AllDependenciesMet then
-				print("Research Unlocked: ", researchData)
+				--print("Research Unlocked: ", researchData)
 				ManageResearchTile(AvailableResearch, researchData, researchType)
 			elseif skillMet == true then
 				ManageResearchTile(ResearchMenu.AvailableResearch, researchData, researchType, nil, nil, skillMet)
