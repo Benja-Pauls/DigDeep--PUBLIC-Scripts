@@ -198,14 +198,21 @@ local function MeetResearchCost(player, ResearchData, CostName, Paying)
 	if #ResearchData[CostName] > 0 then
 		local TotalCosts = #ResearchData[CostName]
 		local CostsMet = 0
-		for i,cost in pairs (ResearchData[CostName]) do
-			local PlayerValue = PlayerStatManager:getStat(player, tostring(cost[1]))
+		
+		for _,cost in pairs (ResearchData[CostName]) do
+			local statName = tostring(cost[1])
+			if string.match(statName, "table: ") then
+				statName = cost[1]["StatName"]
+			end
+			
+			local PlayerValue = PlayerStatManager:getStat(player, statName)
 			local PlayerStored = 0
 			
 			if CostName == "Material Cost" then
-				PlayerStored = PlayerStatManager:getStat(player, "TycoonStorage" .. tostring(cost[1]))
+				PlayerStored = PlayerStatManager:getStat(player, "TycoonStorage" .. statName)
 			end
-
+			print(ResearchData[CostName], cost, statName)
+			print(PlayerValue, PlayerStored)
 			if PlayerValue + PlayerStored >= cost[2] then
 				if not Paying then
 					CostsMet += 1
@@ -215,15 +222,15 @@ local function MeetResearchCost(player, ResearchData, CostName, Paying)
 				else
 					if Paying == "Experience" then
 						local ItemType = tostring(cost[1].Parent)
-						PlayerStatManager:ChangeStat(player, tostring(cost[1]), 0, Paying, ItemType)
+						PlayerStatManager:ChangeStat(player, statName, 0, Paying, ItemType)
 					else
 						local ItemType = string.gsub(cost[1].Bag.Value, "Bag", "") .. "s"
-						local AmountRemaining = PlayerStatManager:getStat(player, tostring(cost[1])) - cost[2]
+						local AmountRemaining = PlayerStatManager:getStat(player, statName) - cost[2]
 						if AmountRemaining < 0 then
-							PlayerStatManager:ChangeStat(player, "TycoonStorage" .. tostring(cost[1]), AmountRemaining, "TycoonStorage", true)
-							PlayerStatManager:ChangeStat(player, tostring(cost[1]), -cost[2], Paying, true, "Zero", AmountRemaining)
+							PlayerStatManager:ChangeStat(player, "TycoonStorage" .. statName, AmountRemaining, "TycoonStorage", true)
+							PlayerStatManager:ChangeStat(player, statName, -cost[2], Paying, true, "Zero", AmountRemaining)
 						else
-							PlayerStatManager:ChangeStat(player, tostring(cost[1]), -cost[2], Paying, ItemType)
+							PlayerStatManager:ChangeStat(player, statName, -cost[2], Paying, ItemType)
 						end
 					end
 				end
@@ -249,7 +256,7 @@ PurchaseResearch.OnServerEvent:Connect(function(player, ResearchName, ResearchTy
 		local CompletionHistory = PlayerStatManager:getStat(player, ResearchName)
 		
 		if PurchaseHistory == false and CompletionHistory == false then
-			for key,rType in pairs (AllResearchData["Research"]) do
+			for _,rType in pairs (AllResearchData["Research"]) do
 				if rType["Research Type Name"] == ResearchType then
 					for i,r in pairs (rType) do
 						if rType[i]["Research Name"] == ResearchName then
