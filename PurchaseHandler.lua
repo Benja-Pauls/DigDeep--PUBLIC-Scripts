@@ -25,34 +25,6 @@ end
 
 -------------------------------<|Tycoon Purchases|>----------------------------------------------------------------------------------------------------------
 
-local function CheckMaterialCosts(Inventory, Storage, Button)
-	local AllMaterialsCount = 0
-	local AffordabilityCount = 0
-	if Button:FindFirstChild("MaterialPrice") then
-		local DataGroups = Button.MaterialPrice:GetChildren()
-		for i,typeGroup in pairs (DataGroups) do
-			local currentInventoryGroup = Inventory:FindFirstChild(tostring(typeGroup))
-			local currentStorageGroup = Storage:FindFirstChild("TycoonStorage" .. tostring(typeGroup))
-			for i,material in pairs (typeGroup:GetChildren()) do
-				AllMaterialsCount = AllMaterialsCount + 1
-				local cost = material.Value
-				local sum = currentInventoryGroup:FindFirstChild(tostring(material)).Value + currentStorageGroup:FindFirstChild("TycoonStorage" .. tostring(material)).Value
-				if sum >= cost then
-					AffordabilityCount = AffordabilityCount + 1 --Criteria for this material has been met
-				end
-			end
-		end
-
-		if AllMaterialsCount == AffordabilityCount then
-			return true
-		else
-			return false
-		end
-	else
-		return nil --Not a material-based purchase
-	end	
-end
-
 --Tycoon Purchase Function
 function PurchaseTycoonObject(Table, Tycoon, Material)
 	local cost = Table[1]
@@ -61,40 +33,10 @@ function PurchaseTycoonObject(Table, Tycoon, Material)
 	
 	local PurchaseableObjects = require(Tycoon:FindFirstChild("TycoonAssetsHandler"))
 
-	if Material then
-		local Menu = Material.Parent
-		local Player = GetPlayer(stat.Parent.Name)
-		
-		--print(cost) --5
-		--print(item) --Terminal1
-		--print(stat) --Inventory
-
-		for i,menu in pairs (stat:GetChildren()) do
-			if menu == stat:FindFirstChild(tostring(Menu)) then
-				for i,item in pairs(menu:GetChildren()) do
-					if item.Name == tostring(Material) then
-						item.Value = item.Value - cost
-						PlayerStatManager:ChangeStat(Player, item.Name, -cost, tostring(stat), true)
-
-						if item.Value < 0 then --replace inventory with storage
-							local PlayerDataFile = stat.Parent
-							local PlayerStorage = PlayerDataFile:FindFirstChild("TycoonStorage")
-							local MaterialStorage = PlayerStorage:FindFirstChild("TycoonStorage" .. tostring(Menu))
-
-							--Zero inventory material
-							--Subtract the absolute value of the material's previous value (replace offset)
-							PlayerStatManager:ChangeStat(Player, "TycoonStorage" .. item.Name, item.Value, "TycoonStorage", true)
-							PlayerStatManager:ChangeStat(Player, item.Name, item.Value, tostring(stat), true, "Zero")
-						end
-					end
-				end
-			end
-		end	
-	else --Update Currency
-		local Player = GetPlayer(stat.Parent.Parent.Parent.Name)
-		stat.Value = stat.Value - cost
-		Utility:UpdateMoneyDisplay(Player, stat.Value)
-	end
+	
+	local Player = GetPlayer(stat.Parent.Parent.Parent.Name)
+	stat.Value = stat.Value - cost
+	Utility:UpdateMoneyDisplay(Player, stat.Value)
 
 	--Position ReplicatedStorage-Object Clone to true position
 	if PurchaseableObjects[item.Object.Value]:FindFirstChild("Root") ~= nil then
@@ -113,6 +55,7 @@ function PurchaseTycoonObject(Table, Tycoon, Material)
 		PurchaseableObjects[item.Object.Value].Parent = Tycoon.PurchasedObjects
 	end
 	
+	--**Maybe destroy used buttons to save on part count?
 	if item.Visible.Value == true then	
 		local ButtonParts = item.ButtonModel:GetChildren()
 		item.Visible.Value = false
@@ -124,67 +67,41 @@ function PurchaseTycoonObject(Table, Tycoon, Material)
 end
 
 PurchaseObject.OnServerEvent:Connect(function(player, target)
-	
-	local AssociatedTycoon = target.Parent.Parent
-	
-	if target.CanCollide == true then
-		if player ~= nil then
-			if AssociatedTycoon.Owner.Value == player then
+	if player and player.UserId then
+		local playerData = game.ServerStorage.PlayerData:FindFirstChild(player.UserId)
+		if playerData and playerData:FindFirstChild("OwnsTycoon") then
+			local tycoon = playerData.OwnsTycoon.Value
+			
+			if target:IsDescendantOf(tycoon) and target.CanCollide == true then
+				local playerCash = playerData:FindFirstChild("Currencies"):FindFirstChild("UniversalCurrencies"):FindFirstChild("Coins")
 
-				local PlayerDataFile = PlayerData:FindFirstChild(tostring(player.UserId))
-				if PlayerDataFile ~= nil then 
-					local PlayerCash = PlayerDataFile:FindFirstChild("Currencies"):FindFirstChild("UniversalCurrencies"):FindFirstChild("Coins")
-					local PlayerInventory = PlayerDataFile:FindFirstChild("Inventory")
-					local PlayerStorage = PlayerDataFile:FindFirstChild("TycoonStorage")
-					local MaterialCostCheck = CheckMaterialCosts(PlayerInventory, PlayerStorage, target)
-
-					--If it's a gamepass button
-					if (target:FindFirstChild('Gamepass')) and (target.Gamepass.Value >= 1) then
-						if game:GetService("MarketplaceService"):PlayerOwnsAsset(player,target.Gamepass.Value) then
-							PurchaseTycoonObject({target.Price.Value, target, PlayerCash}, AssociatedTycoon)
-						else
-							game:GetService('MarketplaceService'):PromptPurchase(player,target.Gamepass.Value)
-						end
-
-					--If it's a DevProduct button
-					elseif (target:FindFirstChild('DevProduct')) and (target.DevProduct.Value >= 1) then
-						game:GetService('MarketplaceService'):PromptProductPurchase(player,target.DevProduct.Value)
-
-					--Normal Button, player can afford it
-					elseif PlayerCash.Value >= target.Price.Value and MaterialCostCheck == nil then
-						PurchaseTycoonObject({target.Price.Value, target, PlayerCash}, AssociatedTycoon)
-						SoundEffects:PlaySound(target, SoundEffects.Tycoon.Purchase)
-						
-					--Material Button, player can afford it
-					elseif PlayerCash.Value >= target.Price.Value and MaterialCostCheck == true then
-						local DataGroups = target.MaterialPrice:GetChildren()
-						for i,typeGroup in pairs (DataGroups) do
-							local currentInventoryGroup = PlayerInventory:FindFirstChild(tostring(typeGroup))
-							for i,material in pairs (typeGroup:GetChildren()) do
-								local cost = material.Value
-
-								PurchaseTycoonObject({cost, target, PlayerInventory}, AssociatedTycoon, material)
-								--extra ",material" at end to say what specifically in the [3]'s menu that's affected)
-								wait(.51) --Delay between purchases to successfully stack material popups
-							end
-						end
-						PurchaseTycoonObject({target.Price.Value, target, PlayerCash}, AssociatedTycoon)
-						SoundEffects:PlaySound(target, SoundEffects.Tycoon.Purchase)
-
-						--put another for only materials required to purchase "buttons"
-						--Make more efficient, remove elseifs or decrease the amount of elseifs
-
-					else --If the player can't afford it
-						print("Cannot afford")
-						local CashWarning = game.Players:FindFirstChild(tostring(player)).PlayerGui.TycoonPurchaseGui.TycoonPurchaseMenu.CashWarning
-						CashWarning.Visible = true
-						SoundEffects:PlaySound(target, SoundEffects.Tycoon.ErrorBuy)
-						wait(2)
-						CashWarning.Visible = false
+				--If it's a gamepass button
+				if (target:FindFirstChild('Gamepass')) and (target.Gamepass.Value >= 1) then
+					if game:GetService("MarketplaceService"):PlayerOwnsAsset(player, target.Gamepass.Value) then
+						PurchaseTycoonObject({target.Price.Value, target, playerCash}, tycoon)
+					else
+						game:GetService('MarketplaceService'):PromptPurchase(player, target.Gamepass.Value)
 					end
-				else
-					warn(tostring(player) .. " doesn't have an affiliated DataStore!")
+
+				--If it's a DevProduct button
+				elseif (target:FindFirstChild('DevProduct')) and (target.DevProduct.Value >= 1) then
+					game:GetService('MarketplaceService'):PromptProductPurchase(player, target.DevProduct.Value)
+
+				--Normal Button, player can afford it
+				elseif playerCash.Value >= target.Price.Value then
+					PurchaseTycoonObject({target.Price.Value, target, playerCash}, tycoon)
+					SoundEffects:PlaySound(target, SoundEffects.Tycoon.Purchase)
+
+				else --If the player can't afford it
+					print("Cannot afford")
+					local CashWarning = game.Players:FindFirstChild(tostring(player)).PlayerGui.TycoonPurchaseGui.TycoonPurchaseMenu.CashWarning
+					CashWarning.Visible = true
+					SoundEffects:PlaySound(target, SoundEffects.Tycoon.ErrorBuy)
+					wait(2)
+					CashWarning.Visible = false
 				end
+			else
+				warn(tostring(player) .. " may be exploiting")
 			end
 		end
 	end
@@ -194,43 +111,41 @@ end)
 
 local AllResearchData = require(game.ServerStorage:WaitForChild("ResearchData"))
 
-local function MeetResearchCost(player, ResearchData, CostName, Paying)
-	if #ResearchData[CostName] > 0 then
-		local TotalCosts = #ResearchData[CostName]
+local function MeetResearchCost(player, researchData, costName, paying)
+	if #researchData[costName] > 0 then
+		local TotalCosts = #researchData[costName]
 		local CostsMet = 0
 		
-		for _,cost in pairs (ResearchData[CostName]) do
+		for _,cost in pairs (researchData[costName]) do
 			local statName = tostring(cost[1])
 			if string.match(statName, "table: ") then
 				statName = cost[1]["StatName"]
 			end
 			
-			local PlayerValue = PlayerStatManager:getStat(player, statName)
-			local PlayerStored = 0
-			
-			if CostName == "Material Cost" then
-				PlayerStored = PlayerStatManager:getStat(player, "TycoonStorage" .. statName)
+			local inventoryAmount = PlayerStatManager:getStat(player, statName)
+			local storageAmount = 0
+			if costName == "Material Cost" then
+				storageAmount = PlayerStatManager:getStat(player, "TycoonStorage" .. statName)
 			end
-			print(ResearchData[CostName], cost, statName)
-			print(PlayerValue, PlayerStored)
-			if PlayerValue + PlayerStored >= cost[2] then
-				if not Paying then
+
+			if inventoryAmount + storageAmount >= cost[2] then
+				if not paying then --highlight CostList requirement as met
 					CostsMet += 1
 					if CostsMet == TotalCosts then
 						return true
 					end
 				else
-					if Paying == "Experience" then
+					if paying == "Experience" then
 						local ItemType = tostring(cost[1].Parent)
-						PlayerStatManager:ChangeStat(player, statName, 0, Paying, ItemType)
+						PlayerStatManager:ChangeStat(player, statName, 0, paying, ItemType)
 					else
 						local ItemType = string.gsub(cost[1].Bag.Value, "Bag", "") .. "s"
 						local AmountRemaining = PlayerStatManager:getStat(player, statName) - cost[2]
 						if AmountRemaining < 0 then
 							PlayerStatManager:ChangeStat(player, "TycoonStorage" .. statName, AmountRemaining, "TycoonStorage", true)
-							PlayerStatManager:ChangeStat(player, statName, -cost[2], Paying, true, "Zero", AmountRemaining)
+							PlayerStatManager:ChangeStat(player, statName, -cost[2], paying, true, "Zero", AmountRemaining)
 						else
-							PlayerStatManager:ChangeStat(player, statName, -cost[2], Paying, ItemType)
+							PlayerStatManager:ChangeStat(player, statName, -cost[2], paying, ItemType)
 						end
 					end
 				end
@@ -245,38 +160,36 @@ end
 local PurchaseResearch = EventsFolder.Utility:WaitForChild("PurchaseResearch")
 local UpdateResearch = EventsFolder.GUI:WaitForChild("UpdateResearch")
 
-PurchaseResearch.OnServerEvent:Connect(function(player, ResearchName, ResearchType)
-	local ResearchersAvailable = PlayerStatManager:getStat(player, "ResearchersAvailable")
-	local UsedResearchSlots = PlayerStatManager:getStat(player, "ResearchersUsed")
+PurchaseResearch.OnServerEvent:Connect(function(player, researchName, researchType)
+	local researchersAvailable = PlayerStatManager:getStat(player, "ResearchersAvailable")
+	local usedResearchSlots = PlayerStatManager:getStat(player, "ResearchersUsed")
 	
-	if ResearchersAvailable >= UsedResearchSlots + 1 then 
-		print("Slot available for research",UsedResearchSlots)
-	
-		local PurchaseHistory = PlayerStatManager:getStat(player, ResearchName .. "Purchased")
-		local CompletionHistory = PlayerStatManager:getStat(player, ResearchName)
+	if researchersAvailable >= usedResearchSlots + 1 then 
+		local researchPurchased = PlayerStatManager:getStat(player, researchName .. "Purchased")
+		local researchCompleted = PlayerStatManager:getStat(player, researchName)
 		
-		if PurchaseHistory == false and CompletionHistory == false then
+		if researchPurchased == false and researchCompleted == false then
 			for _,rType in pairs (AllResearchData["Research"]) do
-				if rType["Research Type Name"] == ResearchType then
+				if rType["Research Type Name"] == researchType then
+					
 					for i,r in pairs (rType) do
-						if rType[i]["Research Name"] == ResearchName then
-							local ResearchData = rType[i]
+						if rType[i]["Research Name"] == researchName then
+							local researchData = rType[i]
+							local expMet = MeetResearchCost(player, researchData, "Experience Cost")
+							local matMet = MeetResearchCost(player, researchData, "Material Cost")
 							
-							local ExpMet = MeetResearchCost(player, ResearchData, "Experience Cost")
-							local MatMet = MeetResearchCost(player, ResearchData, "Material Cost")
-							
-							if ExpMet and MatMet then
-								local ClonedTable = Utility:CloneTable(ResearchData)
+							if expMet and matMet then
+								local clonedTable = Utility:CloneTable(researchData)
 								
-								MeetResearchCost(player, ResearchData, "Material Cost", "Inventory")
-								MeetResearchCost(player, ResearchData, "Experience Cost", "Experience")
+								MeetResearchCost(player, researchData, "Material Cost", "Inventory")
+								MeetResearchCost(player, researchData, "Experience Cost", "Experience")
 								
-								local FinishTime = os.time() + ResearchData["Research Length"]
-								PlayerStatManager:ChangeStat(player, ResearchData["Research Name"] .. "FinishTime", FinishTime, "Research", ResearchData["Research Name"])
-								PlayerStatManager:ChangeStat(player, ResearchData["Research Name"] .. "Purchased", true, "Research", ResearchData["Research Name"])
+								local finishTime = os.time() + researchData["Research Length"]
+								PlayerStatManager:ChangeStat(player, researchData["Research Name"] .. "FinishTime", finishTime, "Research", researchData["Research Name"])
+								PlayerStatManager:ChangeStat(player, researchData["Research Name"] .. "Purchased", true, "Research", researchData["Research Name"])
 								
-								UpdateResearch:FireClient(player, ClonedTable, ResearchType, false, true, FinishTime)
-								PurchaseResearch:FireClient(player, ClonedTable)
+								UpdateResearch:FireClient(player, clonedTable, researchType, false, true, finishTime)
+								PurchaseResearch:FireClient(player, clonedTable)
 							else
 								PurchaseResearch:FireClient(player)
 							end
@@ -286,7 +199,7 @@ PurchaseResearch.OnServerEvent:Connect(function(player, ResearchName, ResearchTy
 				
 			end
 		else
-			warn("Research (" .. ResearchName .. ") has already been purchased or completed")
+			warn("Research (" .. researchName .. ") has already been purchased or completed")
 		end
 	else
 		warn("No slots available for research")
