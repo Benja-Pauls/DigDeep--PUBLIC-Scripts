@@ -68,7 +68,12 @@ game.Players.PlayerAdded:Connect(function(joinedPlayer)
 		Light.Range = 7
 		Light.Parent = character.HumanoidRootPart
 		
-		--**Insert BillboardGui displaying player's name
+		--Display Player's Name and Title
+		character:WaitForChild("Humanoid").DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+		local nameDisplay = game.ReplicatedStorage.GuiElements.NameDisplay:Clone()
+		nameDisplay.Parent = character
+		nameDisplay.Adornee = character.HumanoidRootPart
+		nameDisplay.TextLabel.Text = tostring(joinedPlayer)
 		
 		--**Insert ProxPrompt in Player Here? (if players need to interact with each other)
 	end
@@ -353,15 +358,15 @@ function LoadPlayerData(playerDataFile, data, joinedPlayer)
 	local PlayerStatItems = CreateSaveReference(playerDataFile, "Player", "Folder")
 	local EquippedItems = CreateSaveReference(PlayerStatItems, "CurrentlyEquipped", "Folder")
 	
-	local ResearchersAvailable = CreateSaveReference(playerResearch, "ResearchersAvailable", "NumberValue")
-	local SavedResearchers = CheckSaveData(data["ResearchersAvailable"])
-	ImportSaveData(data, SavedResearchers, "ResearchersAvailable", ResearchersAvailable)
-	data["ResearchersAvailable"] = 5 --for testing right now
+	local researchersPurchased = CreateSaveReference(playerResearch, "ResearchersPurchased", "NumberValue")
+	local savedResearchersPurchased = CheckSaveData(data["ResearchersPurchased"])
+	ImportSaveData(data, savedResearchersPurchased, "ResearchersPurchased", researchersPurchased)
+	data["ResearchersPurchased"] = 5 --for testing right now
 	--UpdateResearch:FireClient(joinedPlayer, nil, nil, nil, nil, 5)
 	
 	local researchersUsed = CreateSaveReference(playerResearch, "ResearchersUsed", "NumberValue")
-	local SavedResearcherUsage = CheckSaveData(data["ResearchersUsed"])
-	ImportSaveData(data, SavedResearcherUsage, "ResearchersUsed", researchersUsed)
+	local savedResearchersUsed = CheckSaveData(data["ResearchersUsed"])
+	ImportSaveData(data, savedResearchersUsed, "ResearchersUsed", researchersUsed)
 	
 	for _,expType in pairs (experienceData) do
 		if expType["StatTypeName"] then
