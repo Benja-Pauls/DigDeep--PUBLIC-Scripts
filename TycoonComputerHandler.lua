@@ -2,6 +2,7 @@
 --Visuals for TycoonComputer GUI that handles player storage and the research menu
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
 local Player = Players.LocalPlayer
 
 local PlayerGui = Player:WaitForChild("PlayerGui")
@@ -968,38 +969,37 @@ local function ManageTileTimer(tile, researchData, finishTime)
 	tile.SkipTime.Visible = true
 	tile.SkipTime.Active = true
 	
-	local ProgressBar = tile.TimerBar.ProgressBar
+	local progressBar = tile.TimerBar.ProgressBar
+	progressBar.Progress.Size = UDim2.new(0, 0, 1, 0)
 	coroutine.resume(coroutine.create(function()
 		while tile do
-			wait(1) --update every second
 			if os.time() <= finishTime then
 				local SecondsLeft = finishTime - os.time()
 				local RoundedPercentage = math.ceil(100 * (1 - (SecondsLeft / researchData["Research Length"])))
-				local PercentFinished = RoundedPercentage/100
+				local percentFinished = RoundedPercentage/100
 						
-				ProgressBar.Timer.Text = "<b>" .. GuiUtility.ToDHMS(SecondsLeft) .. "</b>"
-				ProgressBar.Progress:TweenSize(UDim2.new(PercentFinished, 0, 1, 0), "Out", "Quint", 0.8)
-
+				progressBar.Timer.Text = "<b>" .. GuiUtility.ToDHMS(SecondsLeft) .. "</b>"
+				local tweenInfo = TweenInfo.new(0.8, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+				local progressBarTween = TweenService:Create(progressBar.Progress, tweenInfo, {Size = UDim2.new(percentFinished, 0, 1, 0)})
+				progressBarTween:Play()
 				local GemCost = CalculateGemCost(finishTime)
 				tile.SkipTime.PaymentAmount.Text = GuiUtility.ConvertShort(GemCost)
 				
-				
-				--SOME EFFECT TO LOOK LIKE PROGRESS IS BEING MADE, EVEN WITH HUGE TIMERS (something moving)?
+				--SOME EFFECT TO LOOK LIKE PROGRESS IS BEING MADE, EVEN WITH HUGE TIMERS
 				--Some gradient shine effect for progress bar? (like windows progress bar)
 				--Rotate hand on clock to left of progress bar (like CoC timer, 4 points it rotates two going around)
 			else
-				ProgressBar.Progress.Size = UDim2.new(1, 0, 1, 0)
-				ProgressBar.Timer.Text = "<b>Completed!</b>"
+				progressBar.Progress.Size = UDim2.new(1, 0, 1, 0)
+				progressBar.Timer.Text = "<b>Completed!</b>"
 				
 				tile.SkipTime.Visible = false
 				tile.SkipTime.Active = false
 				tile.CompleteResearch.Visible = true
 				tile.CompleteResearch.Active = true
-				
-				
-				
+
 				break
 			end
+			wait(1) --update every second
 		end
 	end))
 end
@@ -1440,31 +1440,35 @@ local ManageTilePlacementFunction = eventsFolder.GUI:FindFirstChild("ManageTileP
 
 function ManageResearchTile(menu, researchData, researchType, finishTime, statTable, onlySkillMet)
 	if menu == CurrentResearch and finishTime then --Guaranteed to only be one page
-		local ParentTile
-		for i,outlineTile in pairs (CurrentResearch:GetChildren()) do
-			if outlineTile:IsA("ImageLabel") then
-				if string.find(tostring(outlineTile), "ResearchOutline") then
-					if not outlineTile:FindFirstChild("ResearchSlot") and ParentTile == nil then
-						ParentTile = outlineTile
+		local outlineTileNumber
+		for _,tile in pairs (CurrentResearch:GetChildren()) do
+			if tile:IsA("ImageLabel") and string.match(tostring(tile), "ResearchOutline") then
+				if not tile:FindFirstChild("ResearchSlot") then 
+					local tileNumber = string.gsub(tostring(tile), "ResearchOutline", "")
+					if outlineTileNumber == nil then
+						outlineTileNumber = tonumber(tileNumber)
+					elseif tonumber(tileNumber) < outlineTileNumber then
+						outlineTileNumber = tonumber(tileNumber)
 					end
 				end
 			end
 		end
 		
-		if ParentTile then
-			local NewTile = guiElements.ResearchSlot:Clone()
-			NewTile.Name = "ResearchSlot"
-			NewTile.Position = UDim2.new(0, 0, 0, 0)
-			NewTile.Size = UDim2.new(1, 0, 1, 0)
-			NewTile.Active = false
-			NewTile.Selectable = false
-			NewTile.Parent = ParentTile
+		if outlineTileNumber then
+			local outlineTile = CurrentResearch:FindFirstChild("ResearchOutline" .. tostring(outlineTileNumber))
+			local newTile = guiElements.ResearchSlot:Clone()
+			newTile.Name = "ResearchSlot"
+			newTile.Position = UDim2.new(0, 0, 0, 0)
+			newTile.Size = UDim2.new(1, 0, 1, 0)
+			newTile.Active = false
+			newTile.Selectable = false
+			newTile.Parent = outlineTile
 			
 			local RarityName = researchData["Rarity"]
 			local RarityInfo = guiElements.RarityColors:FindFirstChild(RarityName)
-			NewTile.Rarity.Value = RarityInfo
+			newTile.Rarity.Value = RarityInfo
 			
-			InsertTileInfo(menu, NewTile, researchData, researchType, finishTime)
+			InsertTileInfo(menu, newTile, researchData, researchType, finishTime)
 			
 			--Delete tile from available research menu
 			local AvailPage,AvailTile = FindResearchTile(AvailableResearch, researchData["Research Name"])
@@ -1476,19 +1480,19 @@ function ManageResearchTile(menu, researchData, researchType, finishTime, statTa
 				ManageTileTruePosition(AvailableResearch, AvailPage, AvailTile, AvailTile.TruePosition.Value, 5, -1)
 			end
 			
-			local ProgressBar = NewTile.ResearchTile.TimerBar.ProgressBar
-			NewTile.ResearchTile.CompleteResearch.Activated:Connect(function()
+			local ProgressBar = newTile.ResearchTile.TimerBar.ProgressBar
+			newTile.ResearchTile.CompleteResearch.Activated:Connect(function()
 				CompleteResearch:FireServer(researchData["Research Name"], researchType)
 			end)
 
-			NewTile.ResearchTile.SkipTime.Activated:Connect(function()
+			newTile.ResearchTile.SkipTime.Activated:Connect(function()
 				--Current based off CoC gem calculations (segmented linear graph)
 				--<1h = 16.296x
 				--1<x<24 = 8.491x + 7.8053
 				--24<x<inf = 4.189x + 111.0432
 				
 				--Move this gem calculation to a server script so value is guaranteed safe
-				--(use, in local script, everytime player progress updates to update visual; however, when this button
+				--(use, in local script, every time player progress updates to update visual; however, when this button
 				--is activated, the final robux purchase will be conducted by a server script)
 				local SecondsLeft = finishTime - os.time()
 				local h = math.floor(SecondsLeft%(24 * 3600) / 3600) --HoursLeft
@@ -1506,10 +1510,10 @@ function ManageResearchTile(menu, researchData, researchType, finishTime, statTa
 				
 				--player will pay to skip time with premium currency that is bought in the
 				--premium currency shop. This is because you cannot code in a robux charge,
-				--you must pre set it up
+				--you must set up purchases beforehand
 			end)
 		else
-			warn("No tile available for a current research!",researchData)
+			warn("No tile available for a current research!", researchData)
 		end
 		
 	else --Previous and Available Research
@@ -1896,34 +1900,33 @@ PurchaseResearch.OnClientEvent:Connect(function(ResearchData) --Error with purch
 end)
 
 CompleteResearch.OnClientEvent:Connect(function(ResearchData)
-	local RemovedSlotCount
-	for i,tile in pairs (CurrentResearch:GetChildren()) do
+	print("Complete Research on client event has been reached to manage the current research tile UI")
+	local removedTileNumber
+	for _,tile in pairs (CurrentResearch:GetChildren()) do
 		if tile:FindFirstChild("ResearchSlot") then
-			if tile.ResearchSlot.ResearchTile.ResearchName.Text == ResearchData["Research Name"] and RemovedSlotCount == nil then
+			local researchName = string.sub(tile.ResearchSlot.ResearchTile.ResearchName.Text, 4, -5)
+			if researchName == ResearchData["Research Name"] and removedTileNumber == nil then
 				tile.ResearchSlot:Destroy()
-				RemovedSlotCount = string.gsub(tile.Name, "ResearchOutline", "")
+				removedTileNumber = string.gsub(tile.Name, "ResearchOutline", "")
 				--PurchaseHandler created tile for previous research menu
 			end
 		end
 	end
 	
-	if RemovedSlotCount then
-		for i,tile in pairs (CurrentResearch:GetChildren()) do
+	if removedTileNumber then
+		for _,tile in pairs (CurrentResearch:GetChildren()) do
 			if tile:FindFirstChild("ResearchSlot") then
-				local SlotCount = string.gsub(tile.Name, "ResearchOutline", "")
-				local NewSlotCount = tonumber(SlotCount) - 1
-				if NewSlotCount >= tonumber(RemovedSlotCount) then
-					tile.ResearchSlot.Parent = CurrentResearch:FindFirstChild("ResearchOutline" .. tostring(NewSlotCount))
+				local tileNumber = string.gsub(tile.Name, "ResearchOutline", "")
+				if tileNumber > removedTileNumber then
+					local newTileNumber = tonumber(tileNumber) - 1
+					tile.ResearchSlot.Parent = CurrentResearch:FindFirstChild("ResearchOutline" .. tostring(newTileNumber))
 				end
 			end
 		end
 	end
 	
 	--Little GUI animation with "show me" written on bottom to play cutscene if player wants to
-	--(likely a blueprint somewhere or a shop with new items!)
-	
-	--Must lookvector towards the object, but must not be too close or too far, along with not being at
-	--an angle where some other object gets in the way
+	--see where the new unlock is located. "To place a marker, view your journal and select ____"
 end)
 
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -1986,13 +1989,16 @@ ComputerScreen.Taskbar.BackButton.Activated:Connect(function()
 	
 	--How to use back button to return to research if clicked on depend tile and still use backbutton to return
 	--to current research/
+	
+	--**Previous menu variable will be used. For special instances where the back button could be used twice (like with
+	--viewing a dependency research then going back to the list then back to the available reserach list), the
+	--variable will update with the change back to that menu, like how it's updated when that menu is opened
 end)
 
 --Back button to return to current menu type's main menu, instead of the menu type selection menu?
 
 ---------------------------------------------------<|Cutscene Manager|>-----------------------------------------------------------------------------------------------------------
 local Camera = game.Workspace.CurrentCamera
-local TweenService = game:GetService("TweenService")
 
 function MoveCamera(StartPart, EndPart, Duration, EasingStyle, EasingDirection)
 	Camera.CameraType = Enum.CameraType.Scriptable
