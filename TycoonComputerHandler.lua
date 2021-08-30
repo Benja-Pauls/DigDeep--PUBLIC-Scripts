@@ -11,6 +11,7 @@ local TycoonComputerGui = script.Parent
 
 local guiElements = game.ReplicatedStorage.GuiElements
 local ComputerScreen = TycoonComputerGui.ComputerScreen
+local taskbar = ComputerScreen.Taskbar
 local MenuSelect = ComputerScreen.MenuSelect
 local FadeOut = ComputerScreen.FadeOut
 
@@ -24,6 +25,7 @@ local DefaultJumpPower = Character.Humanoid.JumpPower
 local eventsFolder = game.ReplicatedStorage.Events
 local LocalLoadTycoon = eventsFolder.Tycoon:WaitForChild("LocalLoadTycoon")
 local MoveAllBaseScreenUI = eventsFolder.GUI:WaitForChild("MoveAllBaseScreenUI")
+local ManageTilePlacementFunction = eventsFolder.GUI:FindFirstChild("ManageTilePlacement")
 local GetItemCountSum = eventsFolder.Utility:WaitForChild("GetItemCountSum")
 local GetCurrentPlayerLevel = eventsFolder.Utility:WaitForChild("GetCurrentPlayerLevel")
 local CheckPlayerStat = eventsFolder.Utility:WaitForChild("CheckPlayerStat")
@@ -123,7 +125,7 @@ local function PrepareAllMenuVisibility()
 						itemMenu.Visible = false
 					end
 				end
-			elseif tostring(menu) == "Taskbar" then
+			elseif menu == taskbar then
 				menu.CurrentResearchButton.Visible = false
 				menu.CurrentResearchButton.Active = false
 				menu.PreviousResearchButton.Visible = false
@@ -155,7 +157,7 @@ function SetUpCredentials()
 	
 	PrepareAllMenuVisibility()
 	
-	ComputerScreen.Taskbar.Visible = false
+	taskbar.Visible = false
 	ComputerScreen.CredentialsScreen.Visible = true
 	
 	--Fade-in login screen
@@ -181,8 +183,21 @@ function SetUpCredentials()
 
 	--BackButton.Position = UDim2.new(BackButton.Position.X.Scale, 0, 1, 0)
 	ComputerScreen.CredentialsScreen:TweenPosition(UDim2.new(0,0,-1.3,0), "Out", "Quint", .5)
-	ComputerScreen.Taskbar.Visible = true
-	ComputerScreen.Taskbar.Time.Text = tostring(os.date(stringTime, timestamp))
+	
+	taskbar.Visible = true
+	for _,v in pairs (taskbar:GetChildren()) do
+		v.Visible = false
+		if v:IsA("ImageButton") then
+			v.Active = false
+		end
+	end
+	
+	taskbar.Time.Visible = true
+	taskbar.Time.Text = tostring(os.date(stringTime, timestamp))
+	taskbar.Shutdown.Visible = true
+	taskbar.Shutdown.Active = true
+	taskbar.Home.Visible = true
+	taskbar.Home.Active = true
 	
 	MenuSelect.Visible = true
 	wait(.5)
@@ -198,8 +213,7 @@ local StorageMenu = ComputerScreen.StorageMenu
 local SelectionMenu = StorageMenu.SelectionMenu
 local ItemsPreview = StorageMenu.ItemsPreview
 
---Menu Selection
-MenuSelect.StorageMenuButton.Activated:Connect(function()
+local function ViewStorageMenu()
 	StorageMenu.Visible = true
 	SelectionMenu.Visible = false
 	ItemsPreview.Visible = false
@@ -208,9 +222,13 @@ MenuSelect.StorageMenuButton.Activated:Connect(function()
 	StorageMenu.EmptyNotifier.Visible = false
 	ManageSellMenu(false)
 	BeepSound:Play()
-	
+
 	StorageMenu.TopTab.Visible = true
 	OpenAffiliatedItemPreview("Materials")
+end
+
+MenuSelect.StorageMenuButton.Activated:Connect(function()
+	ViewStorageMenu()
 end)
 
 ------------------------<|Storage Utility|>------------------------------------------------
@@ -899,7 +917,6 @@ local PreviousResearch = ResearchMenu.PreviousResearch
 local CostList = ResearchMenu.CostList
 local InfoMenu = ResearchMenu.InfoMenu
 local ResearchersList = ResearchMenu.ResearchersList
-local Taskbar = ComputerScreen.Taskbar
 
 local CheckResearchDepends = eventsFolder.Utility:WaitForChild("CheckResearchDepends")
 
@@ -909,44 +926,50 @@ local CompleteResearch = eventsFolder.Utility:WaitForChild("CompleteResearch")
 local SelectedResearch
 local SelectedResearchType
 
-MenuSelect.ResearchMenuButton.Activated:Connect(function()
+local function ViewResearchMenu()
 	ResearchMenu.Visible = true
 	CurrentResearch.Visible = true
 	ResearchersList.Visible = true
 	AvailableResearch.Visible = true
 	ResearchersList.AvailableResearchPages.Visible = true
-	
-	Taskbar.PreviousResearchButton.Visible = true
-	Taskbar.PreviousResearchButton.Active = true
-	Taskbar.CurrentResearchButton.Visible = false
-	Taskbar.CurrentResearchButton.Active = false
-	
+
+	taskbar.PreviousResearchButton.Visible = true
+	taskbar.PreviousResearchButton.Active = true
+	taskbar.CurrentResearchButton.Visible = false
+	taskbar.CurrentResearchButton.Active = false
+	taskbar.BackButton.Visible = false
+	taskbar.BackButton.Active = false
+
 	PreviousResearch.Visible = false
 	ResearchersList.PreviousResearchPages.Visible = false
 	CostList.Visible = false
 	ResearchersList.CostListPages.Visible = false
 	InfoMenu.Visible = false
-	
+
 	ResetPageOrder(AvailableResearch)
 	ResetPageOrder(PreviousResearch)
 	CostList.CurrentPage.Value = 1
-	
+
 	ResearchersList.InfoMenuLabel.Visible = false
 	ResearchersList.CostMenuLabel.Visible = false
 	ResearchersList.CurrentMenuLabel.Visible = true
 	ResearchersList.AvailableMenuLabel.Visible = true
 	ResearchersList.PreviousMenuLabel.Visible = false
-	
+
 	UpdatePageDisplay(AvailableResearch, true)
 	UpdatePageDisplay(PreviousResearch, false)
 	UpdatePageDisplay(CostList, false)
-	
+
 	MenuSelect.Visible = false
 	BeepSound:Play()
+end
+
+MenuSelect.ResearchMenuButton.Activated:Connect(function()
+	ViewResearchMenu()
 end)
 
-local function CalculateGemCost(FinishTime)
-	local SecondsLeft = FinishTime - os.time()
+local function CalculateGemCost(finishTime)
+	local SecondsLeft = finishTime - os.time()
 	local h = SecondsLeft/3600
 
 	local GemCost
@@ -1014,26 +1037,26 @@ local function ChangeCostColor(Tile, PlayerAmount, Cost)
 	end
 end
 
-local function ColorTileRarity(Tile, RarityInfo)
-	local main = RarityInfo.Value
-	local accent = RarityInfo.TileColor.Value
+local function ColorTileRarity(tile, rarityInfo)
+	local main = rarityInfo.Value
+	local accent = rarityInfo.TileColor.Value
 	
-	Tile.Parent.BorderColor3 = main
-	Tile.DisplayImage.BorderColor3 = main
-	Tile.RarityFrame.BorderColor3 = main
-	Tile.Parent.UIStroke.Color = main
-	Tile.DisplayImage.UIStroke.Color = main
-	Tile.RarityFrame.BackgroundColor3 = accent
-	Tile.DisplayImage.BackgroundColor3 = accent
+	tile.Parent.BorderColor3 = main
+	tile.DisplayImage.BorderColor3 = main
+	tile.RarityFrame.BorderColor3 = main
+	tile.Parent.UIStroke.Color = main
+	tile.DisplayImage.UIStroke.Color = main
+	tile.RarityFrame.BackgroundColor3 = accent
+	tile.DisplayImage.BackgroundColor3 = accent
 	
-	RarityInfo.RarityGradient:Clone().Parent = Tile.Parent
-	RarityInfo.RarityGradient:Clone().Parent = Tile.RarityFrame
-	RarityInfo.RarityGradient:Clone().Parent = Tile.Parent.UIStroke
+	rarityInfo.RarityGradient:Clone().Parent = tile.Parent
+	rarityInfo.RarityGradient:Clone().Parent = tile.RarityFrame
+	rarityInfo.RarityGradient:Clone().Parent = tile.Parent.UIStroke
 	
-	if Tile:FindFirstChild("ResearchType") then
-		Tile.ResearchType.TextColor3 = accent
-	elseif Tile:FindFirstChild("StatType") then
-		Tile.StatType.TextColor3 = accent
+	if tile:FindFirstChild("ResearchType") then
+		tile.ResearchType.TextColor3 = accent
+	elseif tile:FindFirstChild("StatType") then
+		tile.StatType.TextColor3 = accent
 	end
 end
 
@@ -1067,18 +1090,18 @@ local function DisplayResearchTileInfo(researchInfo, researchType, onlySkillMet,
 	UpdatePageDisplay(CostList, true)
 
 	--Delete Previous Tiles
-	for i,page in pairs (CostList:GetChildren()) do
+	for _,page in pairs (CostList:GetChildren()) do
 		if page:IsA("Frame") and string.find(page.Name, "Page") then
 			page:Destroy()
 		end
 	end
 
 	--Insert experience and material costs into cost list
-	for i,expRequire in pairs (researchInfo["Experience Cost"]) do
+	for _,expRequire in pairs (researchInfo["Experience Cost"]) do
 		ManageResearchTile(CostList, researchInfo, researchType, nil, expRequire)
 	end
 
-	for i,matRequire in pairs (researchInfo["Material Cost"]) do
+	for _,matRequire in pairs (researchInfo["Material Cost"]) do
 		ManageResearchTile(CostList, researchInfo, researchType, nil, matRequire)
 	end
 
@@ -1092,10 +1115,10 @@ local function DisplayResearchTileInfo(researchInfo, researchType, onlySkillMet,
 		CostList.Page1.Visible = true
 	end
 
-	Taskbar.CurrentResearchButton.Visible = false
-	Taskbar.CurrentResearchButton.Active = false
-	Taskbar.PreviousResearchButton.Visible = false
-	Taskbar.PreviousResearchButton.Active = false
+	taskbar.CurrentResearchButton.Visible = false
+	taskbar.CurrentResearchButton.Active = false
+	taskbar.PreviousResearchButton.Visible = false
+	taskbar.PreviousResearchButton.Active = false
 
 	local nameCharacterCount = string.len(researchInfo["Research Name"])
 	if nameCharacterCount > 20 then
@@ -1151,35 +1174,20 @@ local function DisplayResearchTileInfo(researchInfo, researchType, onlySkillMet,
 
 		if dependencyCount > 0 then
 			for d = 1,dependencyCount do
-				local dependTile = guiElements.ResearchSlot:Clone()
+				local dependency = researchInfo["Dependencies"][d]
+				local completed = CheckResearchDepends:InvokeServer(researchInfo, dependency)
+				local dependInfo,dependViewable = CheckResearchDepends:InvokeServer(dependency)
+				local rarityInfo = guiElements.RarityColors:FindFirstChild(dependInfo["Rarity"])
+				
+				local dependTile = ManageTilePlacementFunction:Invoke(dependPages ,"ResearchDepend", rarityInfo)
 				dependTile.ResearchTile:Destroy()
 				dependTile.CostTile:Destroy()
 				dependTile.DependTile.Visible = true
 
-				--Manage Pages and Tile Placement
-				local pageCount = #dependPages:GetChildren()
-				if d == 1 or (d-1)%3 == 0 then
-					local newPage = guiElements.DataMenuPage:Clone()
-					newPage.BackgroundTransparency = 1
-					newPage.Name = "Page" .. tostring(pageCount + 1)
-
-					newPage.Parent = dependPages
-					newPage.Visible = false
-					pageCount += 1
-				end
-
-				local dependency = researchInfo["Dependencies"][d]
-				local completed = CheckResearchDepends:InvokeServer(researchInfo, dependency)
-				local page = dependPages:FindFirstChild("Page" .. pageCount)
-
-				dependTile.Name = "Depend" .. tostring(d)
-				dependTile.Parent = page
 				dependTile = dependTile.DependTile
 				dependTile.ResearchName.TextColor3 = Color3.fromRGB(255, 255, 255)
-				dependTile.CompletionStatus.Visible = true
-				dependTile.NotFoundNotify.Visible = false
-				
-				local dependInfo,dependViewable = CheckResearchDepends:InvokeServer(dependency)
+				ColorTileRarity(dependTile, rarityInfo)
+
 				if completed then
 					dependTile.Parent.BackgroundColor3 = Color3.fromRGB(7, 44, 6)
 					dependTile.CompletionStatus.Image = "rbxassetid://7092611336"
@@ -1191,7 +1199,7 @@ local function DisplayResearchTileInfo(researchInfo, researchType, onlySkillMet,
 					dependTile.Parent.BackgroundColor3 = Color3.fromRGB(38, 5, 5)
 					dependTile.CompletionStatus.Image = "rbxassetid://7092617018"
 					dependTile.CompletionStatus.Size = UDim2.new(0.075, 0, 0.507, 0)
-					
+
 					dependViewable = CheckResearchDepends:InvokeServer(dependency)
 					if dependViewable then --dependencies met for dependency
 						dependTile.ResearchName.Text = "<b>" .. dependency .. "</b>"
@@ -1202,14 +1210,6 @@ local function DisplayResearchTileInfo(researchInfo, researchType, onlySkillMet,
 						dependTile.DisplayImage.Image = "rbxassetid://6973810990" --lock image
 					end
 				end
-
-				dependTile.Parent.Size = UDim2.new(0.93, 0, 0.225, 0)
-				dependTile.Parent.Position = UDim2.new(0.036, 0, .168 + .281*((d-1)-3*(pageCount-1)), 0)
-				
-				--Color Tile Rarity Colors
-				--ColorTileRarity(dependTile, guiElements.RarityColors.DisplayFirst)
-				--**IF dependTiles are colored by rarity, they would also have to be arranged by rarity, resulting
-				--in a lot more processing power being used to generate the list
 				
 				local dependTileDebounce = false
 				dependTile.Parent.Activated:Connect(function() --Display research Info
@@ -1300,7 +1300,7 @@ local function DisplayResearchTileInfo(researchInfo, researchType, onlySkillMet,
 	dependsToComplete.PageManager.PreviousPage.Selectable = visBool2
 end
 
-local function InsertTileInfo(menu, tile, researchInfo, researchType, finishTime, statTable, onlySkillMet)
+local function InsertTileInfo(menu, tile, researchData, researchType, finishTime, statTable, onlySkillMet)
 	if statTable == nil then --Available and Previous Research
 		tile.ResearchTile.Visible = true
 		tile.CostTile:Destroy()
@@ -1315,9 +1315,9 @@ local function InsertTileInfo(menu, tile, researchInfo, researchType, finishTime
 			researchTile.ResearchName.TextColor3 = Color3.fromRGB(204, 204, 204)
 			researchTile.DisplayImage.Image = ""
 		else
-			researchTile.ResearchName.Text = "<b>" .. researchInfo["Research Name"] .. "</b>"
+			researchTile.ResearchName.Text = "<b>" .. researchData["Research Name"] .. "</b>"
 			researchTile.ResearchName.TextColor3 = Color3.fromRGB(255, 255, 255)
-			researchTile.DisplayImage.Image = researchInfo["Research Image"]
+			researchTile.DisplayImage.Image = researchData["Research Image"]
 		end
 
 		if finishTime then
@@ -1325,7 +1325,7 @@ local function InsertTileInfo(menu, tile, researchInfo, researchType, finishTime
 			researchTile.ResearchType.Visible = false
 			researchTile.TimerBar.Visible = true
 			researchTile.TimerSymbol.Visible = true
-			ManageTileTimer(researchTile, researchInfo, finishTime)
+			ManageTileTimer(researchTile, researchData, finishTime)
 		else
 			researchTile.TimerBar.Visible = false
 			researchTile.TimerSymbol.Visible = false
@@ -1333,20 +1333,21 @@ local function InsertTileInfo(menu, tile, researchInfo, researchType, finishTime
 			researchTile.SkipTime.Visible = false
 			researchTile.ResearchTime.Visible = true
 			researchTile.ResearchType.Visible = true
-			researchTile.ResearchTime.Text = "<b>" .. GuiUtility.ToDHMS(researchInfo["Research Length"], true) .. "</b>"
+			researchTile.ResearchTime.Text = "<b>" .. GuiUtility.ToDHMS(researchData["Research Length"], true) .. "</b>"
 		end
 		
-		if menu ~= PreviousResearch then
-			local tileDebounce = false
-			
-			tile.Activated:Connect(function()
-				if tileDebounce == false then
-					tileDebounce = true
-					DisplayResearchTileInfo(researchInfo, researchType, onlySkillMet, InfoMenu.ResearchButton)
-					tileDebounce = false
-				end
-			end)
-		end
+		local tileDebounce = false
+		tile.Activated:Connect(function()
+			print("1")
+			if tileDebounce == false then
+				tileDebounce = true
+				taskbar.BackButton.Visible = true
+				taskbar.BackButton.Active = true
+					
+				DisplayResearchTileInfo(researchData, researchType, onlySkillMet, InfoMenu.ResearchButton)
+				tileDebounce = false
+			end
+		end)
 	else --Cost Tile
 		tile.ResearchTile:Destroy()
 		tile.CostTile.Visible = true
@@ -1363,9 +1364,10 @@ local function InsertTileInfo(menu, tile, researchInfo, researchType, finishTime
 
 			costTile.StatName.Text = "<b>" .. tostring(statInfo) .. "</b>"
 			costTile.DisplayImage.Image = statInfo["GUI Info"].StatImage.Value
+			local playerAmount = GetItemCountSum:InvokeServer(tostring(statInfo))
+			costTile.ResearchCost.Text = "<b>" .. tostring(playerAmount) .. " /" .. statAmount .. "</b>"
 
-			local PlayerItemCount = GetItemCountSum:InvokeServer(tostring(statInfo))
-			ChangeCostColor(costTile, PlayerItemCount, statAmount)
+			ChangeCostColor(costTile, playerAmount, statAmount)
 			statAmount = GuiUtility.ConvertShort(statAmount) --simplify for display
 			
 		else --Exp Cost
@@ -1381,13 +1383,13 @@ local function InsertTileInfo(menu, tile, researchInfo, researchType, finishTime
 
 			costTile.StatName.Text = "<b>" .. string.gsub(statInfo["StatName"], " Skill", "") .. "</b>"
 			costTile.DisplayImage.Image = statInfo["StatImage"]
+			costTile.ResearchCost.Text = "<b>" .. statAmount .. "</b>"
 
 			local playerLevel = GetCurrentPlayerLevel:InvokeServer(statInfo)
 			ChangeCostColor(costTile, playerLevel, statTable[2])
 		end
-
+	
 		costTile.StatType.Text = statType
-		costTile.ResearchCost.Text = "<b>" .. statAmount .. "</b>"
 		ColorTileRarity(costTile, tile.Rarity.Value)
 
 		if not discovered then
@@ -1436,8 +1438,6 @@ function FindResearchTile(menu, researchName)
 	return Page,Tile
 end
 
-local ManageTilePlacementFunction = eventsFolder.GUI:FindFirstChild("ManageTilePlacement")
-
 function ManageResearchTile(menu, researchData, researchType, finishTime, statTable, onlySkillMet)
 	if menu == CurrentResearch and finishTime then --Guaranteed to only be one page
 		local outlineTileNumber
@@ -1460,8 +1460,6 @@ function ManageResearchTile(menu, researchData, researchType, finishTime, statTa
 			newTile.Name = "ResearchSlot"
 			newTile.Position = UDim2.new(0, 0, 0, 0)
 			newTile.Size = UDim2.new(1, 0, 1, 0)
-			newTile.Active = false
-			newTile.Selectable = false
 			newTile.Parent = outlineTile
 			
 			local RarityName = researchData["Rarity"]
@@ -1521,7 +1519,7 @@ function ManageResearchTile(menu, researchData, researchType, finishTime, statTa
 		if statTable == nil then
 			local statInfo = researchData
 			RarityName = statInfo["Rarity"]
-		else
+		else --Exp
 			local statInfo = statTable[1]
 			if statInfo["GUI Info"] then
 				RarityName = statInfo["GUI Info"].RarityName.Value
@@ -1658,7 +1656,7 @@ function UpdatePageDisplay(Menu, bool)
 		HighPage = 1
 	end
 	if bool ~= nil then
-		local PageManager = Taskbar:FindFirstChild(tostring(Menu) .. "PM")
+		local PageManager = taskbar:FindFirstChild(tostring(Menu) .. "PM")
 		PageManager.NextPage.Active = bool
 		PageManager.PreviousPage.Active = bool
 		PageManager.Visible = bool
@@ -1772,7 +1770,7 @@ local function ChangePage(Menu, X1, X2, X3)
 end
 
 --------------------<|Button Activations|>-------------------------------
-Taskbar.PreviousResearchButton.Activated:Connect(function()
+taskbar.PreviousResearchButton.Activated:Connect(function()
 	CurrentResearch.Visible = false
 	PreviousResearch.Visible = true
 	UpdatePageDisplay(PreviousResearch, true)
@@ -1781,13 +1779,13 @@ Taskbar.PreviousResearchButton.Activated:Connect(function()
 	ResearchersList.CurrentMenuLabel.Visible = false
 	ResearchersList.PreviousMenuLabel.Visible = true
 
-	Taskbar.CurrentResearchButton.Visible = true
-	Taskbar.CurrentResearchButton.Active = true
-	Taskbar.PreviousResearchButton.Visible = false
-	Taskbar.PreviousResearchButton.Active = false
+	taskbar.CurrentResearchButton.Visible = true
+	taskbar.CurrentResearchButton.Active = true
+	taskbar.PreviousResearchButton.Visible = false
+	taskbar.PreviousResearchButton.Active = false
 end)
 
-Taskbar.CurrentResearchButton.Activated:Connect(function()
+taskbar.CurrentResearchButton.Activated:Connect(function()
 	CurrentResearch.Visible = true
 	PreviousResearch.Visible = false
 	UpdatePageDisplay(PreviousResearch, false)
@@ -1796,10 +1794,10 @@ Taskbar.CurrentResearchButton.Activated:Connect(function()
 	ResearchersList.CurrentMenuLabel.Visible = true
 	ResearchersList.PreviousMenuLabel.Visible = false
 	
-	Taskbar.CurrentResearchButton.Visible = false
-	Taskbar.CurrentResearchButton.Active = false
-	Taskbar.PreviousResearchButton.Visible = true
-	Taskbar.PreviousResearchButton.Active = true
+	taskbar.CurrentResearchButton.Visible = false
+	taskbar.CurrentResearchButton.Active = false
+	taskbar.PreviousResearchButton.Visible = true
+	taskbar.PreviousResearchButton.Active = true
 end)
 
 InfoMenu.ResearchButton.Activated:Connect(function()
@@ -1811,27 +1809,27 @@ InfoMenu.ResearchButton.Activated:Connect(function()
 	
 end)
 
-Taskbar.AvailableResearchPM.NextPage.Activated:Connect(function()
+taskbar.AvailableResearchPM.NextPage.Activated:Connect(function()
 	ChangePage(AvailableResearch, 1, -1, 0.02)
 end)
 
-Taskbar.AvailableResearchPM.PreviousPage.Activated:Connect(function()
+taskbar.AvailableResearchPM.PreviousPage.Activated:Connect(function()
 	ChangePage(AvailableResearch, -1, 1, -0.02)
 end)
 
-Taskbar.PreviousResearchPM.NextPage.Activated:Connect(function()
+taskbar.PreviousResearchPM.NextPage.Activated:Connect(function()
 	ChangePage(PreviousResearch, 1, -1, 0.02)
 end)
 
-Taskbar.PreviousResearchPM.PreviousPage.Activated:Connect(function()
+taskbar.PreviousResearchPM.PreviousPage.Activated:Connect(function()
 	ChangePage(PreviousResearch, -1, 1, -0.02)
 end)
 
-Taskbar.CostListPM.NextPage.Activated:Connect(function()
+taskbar.CostListPM.NextPage.Activated:Connect(function()
 	ChangePage(CostList, 1, -1, 0.02)
 end)
 
-Taskbar.CostListPM.PreviousPage.Activated:Connect(function()
+taskbar.CostListPM.PreviousPage.Activated:Connect(function()
 	ChangePage(CostList, -1, 1, -0.02)
 end)
 
@@ -1969,7 +1967,7 @@ end)
 
 ----------------------------<|General Button Functions|>-----------------------------------------------------------------------------------------------
 
-ComputerScreen.Taskbar.Shutdown.Activated:Connect(function()
+taskbar.Shutdown.Activated:Connect(function()
 	SelectionMenu.CurrentSelection.Value = nil
 	SelectionMenu.CurrentPage.Value = nil
 
@@ -1977,22 +1975,21 @@ ComputerScreen.Taskbar.Shutdown.Activated:Connect(function()
 	ShutDownComputer()
 end)
 
-ComputerScreen.Taskbar.Home.Activated:Connect(function()
+taskbar.Home.Activated:Connect(function()
 	PrepareAllMenuVisibility()
 	MenuSelect.Visible = true
-	ComputerScreen.Taskbar.Visible = true
+	taskbar.Visible = true
 end)
 
-ComputerScreen.Taskbar.BackButton.Activated:Connect(function()
+taskbar.BackButton.Activated:Connect(function()
 	InfoMenu.Visible = false
 	CurrentResearch.Visible = true
 	
-	--How to use back button to return to research if clicked on depend tile and still use backbutton to return
-	--to current research/
-	
-	--**Previous menu variable will be used. For special instances where the back button could be used twice (like with
-	--viewing a dependency research then going back to the list then back to the available reserach list), the
-	--variable will update with the change back to that menu, like how it's updated when that menu is opened
+	if ResearchMenu.Visible == true then
+		ViewResearchMenu()
+	elseif StorageMenu.Visible == true then
+		ViewStorageMenu()
+	end
 end)
 
 --Back button to return to current menu type's main menu, instead of the menu type selection menu?
