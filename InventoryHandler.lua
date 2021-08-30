@@ -575,7 +575,7 @@ local function FindNearbyRarity(Menu, rarityInfo, orderValue, direction)
 	end
 end
 
-local function ManageTilePlacement(Menu, Type, rarityInfo)
+local function ManageTilePlacement(menu, menuType, rarityInfo)
 
 	--PAGE SORTING STRATEGY: (Same as research tiles)
 	--if 0 pages, make the first page
@@ -596,8 +596,12 @@ local function ManageTilePlacement(Menu, Type, rarityInfo)
 	if rarityInfo then 
 		rarityName = rarityInfo.Name
 
-		if Type == "Research" then
-			maxTileAmount = 5
+		if string.match(menuType, "Research") then
+			if menuType == "Research" then
+				maxTileAmount = 5
+			else --ResearchDepend
+				maxTileAmount = 3
+			end
 		else
 			maxTileAmount = 12 --Inventory was 18
 		end
@@ -606,28 +610,28 @@ local function ManageTilePlacement(Menu, Type, rarityInfo)
 		maxTileAmount = 4
 	end
 
-	local pageCount = GetHighPage(Menu)
+	local pageCount = GetHighPage(menu)
 
 	local Page
 	local TruePosition
 	local PageSlotCount = 0 --Position reference, +1 for name (Count=0: "Slot1")
 	if pageCount > 0 then
 		if rarityName ~= "No Rarity" then
-			local highRarityPage = GetHighPage(Menu, rarityName)
+			local highRarityPage = GetHighPage(menu, rarityName)
 			local rarityOrderValue = rarityInfo.Order.Value
 
 			if highRarityPage ~= 0 then
 				--print("11111111111 highRarityPage ~= 0: ", rarityName)
-				Page,TruePosition,PageSlotCount = SeekSlotAvailability(Menu, Type, highRarityPage, rarityName, maxTileAmount)
+				Page,TruePosition,PageSlotCount = SeekSlotAvailability(menu, menuType, highRarityPage, rarityName, maxTileAmount)
 			else
 				--Look for lesser rarity to reference instead
-				local lesserRarityPage,lesserRarityName = FindNearbyRarity(Menu, rarityInfo, rarityOrderValue, -1)
+				local lesserRarityPage,lesserRarityName = FindNearbyRarity(menu, rarityInfo, rarityOrderValue, -1)
 				if lesserRarityPage then
 					--print("22222222222 lesserRarity: ", lesserRarityPage, lesserRarityName)
-					Page,TruePosition,PageSlotCount = SeekSlotAvailability(Menu, Type, lesserRarityPage, lesserRarityName, maxTileAmount)
+					Page,TruePosition,PageSlotCount = SeekSlotAvailability(menu, menuType, lesserRarityPage, lesserRarityName, maxTileAmount)
 
 				else --Must be first tile
-					Page = Menu.Page1
+					Page = menu.Page1
 					PageSlotCount = 0
 					TruePosition = 0
 				end
@@ -636,7 +640,7 @@ local function ManageTilePlacement(Menu, Type, rarityInfo)
 
 			--****Possibly sort alphabetically when no rarity is involved
 
-			Page = Menu:FindFirstChild("Page" .. tostring(pageCount))
+			Page = menu:FindFirstChild("Page" .. tostring(pageCount))
 
 			local slotCount = 0
 			for i,slot in pairs (Page:GetChildren()) do
@@ -648,16 +652,16 @@ local function ManageTilePlacement(Menu, Type, rarityInfo)
 			TruePosition = pageCount*maxTileAmount + PageSlotCount
 		end
 	else --No pages in menu, make new page
-		Page = CreateNewMenuPage(Type, Menu, Page, 1)
+		Page = CreateNewMenuPage(menuType, menu, Page, 1)
 		PageSlotCount = 0
 		TruePosition = 0
 	end
 
 	--Create tile with new-found info
 	local newTile
-	if Type == "Experience" then
+	if menuType == "Experience" then
 		newTile = guiElements.ExperienceSlot:Clone()
-	elseif Type == "Research" then
+	elseif string.match(menuType, "Research") then
 		newTile = guiElements.ResearchSlot:Clone()
 	else
 		newTile = guiElements.InventoryMaterialSlot:Clone()
@@ -671,7 +675,7 @@ local function ManageTilePlacement(Menu, Type, rarityInfo)
 	--print("*****", Type, newTile, "'s final values are TruePosition: ", TruePosition, " and PageSlotCount: ", PageSlotCount, " in ", Page)
 
 	--Position tile with new-found info
-	ManageTileTruePosition(Menu, Page, newTile, TruePosition, maxTileAmount, 1, Type)
+	ManageTileTruePosition(menu, Page, newTile, TruePosition, maxTileAmount, 1, menuType)
 
 	return newTile
 end
@@ -702,72 +706,75 @@ local function SlotCountToXY(PageSlotCount, tilesPerRow)
 	return columnValue, rowValue
 end
 
-function ManageTileTruePosition(Menu, Page, affectingTile, TruePosition, maxTileAmount, Change, Type)
+function ManageTileTruePosition(menu, tilePage, affectingTile, truePosition, maxTileAmount, change, menuType)
 	--TruePosition is used to move all other tiles around
 	--PageSlotCount is used to position the tile on that page properly
 	--Change is how higher TruePosition tiles should move (up 1 or down 1)
 
-	local pageNumber = string.gsub(Page.Name, "Page", "")
+	local pageNumber = string.gsub(tilePage.Name, "Page", "")
 
-	for i,page in pairs (Menu:GetChildren()) do
+	for _,page in pairs (menu:GetChildren()) do
 		if page:IsA("Frame") and string.find(page.Name, "Page") then
 			local currentPageNumber = string.gsub(page.Name, "Page", "")
 
 			--Grab only pages containing tiles that will be affected by this new tile (affectingTile)
 			if tonumber(currentPageNumber) >= tonumber(pageNumber) then
-				for i,tile in pairs (page:GetChildren()) do
+				for _,tile in pairs (page:GetChildren()) do
 					if (tile:IsA("ImageButton") or tile:IsA("TextButton")) and string.find(tile.Name, "Slot") then
-						if tile.TruePosition.Value >= TruePosition then --Every tile "above" affecting tile
-							local PageSlotCount = 0
-							local Page
+						if tile.TruePosition.Value >= truePosition then --Every tile "above" affecting tile
+							local pageSlotCount = 0
+							local tilePage
 
 							if tile ~= affectingTile then
-								tile.TruePosition.Value += Change
-								PageSlotCount = GetTileSlotCount(page, tile.TruePosition.Value, affectingTile, Change)
+								tile.TruePosition.Value += change
+								pageSlotCount = GetTileSlotCount(page, tile.TruePosition.Value, affectingTile, change)
 
-								if PageSlotCount >= maxTileAmount then
+								if pageSlotCount >= maxTileAmount then
 									--Affected tile will be moved to next page
-									if Menu:FindFirstChild("Page" .. tostring(tonumber(currentPageNumber) + 1)) then
-										Page = Menu:FindFirstChild("Page" .. tostring(tonumber(currentPageNumber) + 1))
+									if menu:FindFirstChild("Page" .. tostring(tonumber(currentPageNumber) + 1)) then
+										tilePage = menu:FindFirstChild("Page" .. tostring(tonumber(currentPageNumber) + 1))
 									else --No next page, making new one
-										Page = CreateNewMenuPage(Type, Menu, Page, tonumber(currentPageNumber) + 1)
+										tilePage = CreateNewMenuPage(menuType, menu, tilePage, tonumber(currentPageNumber) + 1)
 									end
-									PageSlotCount = 0
-								elseif PageSlotCount < 0 then
+									pageSlotCount = 0
+								elseif pageSlotCount < 0 then
 									--Affected tile will be moved to previous page
-									Page = Menu:FindFirstChild("Page" .. tostring(tonumber(currentPageNumber) - 1))
+									tilePage = menu:FindFirstChild("Page" .. tostring(tonumber(currentPageNumber) - 1))
 								else
 									--Affected tile will stay on this page
-									Page = page
+									tilePage = page
 								end
-								tile.Name = "Slot" .. tostring(PageSlotCount + 1)
+								tile.Name = "Slot" .. tostring(pageSlotCount + 1)
 							else
-								if Change == -1 then
+								if change == -1 then
 									tile:Destroy()
 								else
 									--Will guaranteed be on this page since it was calculated earlier
-									PageSlotCount = GetTileSlotCount(page, tile.TruePosition.Value, affectingTile, Change)
-									Page = page
+									pageSlotCount = GetTileSlotCount(page, tile.TruePosition.Value, affectingTile, change)
+									tilePage = page
 								end
 							end
 
-							if Page then --Reposition affected tile
-								tile.Parent = Page
+							if tilePage then --Reposition affected tile
+								tile.Parent = tilePage
 
-								local truePositionValue = GetTileTruePosition(Page, PageSlotCount, maxTileAmount)
+								local truePositionValue = GetTileTruePosition(tilePage, pageSlotCount, maxTileAmount)
 								tile.TruePosition.Value = truePositionValue
 
-								if Type == "Experience" or Type == "Research" then --straight down insertion
-									if Type == "Experience" then
-										tile.Position = UDim2.new(0.023,0,0.023+((PageSlotCount)*0.215),0)
+								if menuType ~= "Experience" or string.match(menuType, "Research") then --straight down insertion
+									if menuType == "Experience" then
+										tile.Position = UDim2.new(0.023,0,0.023+((pageSlotCount)*0.215),0)
 										tile.Size = UDim2.new(0.952, 0, 0.2, 0)
-									else
-										tile.Position = UDim2.new(0.05, 0, 0.054+0.173*PageSlotCount, 0)
+									elseif menuType == "Research" then
+										tile.Position = UDim2.new(0.05, 0, 0.054+0.173*pageSlotCount, 0)
 										tile.Size = UDim2.new(0.9, 0, 0.14, 0)
+									else --ResearchDepend
+										tile.Position = UDim2.new(0.036, 0, 0.168 + 0.281*pageSlotCount)
+										tile.Size = UDim2.new(0.93, 0, 0.225, 0)
 									end
 								else --non-list insertion (Inventory & Equipment)
 									local tilesPerRow = 4
-									local columnValue, rowValue = SlotCountToXY(PageSlotCount, tilesPerRow)
+									local columnValue, rowValue = SlotCountToXY(pageSlotCount, tilesPerRow)
 									tile.Position = UDim2.new(0.043+.239*columnValue, 0, 0.028+0.29*rowValue, 0)
 									tile.Size = UDim2.new(0.208, 0, 0.258, 0)
 								end
