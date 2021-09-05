@@ -446,12 +446,12 @@ function ReadyItemTypeMenu(Menu)
 	--Select Slot1 on first open
 	if Menu.Page1.Slot1 then
 		local tile = Menu.Page1.Slot1
-		local discovered = tile.Discovered.Value
 		local itemInfo = GuiUtility.GetItemInfo(tile.ItemName.Value, tostring(Menu))
 		
 		SelectionMenu.CurrentSelection.Value = tile
 		SelectionMenu.CurrentPage.Value = Menu.Page1
-		SelectionMenu.UnitPrice.Visible = discovered
+		SelectionMenu.Amount.Visible = true
+		SelectionMenu.UnitPrice.Visible = true
 		Menu.Page1.Visible = true
 
 		if itemInfo then
@@ -1338,7 +1338,6 @@ local function InsertTileInfo(menu, tile, researchData, researchType, finishTime
 		
 		local tileDebounce = false
 		tile.Activated:Connect(function()
-			print("1")
 			if tileDebounce == false then
 				tileDebounce = true
 				taskbar.BackButton.Visible = true
@@ -1370,6 +1369,33 @@ local function InsertTileInfo(menu, tile, researchData, researchType, finishTime
 			ChangeCostColor(costTile, playerAmount, statAmount)
 			statAmount = GuiUtility.ConvertShort(statAmount) --simplify for display
 			
+			tile.Activated:Connect(function()
+				--Player can access items in storage even if they have 0; will display hint and that it's undiscovered
+				print("Display item information in storage")
+
+				PrepareAllMenuVisibility()
+				ViewStorageMenu()
+				--Use function that displays a certain tile the is clicked
+
+				--Find page and tile of seeked item
+				for _,page in pairs (StorageMenu.ItemsPreview.Materials:GetChildren()) do
+					if page:IsA("Frame") and string.match(page.Name, "Page") then
+						if page.Rarity.Value == tile.Rarity.Value then
+							for _,itemTile in pairs (page:GetChildren()) do
+								if itemTile.ItemName.Value == tile.StatName.Text then
+									
+									
+									
+								end
+							end
+						end
+					end
+				end
+
+				--Display and set up back button
+				--**When acessing the storage menu this way, the back button will be used to get back to the research
+				--info menu so players can get back to the cost list quickly
+			end)
 		else --Exp Cost
 			statAmount = "Level " .. tostring(statAmount) 
 			discovered = true
@@ -1406,13 +1432,6 @@ local function InsertTileInfo(menu, tile, researchData, researchType, finishTime
 				costTile.DisplayImage.Image = statInfo["StatImage"]
 			end
 		end
-		
-		tile.Activated:Connect(function()
-			print("Display item information in storage")
-			
-			--Possibly prompty player if they wish to view the item in storage since they will be backed out
-			--of the research menu
-		end)
 	end
 end
 
@@ -1424,7 +1443,7 @@ function FindResearchTile(menu, researchName)
 	for _,page in pairs (menu:GetChildren()) do
 		if (page:IsA("Frame") or page:IsA("ImageLabel")) then
 			
-			for i,tile in pairs (page:GetChildren()) do
+			for _,tile in pairs (page:GetChildren()) do
 				if tile:FindFirstChild("ResearchTile") then
 					if tile.ResearchTile.ResearchName.Text == "<b>" .. researchName .. "</b>" then
 						Page = page
