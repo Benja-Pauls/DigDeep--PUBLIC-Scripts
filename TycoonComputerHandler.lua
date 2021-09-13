@@ -114,6 +114,27 @@ local function ShutDownComputer()
 	ShutDownCutscene()
 end
 
+local function SetupTaskbar()
+	taskbar.Visible = true
+	for _,v in pairs (taskbar:GetChildren()) do
+		v.Visible = false
+		if v:IsA("ImageButton") then
+			v.Active = false
+		end
+	end
+	
+	local stringTime = "%I:%M %p"
+	local timestamp = os.time()
+	taskbar.Time.Visible = true
+	taskbar.Time.Text = tostring(os.date(stringTime, timestamp))
+	
+	taskbar.Shutdown.Visible = true
+	taskbar.Shutdown.Active = true
+	taskbar.Home.Visible = true
+	taskbar.Home.Active = true
+end
+
+
 local function PrepareAllMenuVisibility()
 	for _,menu in pairs(ComputerScreen:GetChildren()) do
 		if (menu:IsA("Frame") or menu:IsA("ImageLabel")) and tostring(menu) ~= "FadeOut" then
@@ -184,21 +205,8 @@ function SetUpCredentials()
 	--BackButton.Position = UDim2.new(BackButton.Position.X.Scale, 0, 1, 0)
 	ComputerScreen.CredentialsScreen:TweenPosition(UDim2.new(0,0,-1.3,0), "Out", "Quint", .5)
 	
-	taskbar.Visible = true
-	for _,v in pairs (taskbar:GetChildren()) do
-		v.Visible = false
-		if v:IsA("ImageButton") then
-			v.Active = false
-		end
-	end
-	
-	taskbar.Time.Visible = true
-	taskbar.Time.Text = tostring(os.date(stringTime, timestamp))
-	taskbar.Shutdown.Visible = true
-	taskbar.Shutdown.Active = true
-	taskbar.Home.Visible = true
-	taskbar.Home.Active = true
-	
+	SetupTaskbar()
+
 	MenuSelect.Visible = true
 	wait(.5)
 	
@@ -331,11 +339,11 @@ end
 
 ------------------------<|Current Selection Info|>-------------------------------------
 
-local function UpdateSelectionInfo(Page, tile)
-	local Menu = Page.Parent
+local function UpdateSelectionInfo(page, tile)
+	local Menu = page.Parent
 	local itemInfo = GuiUtility.GetItemInfo(tile.ItemName.Value)
 	local discovered = tile.Discovered.Value
-	local rarityName = tostring(Page.Rarity.Value)
+	local rarityName = tostring(page.Rarity.Value)
 	
 	if SelectionMenu.CurrentSelection.Value ~= tile then --Unhighlight previous tile
 		SelectionMenu.CurrentSelection.Value.BorderSizePixel = 1
@@ -345,11 +353,11 @@ local function UpdateSelectionInfo(Page, tile)
 	
 	tile.BorderSizePixel = 2 --Change now selected tile to
 	tile.BorderColor3 = Color3.fromRGB(255, 255, 255)
-	SelectionMenu.CurrentPage.Value = Page
+	SelectionMenu.CurrentPage.Value = page
 	SelectionMenu.CurrentSelection.Value = tile
 	
 	--Rarity Coloring
-	local rarityInfo = Page.Rarity.Value
+	local rarityInfo = page.Rarity.Value
 	AddRarityGradient(rarityInfo, ItemsPreview.MenuIcon, 50)
 	AddRarityGradient(rarityInfo, SelectionMenu.RarityFrame, 90)
 	AddRarityGradient(rarityInfo, SelectionMenu.RarityName, 90)
@@ -862,6 +870,7 @@ UpdateTycoonStorage.OnClientEvent:Connect(function(statName, statValue, itemType
 	if storageLoadedDebounce == false then
 		storageLoadedDebounce = true	
 		while StorageMenu.Loaded.Value == false do
+			print("Ensure Storage Loaded is being called, is looping in more than one place?")
 			wait(2)
 			EnsureStorageLoaded()
 		end
@@ -1371,26 +1380,35 @@ local function InsertTileInfo(menu, tile, researchData, researchType, finishTime
 			
 			tile.Activated:Connect(function()
 				--Player can access items in storage even if they have 0; will display hint and that it's undiscovered
-				print("Display item information in storage")
-
-				PrepareAllMenuVisibility()
-				ViewStorageMenu()
-				--Use function that displays a certain tile the is clicked
-
-				--Find page and tile of seeked item
+				local statName = string.gsub(tile.CostTile.StatName.Text, "</b>", "")
+				statName = string.gsub(statName, "<b>", "")
+				
+				--See if tile in StorageMenu exists
+				local seeking = true
 				for _,page in pairs (StorageMenu.ItemsPreview.Materials:GetChildren()) do
-					if page:IsA("Frame") and string.match(page.Name, "Page") then
+					if string.match(page.Name, "Page") and seeking == true then
 						if page.Rarity.Value == tile.Rarity.Value then
+							
 							for _,itemTile in pairs (page:GetChildren()) do
-								if itemTile.ItemName.Value == tile.StatName.Text then
-									
-									
-									
+								if string.match(itemTile.Name, "Slot") and seeking == true then
+									if itemTile.ItemName.Value == statName then
+										seeking = false
+										PrepareAllMenuVisibility()
+										SetupTaskbar()
+										ViewStorageMenu()
+										UpdateSelectionInfo(page, itemTile)
+
+										--Display back button to get back to research menu
+										StorageMenu.OpenFromResearch.Value = tile
+										taskbar.BackButton.Visible = true
+										taskbar.BackButton.Active = true
+									end
 								end
 							end
 						end
 					end
 				end
+			
 
 				--Display and set up back button
 				--**When acessing the storage menu this way, the back button will be used to get back to the research
@@ -2007,7 +2025,20 @@ taskbar.BackButton.Activated:Connect(function()
 	if ResearchMenu.Visible == true then
 		ViewResearchMenu()
 	elseif StorageMenu.Visible == true then
-		ViewStorageMenu()
+		if StorageMenu.OpenFromResearch.Value then
+			taskbar.BackButton.Visible = false
+			taskbar.BackButton.Active = false
+			
+			local researchTile = StorageMenu.OpenFromResearch.Value
+			StorageMenu.OpenFromResearch.Value = nil
+			
+			--Get back to research menu
+			PrepareAllMenuVisibility()
+			SetupTaskbar()
+			ViewResearchMenu()
+		else
+			ViewStorageMenu()
+		end
 	end
 end)
 
