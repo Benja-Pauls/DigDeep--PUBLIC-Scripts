@@ -784,6 +784,7 @@ function awardLevelRewards.OnServerInvoke(player, expName, expTypeName)
 							local amount = rewardInfo[3]
 							PlayerStatManager:ChangeStat(player, tostring(statInfo), amount, "Inventory")
 							
+							--Declare discovery if not
 							local discoveredValue = sessionData[playerUserId][tostring(statInfo) .. "Discovered"]
 							if discoveredValue == false then
 								PlayerStatManager:ChangeStat(player, tostring(statInfo) .. "Discovered", true, "Inventory")
@@ -793,7 +794,7 @@ function awardLevelRewards.OnServerInvoke(player, expName, expTypeName)
 							PlayerStatManager:ChangeStat(player, tostring(statInfo), true, "Equipment")
 							
 						else --Research List
-							for r = 1,rewardInfo do
+							for r = 1,#rewardInfo do
 								local researchName = rewardInfo[r]["Research Name"]
 								local researchType = rewardInfo[r]["Resarch Type"]
 								
