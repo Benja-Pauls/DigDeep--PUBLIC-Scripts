@@ -1164,10 +1164,11 @@ local function DisplayResearchTileInfo(researchInfo, researchType, onlySkillMet,
 		end
 	end
 	InfoMenu.DependsToComplete.PageManager.CurrentPage.Value = 1
-
+	
+	--Make list of research dependencies if research is only visible because of leveling up
 	local visBool1 = false
 	local visBool2 = false
-	if onlySkillMet then --Make list of research dependencies
+	if onlySkillMet then
 		InfoMenu.ResearchTime.Text = "<b>" .. GuiUtility.ToDHMS(researchInfo["Research Length"], true) .. "</b>"
 		InfoMenu.DisplayImage.Image = "rbxassetid://6973810990" --lock image
 		InfoMenu.DisplayImage.LockNotify.Visible = true
@@ -1180,7 +1181,7 @@ local function DisplayResearchTileInfo(researchInfo, researchType, onlySkillMet,
 
 		local dependencyCount = #researchInfo["Dependencies"]
 		local dependPages = InfoMenu.DependsToComplete.DependPages
-
+		
 		if dependencyCount > 0 then
 			for d = 1,dependencyCount do
 				local dependency = researchInfo["Dependencies"][d]
@@ -1221,7 +1222,7 @@ local function DisplayResearchTileInfo(researchInfo, researchType, onlySkillMet,
 				end
 				
 				local dependTileDebounce = false
-				dependTile.Parent.Activated:Connect(function() --Display research Info
+				dependTile.Parent.Activated:Connect(function() --Display depending research's info
 					if dependTileDebounce == false then
 						dependTileDebounce = true
 						
@@ -1310,7 +1311,7 @@ local function DisplayResearchTileInfo(researchInfo, researchType, onlySkillMet,
 end
 
 local function InsertTileInfo(menu, tile, researchData, researchType, finishTime, statTable, onlySkillMet)
-	if statTable == nil then --Available and Previous Research
+	if statTable == nil then --Available, Previous, and Current Research
 		tile.ResearchTile.Visible = true
 		tile.CostTile:Destroy()
 		tile.DependTile:Destroy()
@@ -1348,6 +1349,7 @@ local function InsertTileInfo(menu, tile, researchData, researchType, finishTime
 		local tileDebounce = false
 		tile.Activated:Connect(function()
 			if tileDebounce == false then
+				print(tile)
 				tileDebounce = true
 				taskbar.BackButton.Visible = true
 				taskbar.BackButton.Active = true
@@ -1391,7 +1393,7 @@ local function InsertTileInfo(menu, tile, researchData, researchType, finishTime
 							
 							for _,itemTile in pairs (page:GetChildren()) do
 								if string.match(itemTile.Name, "Slot") and seeking == true then
-									if itemTile.ItemName.Value == statName then
+									if itemTile.ItemName.Value == statName then --Tile exists, display storage
 										seeking = false
 										PrepareAllMenuVisibility()
 										SetupTaskbar()
@@ -1556,7 +1558,7 @@ function ManageResearchTile(menu, researchData, researchType, finishTime, statTa
 		if statTable == nil then
 			local statInfo = researchData
 			RarityName = statInfo["Rarity"]
-		else --Exp
+		else --Cost Tile
 			local statInfo = statTable[1]
 			if statInfo["GUI Info"] then
 				RarityName = statInfo["GUI Info"].RarityName.Value
@@ -2036,6 +2038,20 @@ taskbar.BackButton.Activated:Connect(function()
 			PrepareAllMenuVisibility()
 			SetupTaskbar()
 			ViewResearchMenu()
+			
+			--How to display research that requires the item that was displayed?
+			--**Is there a more efficient way to do this? (Direcly return to menu, no invis for research menu)
+			
+			DisplayResearchTileInfo()
+			
+			local researchType --read text on researchTile
+			local researchInfo --could be attribute... or is there a utility remotefunction to get researchData?
+			local skillsOnlyMet --How would this be found out?
+			local visibleButton --where is tile parented
+			
+			--How should players know the back button in the storage menu will take them back to
+			--the research that has the item in the cost list?
+			
 		else
 			ViewStorageMenu()
 		end
