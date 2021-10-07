@@ -191,7 +191,7 @@ local function UpdateGUIForFile(saveFolder, player, statName, value, overFlow)
 				local expLevel = GetPlayerLevel(player, expInfo)
 				
 				local levelUp
-				if savedLevelValue ~= expLevel then
+				if savedLevelValue ~= expLevel then --If, because of new exp, player is higher level than save, send signal to display levelUp
 					sessionData[playerUserId][statName .. "Level"] = expLevel
 					sessionData[playerUserId][statName .. "UnseenRewards"] += 1
 					
@@ -628,13 +628,11 @@ function PlayerStatManager:getEquippedData(player, itemType, equipType)
 	end
 end
 
-function PlayerStatManager:initiateSaving(player, statName, PlayerMoney)
-	--print("Saving Data for Player: " .. tostring(player))
+function PlayerStatManager:initiateSaving(player, statName, PlayerMoney) --Start saving process by updating money dataStore
 	local playerUserId = game.Players:FindFirstChild(tostring(player)).UserId
-
 	sessionData[playerUserId][statName] = PlayerMoney
-	--print("Saving Data for Player: " .. tostring(player))
-	
+	--Likely update gem amount here as well
+
 	SavePlayerData(playerUserId)
 end
 
@@ -644,13 +642,13 @@ function UpdateToolbar(Player, ItemType, NewlyEquippedItem)
 	local ItemTypeFolder = game.ReplicatedStorage.Equippable.Tools:FindFirstChild(ItemType)
 	
 	--Delete existing items of type from backpack
-	for i,item in pairs (Player.Backpack:GetChildren()) do
+	for _,item in pairs (Player.Backpack:GetChildren()) do
 		if ItemTypeFolder:FindFirstChild(tostring(item)) then
 			item:Destroy()
 		end
 	end
 	--check if holding item of same type
-	for i,item in pairs (workspace.Players:FindFirstChild(tostring(Player)):GetChildren()) do
+	for _,item in pairs (workspace.Players:FindFirstChild(tostring(Player)):GetChildren()) do
 		if item:IsA("Tool") then
 			if ItemTypeFolder:FindFirstChild(tostring(item)) then
 				item:Destroy()
@@ -713,6 +711,7 @@ GetBagCount.OnInvoke = function(Player, itemInfo)
 end
 
 function GetItemCountSum.OnServerInvoke(player, statName)
+	print("Checking item count sum for " .. statName)
 	local playerUserId = player.UserId
 	local inventoryAmount = sessionData[playerUserId][statName]
 	local storageAmount = sessionData[playerUserId]["TycoonStorage" .. statName]
@@ -739,23 +738,18 @@ function GetPlayerLevel(player, expInfo, onlyExpAmount, onlyRewardCount) --Use t
 				return expAmount
 			else
 				local highestLevel
-				for l = 1,#expInfo["Levels"] do
-					if expInfo["Levels"][l]["Exp Requirement"] <= expAmount then
+				for lvl = 1,#expInfo["Levels"] do
+					if expInfo["Levels"][lvl]["Exp Requirement"] <= expAmount then
 						if highestLevel then
-							if l > highestLevel then
-								highestLevel = l
+							if lvl > highestLevel then
+								highestLevel = lvl
 							end
 						else
-							highestLevel = l
+							highestLevel = lvl
 						end
 					end
 				end
 				
-				if onlyRewardCount then	
-					
-				else
-					
-				end
 				return highestLevel
 			end
 		end
