@@ -1244,9 +1244,9 @@ local function DisplayResearchTileInfo(researchInfo, researchType, onlySkillMet,
 								
 								if researchTile then
 									local researchType = researchTile.ResearchTile.ResearchType.Text
-									if researchTile.ResearchTile.CompleteResearch.Visible == true then
+									if researchTile.ResearchTile.CompleteResearch.Visible then
 										DisplayResearchTileInfo(dependInfo, researchType, false, InfoMenu.CompleteButton)
-									elseif researchTile.ResearchTile.SkipTime.Visible == true then
+									elseif researchTile.ResearchTile.SkipTime.Visible then --research not finished
 										DisplayResearchTileInfo(dependInfo, researchType, false, InfoMenu.ResearchingButton)
 									end
 									
@@ -1254,7 +1254,7 @@ local function DisplayResearchTileInfo(researchInfo, researchType, onlySkillMet,
 								end
 							end
 
-							if researchFound == false then --Last place to check is AvailableResearch
+							if not researchFound then --Last place to check is AvailableResearch
 								local page,researchTile = FindResearchTile(AvailableResearch, dependency)
 								
 								if researchTile then
@@ -1349,12 +1349,24 @@ local function InsertTileInfo(menu, tile, researchData, researchType, finishTime
 		local tileDebounce = false
 		tile.Activated:Connect(function()
 			if tileDebounce == false then
-				print(tile)
 				tileDebounce = true
 				taskbar.BackButton.Visible = true
 				taskbar.BackButton.Active = true
+				
+				local menuType = string.gsub(tostring(tile.Parent.Parent), "Research", "")
+				local researchButton = InfoMenu.ResearchButton --AvailableResearch
+				if menuType == "Current" then
+					if finishTime then
+						researchButton = InfoMenu.ResearchingButton
+					else
+						researchButton = InfoMenu.CompleteButton
+					end
+				elseif menuType == "Previous" then
+					print("Previous")
+					researchButton = InfoMenu.CompletedButton
+				end
 					
-				DisplayResearchTileInfo(researchData, researchType, onlySkillMet, InfoMenu.ResearchButton)
+				DisplayResearchTileInfo(researchData, researchType, onlySkillMet, researchButton)
 				tileDebounce = false
 			end
 		end)
@@ -2042,7 +2054,7 @@ taskbar.BackButton.Activated:Connect(function()
 			--How to display research that requires the item that was displayed?
 			--**Is there a more efficient way to do this? (Direcly return to menu, no invis for research menu)
 			
-			DisplayResearchTileInfo()
+			--DisplayResearchTileInfo()
 			
 			local researchType --read text on researchTile
 			local researchInfo --could be attribute... or is there a utility remotefunction to get researchData?
