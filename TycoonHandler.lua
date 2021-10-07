@@ -10,7 +10,7 @@ local Tycoons = TycoonsFolder:GetChildren() --All teams in the game
 local ServerStorage = game:GetService("ServerStorage")
 local PlayerData = ServerStorage:WaitForChild("PlayerData")
 local TycoonAssetsHandler = script:WaitForChild("TycoonAssetsHandler")
-local Players = game:GetService("Players")
+local players = game:GetService("Players")
 local SpecialBuy = game.ServerScriptService:WaitForChild("TycoonSpecialBuys")
 local GateControl = script:WaitForChild("GateControl")
 
@@ -20,7 +20,7 @@ local ClaimTycoon = game:GetService("ReplicatedStorage").Events.Tycoon.ClaimTyco
 ------------<|Tycoon Setup and Reseting|>---------------------------------
 local TycoonTable = {}
 
-for i,tycoon in pairs (Tycoons) do
+for _,tycoon in pairs (Tycoons) do
 	if tycoon:IsA("Model") then
 		Instance.new('Model',tycoon).Name = "TycoonDropStorage"
 		TycoonTable[tycoon.Name] = tycoon:Clone()
@@ -31,7 +31,7 @@ local TycoonPurchases = game.ReplicatedStorage:WaitForChild("TycoonPurchases")
 local Droppers = TycoonPurchases:FindFirstChild("Dropper")
 local DropperScript = script.DropperScript
 
-for i,dropper in pairs (Droppers:GetChildren()) do
+for _,dropper in pairs (Droppers:GetChildren()) do
 	if dropper:FindFirstChild("DropperScript") == nil then
 		local DropScriptClone = DropperScript:Clone()
 		DropScriptClone.Parent = dropper
@@ -40,7 +40,7 @@ for i,dropper in pairs (Droppers:GetChildren()) do
 end
 
 function getPlrTycoon(player)
-	for i,tycoon in pairs(Tycoons) do
+	for _,tycoon in pairs(Tycoons) do
 		if tycoon:IsA("Model") then
 			if tycoon.Owner.Value == player then
 				return tycoon
@@ -49,9 +49,11 @@ function getPlrTycoon(player)
 	end
 end
 
---When player leaves
+--Destroy tycoon when player leaves
 game.Players.PlayerRemoving:connect(function(player)
-
+	
+	--**Will likely expand to restart entire tycoon island, unless that is all encapsulated under tycoon
+	
 	--Remove the tycoon when the player leaves
 	local tycoon = getPlrTycoon(player)
 	if tycoon then
@@ -62,72 +64,68 @@ game.Players.PlayerRemoving:connect(function(player)
 	end
 end)
 
-
-
-local allObjects = {}
-
 --Hide buttons from previous games
 local function HideButton(Name, Buttons)
-	local Item 
-	for i,button in pairs (Buttons) do
+	local item 
+	for _,button in pairs (Buttons) do
 		if button.Object.Value == Name then
-			Item = button
+			item = button
 		end
 	end
 
-	if Item ~= nil then 
-		local buttonCheck = Item:FindFirstChild("Object")
+	if item ~= nil then 
+		local buttonCheck = item:FindFirstChild("Object")
 		if buttonCheck then 
 			coroutine.resume(coroutine.create(function() --call and create a function
-				local ButtonParts = Item:FindFirstChild("ButtonModel"):GetChildren()
+				local ButtonParts = item:FindFirstChild("ButtonModel"):GetChildren()
 				for bp = 1,#ButtonParts,1 do
 					ButtonParts[bp].Transparency = 1
-					Item.CanCollide = false
+					item.CanCollide = false
 				end
 			end))
 			
-			if Item:FindFirstChild("Dependencies") ~= nil then
-				wait(Item.Visible.Value == true) --Wait for dependencies to declare visibility
+			if item:FindFirstChild("Dependencies") ~= nil then
+				wait(item.Visible.Value == true) --Wait for dependencies to declare visibility
 			end
-			Item.Visible.Value = false
+			item.Visible.Value = false
 		else
-			warn("Button (" .. tostring(Item) .. ") doesn't have an affiliated object")
+			warn("Button (" .. tostring(item) .. ") doesn't have an affiliated object")
 		end
 	end
 end
 
-local function PositionPurchase(Buttons, Object)
-	if Object:FindFirstChild("Root") ~= nil then
-		Object.PrimaryPart = Object.Root
+local function PositionPurchase(buttons, object)
+	if object:FindFirstChild("Root") ~= nil then
+		object.PrimaryPart = object.Root
 												
-		local ModelPosition = Buttons:FindFirstChild("PrimaryPartPosition")
-		Object.PrimaryPart.Orientation = ModelPosition.Orientation
-		Object:SetPrimaryPartCFrame(CFrame.new(ModelPosition.Position))
+		local ModelPosition = buttons:FindFirstChild("PrimaryPartPosition")
+		object.PrimaryPart.Orientation = ModelPosition.Orientation
+		object:SetPrimaryPartCFrame(CFrame.new(ModelPosition.Position))
 	
 		ModelPosition:Destroy()
-		Object.PrimaryPart:Destroy()
+		object.PrimaryPart:Destroy()
 	end
 end
 
-local function PrepareTycoon(Tycoon)
-	local PurchasedObjects = Tycoon:WaitForChild("PurchasedObjects")
-	local Owner = Tycoon:WaitForChild("Owner")
+local function PrepareTycoon(tycoon)
+	local PurchasedObjects = tycoon:WaitForChild("PurchasedObjects")
+	local owner = tycoon:WaitForChild("Owner")
 		
-	local touchToClaimHead = Tycoon.Entrance:WaitForChild("Touch to Begin Construction!").Head
+	local touchToClaimHead = tycoon.Entrance:WaitForChild("Touch to Begin Construction!").Head
 	if touchToClaimHead.Parent:FindFirstChild("GateControl") == nil then
 		local GateControlClone = GateControl:Clone()
 		GateControlClone.Parent = touchToClaimHead.Parent
 		GateControlClone.Disabled = false
 	end
-	if Tycoon:FindFirstChild("TycoonAssetsHandler") == nil then
-		TycoonAssetsHandler:Clone().Parent = Tycoon
+	if tycoon:FindFirstChild("TycoonAssetsHandler") == nil then
+		TycoonAssetsHandler:Clone().Parent = tycoon
 	end	
-	if Tycoon:FindFirstChild("TycoonSpecialBuys") == nil then
-		SpecialBuy:Clone().Parent = Tycoon
+	if tycoon:FindFirstChild("TycoonSpecialBuys") == nil then
+		SpecialBuy:Clone().Parent = tycoon
 	end
-	local TycoonAssetsHandler = require(Tycoon.TycoonAssetsHandler) --Tycoon's possible purchases (table)
+	local TycoonAssetsHandler = require(tycoon.TycoonAssetsHandler) --Tycoon's possible purchases (table)
 		
-	for i,destroyModel in pairs (Tycoon.DemolishedObjects:GetChildren()) do
+	for _,destroyModel in pairs (tycoon.DemolishedObjects:GetChildren()) do
 		destroyModel.Transparency = 0
 	end
 	
@@ -137,8 +135,8 @@ local function PrepareTycoon(Tycoon)
 		local HitPlayer = game.Players:GetPlayerFromCharacter(hit.Parent)
 		
 		LoadTycoon.OnServerEvent:Connect(function(player, tycoon)
-			if tycoon == Tycoon and not TycoonPurchased then --Check to make sure repeat isnt happening because of this
-				if tycoon.Owner.Value == player and HitPlayer == player then
+			if tycoon == tycoon and not TycoonPurchased then --Check to make sure repeat isnt happening because of this
+				if owner.Value == player and HitPlayer == player then
 					local PlayerClaimHead = tycoon.Entrance:FindFirstChild("Touch to Begin Construction!").Head
 					local PlayerDataFile = PlayerData:FindFirstChild(tostring(player.UserId))
 					local OwnsTycoon = PlayerDataFile:FindFirstChild("OwnsTycoon")
@@ -155,18 +153,18 @@ local function PrepareTycoon(Tycoon)
 									if rType[i] then
 										local Research = rType[i]
 										if PlayerStatManager:getStat(player, Research["Research Name"]) == true then
-											local ResearchReference = Instance.new("Model", Tycoon.CompletedResearch)
+											local ResearchReference = Instance.new("Model", tycoon.CompletedResearch)
 											ResearchReference.Name = Research["Research Name"]
 										end
 									end
 								end
 							end
 							
-							local Buttons = Tycoon.Buttons:GetChildren()
+							local Buttons = tycoon.Buttons:GetChildren()
 							for key, object in pairs (TycoonAssetsHandler) do --Load previously purchased objects
 								if Data[key] == true then --Looking through sessionData if object bought
 									local ObjectName = key
-									for i,v in pairs(Buttons) do
+									for _,v in pairs(Buttons) do
 										if v.Object.Value == ObjectName then
 											PositionPurchase(v, object)
 											object.Parent = PurchasedObjects
@@ -176,7 +174,7 @@ local function PrepareTycoon(Tycoon)
 									end
 									HideButton(ObjectName, Buttons)
 									--print(key, " has been bought in a previous game session because data = " .. tostring(Data[key]))
-								else
+								--else
 									--print(tostring(object).." hasn't been bought for " .. tostring(tycoon) .. " because data = " .. tostring(Data[key]))
 								end
 							end
@@ -191,14 +189,14 @@ local function PrepareTycoon(Tycoon)
 					warn("Player == nil or " .. tostring(tycoon) .. " has already been purchased")
 				end
 			end
-			print("TYCOON DATA LOADED FOR: " .. tostring(Owner.Value))
+			print("TYCOON DATA LOADED FOR: " .. tostring(owner.Value))
 		end)
 	end)
 	
 	--Save Pressed Buttons
-	if PurchasedObjects ~= nil and Owner ~= nil then
+	if PurchasedObjects ~= nil and owner ~= nil then
 		PurchasedObjects.ChildAdded:Connect(function(instance)
-			local player = tostring(Owner.Value)
+			local player = tostring(owner.Value)
 			
 			if player ~= nil then
 				local bought = PlayerStatManager:getStat(player, instance.Name)
@@ -213,7 +211,7 @@ local function PrepareTycoon(Tycoon)
 	end
 end
 
-for i,tycoon in pairs (Tycoons) do
+for _,tycoon in pairs (Tycoons) do
 	PrepareTycoon(tycoon)
 end
 
@@ -225,15 +223,13 @@ end)
 while wait(59) do
 	pcall(function()
 		print("AutoSaving All Player Progress...")
-		local allPlayers = Players:GetChildren()
-		for i,player in pairs (Players:GetChildren()) do
-			if player ~= nil then
+		for _,player in pairs (players:GetChildren()) do
+			if player ~= nil then --if still in game
 				local playerDataFile = PlayerData:FindFirstChild(tostring(player.UserId))
 				local playerMoney = playerDataFile:FindFirstChild("Currencies"):FindFirstChild("UniversalCurrencies"):FindFirstChild("Coins")
 				
 				if playerMoney then 
 					PlayerStatManager:initiateSaving(player, "Coins", playerMoney.Value)
-					 --Initiate saving process by saving player money, then save other player data
 				end
 			end
 		end
