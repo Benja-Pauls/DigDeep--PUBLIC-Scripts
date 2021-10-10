@@ -229,7 +229,7 @@ local function ViewStorageMenu()
 	StorageMenu.TopTab.Visible = false
 	StorageMenu.EmptyNotifier.Visible = false
 	ManageSellMenu(false)
-	BeepSound:Play()
+	--BeepSound:Play()
 
 	StorageMenu.TopTab.Visible = true
 	OpenAffiliatedItemPreview("Materials")
@@ -970,7 +970,7 @@ local function ViewResearchMenu()
 	UpdatePageDisplay(CostList, false)
 
 	MenuSelect.Visible = false
-	BeepSound:Play()
+	--BeepSound:Play()
 end
 
 MenuSelect.ResearchMenuButton.Activated:Connect(function()
@@ -1069,6 +1069,10 @@ local function ColorTileRarity(tile, rarityInfo)
 	end
 end
 
+local doneCompletionStatus = "rbxassetid://7092611336"
+local notDoneCompletionStatus = "rbxassetid://7092617018"
+local notUnlockedCompletionStatus = "rbxassetid://6973810990"
+
 local function DisplayResearchTileInfo(researchInfo, researchType, onlySkillMet, visibleButton)
 	ResearchersList.InfoMenuLabel.Visible = true
 	ResearchersList.CostMenuLabel.Visible = true
@@ -1085,8 +1089,8 @@ local function DisplayResearchTileInfo(researchInfo, researchType, onlySkillMet,
 			end
 		end
 	end
-	
-	if not onlySkillMet then
+
+	if onlySkillMet ~= true then --onlySkillMet could be nil
 		visibleButton.Visible = true
 		if visibleButton:IsA("ImageButton") then
 			visibleButton.Active = true
@@ -1178,6 +1182,8 @@ local function DisplayResearchTileInfo(researchInfo, researchType, onlySkillMet,
 		InfoMenu.ResearchName.TextColor3 = Color3.fromRGB(204, 204, 204)
 
 		visBool2 = true
+		InfoMenu.DependsToComplete.Visible = true
+		InfoMenu.DependsToComplete.LoadingNotify.Visible = true
 
 		local dependencyCount = #researchInfo["Dependencies"]
 		local dependPages = InfoMenu.DependsToComplete.DependPages
@@ -1200,26 +1206,29 @@ local function DisplayResearchTileInfo(researchInfo, researchType, onlySkillMet,
 
 				if completed then
 					dependTile.Parent.BackgroundColor3 = Color3.fromRGB(7, 44, 6)
-					dependTile.CompletionStatus.Image = "rbxassetid://7092611336"
+					dependTile.CompletionStatus.Image = doneCompletionStatus
 					dependTile.CompletionStatus.Size = UDim2.new(0.067, 0, 0.456, 0)
 					dependTile.ResearchName.Text = "<b>" .. dependency .. "</b>"
 					dependTile.DisplayImage.Image = dependInfo["Research Image"]
 
 				else--Check if dependency research can be viewed
 					dependTile.Parent.BackgroundColor3 = Color3.fromRGB(38, 5, 5)
-					dependTile.CompletionStatus.Image = "rbxassetid://7092617018"
 					dependTile.CompletionStatus.Size = UDim2.new(0.075, 0, 0.507, 0)
 
-					dependViewable = CheckResearchDepends:InvokeServer(dependency)
 					if dependViewable then --dependencies met for dependency
 						dependTile.ResearchName.Text = "<b>" .. dependency .. "</b>"
+						dependTile.CompletionStatus.Image = notDoneCompletionStatus
 						dependTile.DisplayImage.Image = dependInfo["Research Image"]
 					else
 						dependTile.ResearchName.Text = "<b>[Unknown Research]</b>"
 						dependTile.ResearchName.TextColor3 = Color3.fromRGB(204, 204, 204)
+						dependTile.CompletionStatus.Image = notUnlockedCompletionStatus --lock status image
 						dependTile.DisplayImage.Image = "rbxassetid://6973810990" --lock image
+						dependTile.Parent.Active = false
 					end
 				end
+				dependTile.CompletionStatus.Visible = true
+				dependTile.NotFoundNotify.Visible = false
 				
 				local dependTileDebounce = false
 				dependTile.Parent.Activated:Connect(function() --Display depending research's info
@@ -1284,8 +1293,10 @@ local function DisplayResearchTileInfo(researchInfo, researchType, onlySkillMet,
 				dependPages.Page1.Visible = true
 			end
 		end
+		InfoMenu.DependsToComplete.LoadingNotify.Visible = false
 
 	else
+		InfoMenu.DependsToComplete.Visible = false
 		InfoMenu.ResearchTime.Text = "<b>" .. GuiUtility.ToDHMS(researchInfo["Research Length"], true) .. "</b>"
 		InfoMenu.DisplayImage.Image = researchInfo["Research Image"]
 		InfoMenu.DisplayImage.LockNotify.Visible = false
@@ -1303,7 +1314,6 @@ local function DisplayResearchTileInfo(researchInfo, researchType, onlySkillMet,
 	InfoMenu.Description.Visible = visBool1
 
 	local dependsToComplete = InfoMenu.DependsToComplete
-	dependsToComplete.Visible = visBool2
 	dependsToComplete.PageManager.NextPage.Active = visBool2
 	dependsToComplete.PageManager.NextPage.Selectable = visBool2
 	dependsToComplete.PageManager.PreviousPage.Active = visBool2
@@ -1354,15 +1364,14 @@ local function InsertTileInfo(menu, tile, researchData, researchType, finishTime
 				taskbar.BackButton.Active = true
 				
 				local menuType = string.gsub(tostring(tile.Parent.Parent), "Research", "")
-				local researchButton = InfoMenu.ResearchButton --AvailableResearch
-				if menuType == "Current" then
-					if finishTime then
+				local researchButton = InfoMenu.ResearchButton
+				if menuType == "Current" then --Change research button based on menu
+					if finishTime > os.time() then
 						researchButton = InfoMenu.ResearchingButton
 					else
 						researchButton = InfoMenu.CompleteButton
 					end
 				elseif menuType == "Previous" then
-					print("Previous")
 					researchButton = InfoMenu.CompletedButton
 				end
 					
@@ -1380,9 +1389,11 @@ local function InsertTileInfo(menu, tile, researchData, researchType, finishTime
 		local statAmount = statTable[2]
 		local discovered = false
 		local statType
+		local displayName
 		if statInfo.Parent then
 			discovered = CheckPlayerStat:InvokeServer(tostring(statInfo) .. "Discovered")
 			statType = string.gsub(statInfo.AssociatedSkill.Value, " Skill", "")
+			displayName = tostring(statInfo)
 
 			costTile.StatName.Text = "<b>" .. tostring(statInfo) .. "</b>"
 			costTile.DisplayImage.Image = statInfo["GUI Info"].StatImage.Value
@@ -1392,19 +1403,19 @@ local function InsertTileInfo(menu, tile, researchData, researchType, finishTime
 			ChangeCostColor(costTile, playerAmount, statAmount)
 			statAmount = GuiUtility.ConvertShort(statAmount) --simplify for display
 			
+			--Open storage view for cost tile
+			--**Player can access items in storage even if undiscovered or 0
 			tile.Activated:Connect(function()
-				--Player can access items in storage even if they have 0; will display hint and that it's undiscovered
-				local statName = string.gsub(tile.CostTile.StatName.Text, "</b>", "")
-				statName = string.gsub(statName, "<b>", "")
+				local statName = tile.CostTile.StatName.DisplayName.Value
 				
 				--See if tile in StorageMenu exists
 				local seeking = true
 				for _,page in pairs (StorageMenu.ItemsPreview.Materials:GetChildren()) do
-					if string.match(page.Name, "Page") and seeking == true then
+					if string.match(page.Name, "Page") and seeking then
 						if page.Rarity.Value == tile.Rarity.Value then
 							
 							for _,itemTile in pairs (page:GetChildren()) do
-								if string.match(itemTile.Name, "Slot") and seeking == true then
+								if string.match(itemTile.Name, "Slot") and seeking then
 									if itemTile.ItemName.Value == statName then --Tile exists, display storage
 										seeking = false
 										PrepareAllMenuVisibility()
@@ -1422,12 +1433,8 @@ local function InsertTileInfo(menu, tile, researchData, researchType, finishTime
 						end
 					end
 				end
-			
-
-				--Display and set up back button
-				--**When acessing the storage menu this way, the back button will be used to get back to the research
-				--info menu so players can get back to the cost list quickly
 			end)
+			
 		else --Exp Cost
 			statAmount = "Level " .. tostring(statAmount) 
 			discovered = true
@@ -1440,6 +1447,7 @@ local function InsertTileInfo(menu, tile, researchData, researchType, finishTime
 			end
 
 			costTile.StatName.Text = "<b>" .. string.gsub(statInfo["StatName"], " Skill", "") .. "</b>"
+			displayName = string.gsub(statInfo["StatName"], " Skill", "")
 			costTile.DisplayImage.Image = statInfo["StatImage"]
 			costTile.ResearchCost.Text = "<b>" .. statAmount .. "</b>"
 
@@ -1448,6 +1456,7 @@ local function InsertTileInfo(menu, tile, researchData, researchType, finishTime
 		end
 	
 		costTile.StatType.Text = statType
+		costTile.StatName.DisplayName.Value = displayName
 		ColorTileRarity(costTile, tile.Rarity.Value)
 
 		if not discovered then
@@ -1852,12 +1861,8 @@ taskbar.CurrentResearchButton.Activated:Connect(function()
 end)
 
 InfoMenu.ResearchButton.Activated:Connect(function()
-	InfoMenu.ResearchButton.Active = false
-	--Disable research button and reenable it when event is fired back to client
-	
+	InfoMenu.ResearchButton.Active = false --Disable research button and reenable it when event is fired back to client
 	PurchaseResearch:FireServer(SelectedResearch["Research Name"], SelectedResearchType)
-	
-	
 end)
 
 taskbar.AvailableResearchPM.NextPage.Activated:Connect(function()
@@ -1974,8 +1979,8 @@ CompleteResearch.OnClientEvent:Connect(function(ResearchData)
 		end
 	end
 	
-	--Little GUI animation with "show me" written on bottom to play cutscene if player wants to
-	--see where the new unlock is located. "To place a marker, view your journal and select ____"
+	--Little GUI animation with "show me" written on bottom to put a marker
+	--pointing at where the item they unlocked is located
 end)
 
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
