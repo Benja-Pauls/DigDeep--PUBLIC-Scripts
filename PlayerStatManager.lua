@@ -903,7 +903,7 @@ local function CheckResearchDepends(player, researchInfo, specificDepend)
 						local dependsMet = false
 						if PlayerStatManager:getStat(player, researchInfo["Research Name"], true) then
 							dependsMet = true
-						else
+						else --Depend not already completed, see if all depends met for 
 							dependsMet = CheckResearchDepends(player, researchInfo)
 						end
 
@@ -912,15 +912,16 @@ local function CheckResearchDepends(player, researchInfo, specificDepend)
 				end
 			end
 		end
-	end
-	
-	if researchInfo["Research Name"] then
+		
+	elseif researchInfo["Research Name"] then
 		if not PlayerStatManager:getStat(player, researchInfo["Research Name"], true) then
+			
+			--Count all dependencies since not specific
 			if researchInfo["Dependencies"] and specificDepend == nil then
 				local dependencies = researchInfo["Dependencies"]
 				
 				local dependenciesMet = 0
-				for _,dependency in pairs (dependencies) do
+				for _,dependency in pairs(dependencies) do
 					local researchCompleted = PlayerStatManager:getStat(player, dependency, true)
 					if researchCompleted then
 						dependenciesMet += 1
@@ -929,6 +930,8 @@ local function CheckResearchDepends(player, researchInfo, specificDepend)
 				
 				if dependenciesMet == #dependencies then
 					return true
+				else
+					return false
 				end
 				
 			elseif researchInfo["Dependencies"] and specificDepend then
@@ -936,18 +939,16 @@ local function CheckResearchDepends(player, researchInfo, specificDepend)
 					local researchCompleted = PlayerStatManager:getStat(player, specificDepend, true)
 					return researchCompleted
 				end
-				
 			else
 				warn(player, "is exploiting")
 			end
-			
 		else
 			warn(player, "is exploiting")
 		end
 	end
 end
 
-checkResearchDepends.OnServerInvoke = CheckResearchDepends
+checkResearchDepends.OnServerInvoke = CheckResearchDepends --call function on event invoke
 
 function CheckPlayerStat.OnServerInvoke(player, statName)
 	return PlayerStatManager:getStat(player, statName, true)
