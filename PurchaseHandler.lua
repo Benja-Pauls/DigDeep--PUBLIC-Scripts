@@ -36,7 +36,7 @@ function PurchaseTycoonObject(Table, Tycoon, Material)
 	
 	local Player = GetPlayer(stat.Parent.Parent.Parent.Name)
 	stat.Value = stat.Value - cost
-	Utility:UpdateMoneyDisplay(Player, stat.Value)
+	Utility:updateMoneyDisplay(Player, stat.Value)
 
 	--Position ReplicatedStorage-Object Clone to true position
 	if PurchaseableObjects[item.Object.Value]:FindFirstChild("Root") ~= nil then
@@ -137,15 +137,15 @@ local function MeetResearchCost(player, researchData, costName, paying)
 				else
 					if paying == "Experience" then
 						local ItemType = tostring(cost[1].Parent)
-						PlayerStatManager:ChangeStat(player, statName, 0, paying, ItemType)
+						PlayerStatManager:changeStat(player, statName, 0, paying, ItemType)
 					else
 						local ItemType = string.gsub(cost[1].Bag.Value, "Bag", "") .. "s"
 						local AmountRemaining = PlayerStatManager:getStat(player, statName) - cost[2]
 						if AmountRemaining < 0 then
-							PlayerStatManager:ChangeStat(player, "TycoonStorage" .. statName, AmountRemaining, "TycoonStorage", true)
-							PlayerStatManager:ChangeStat(player, statName, -cost[2], paying, true, "Zero", AmountRemaining)
+							PlayerStatManager:changeStat(player, "TycoonStorage" .. statName, AmountRemaining, "TycoonStorage", true)
+							PlayerStatManager:changeStat(player, statName, -cost[2], paying, true, "Zero", AmountRemaining)
 						else
-							PlayerStatManager:ChangeStat(player, statName, -cost[2], paying, ItemType)
+							PlayerStatManager:changeStat(player, statName, -cost[2], paying, ItemType)
 						end
 					end
 				end
@@ -179,14 +179,14 @@ PurchaseResearch.OnServerEvent:Connect(function(player, researchName, researchTy
 							local matMet = MeetResearchCost(player, researchData, "Material Cost")
 							
 							if expMet and matMet then
-								local clonedTable = Utility:CloneTable(researchData)
+								local clonedTable = Utility:cloneTable(researchData)
 								
 								MeetResearchCost(player, researchData, "Material Cost", "Inventory")
 								MeetResearchCost(player, researchData, "Experience Cost", "Experience")
 								
 								local finishTime = os.time() + researchData["Research Length"]
-								PlayerStatManager:ChangeStat(player, researchData["Research Name"] .. "FinishTime", finishTime, "Research", researchData["Research Name"])
-								PlayerStatManager:ChangeStat(player, researchData["Research Name"] .. "Purchased", true, "Research", researchData["Research Name"])
+								PlayerStatManager:changeStat(player, researchData["Research Name"] .. "FinishTime", finishTime, "Research", researchData["Research Name"])
+								PlayerStatManager:changeStat(player, researchData["Research Name"] .. "Purchased", true, "Research", researchData["Research Name"])
 								
 								UpdateResearch:FireClient(player, clonedTable, researchType, false, true, finishTime)
 								PurchaseResearch:FireClient(player, clonedTable)
@@ -258,14 +258,14 @@ CompleteResearch.OnServerEvent:Connect(function(player, ResearchName, ResearchTy
 			local ResearchData
 			for research = 1,#ResearchTypeTable,1 do
 				if ResearchTypeTable[research]["Research Name"] == ResearchName and ResearchData == nil then
-					ResearchData = Utility:CloneTable(ResearchTypeTable[research])
+					ResearchData = Utility:cloneTable(ResearchTypeTable[research])
 				end
 			end
 			
 			if ResearchData then
 				local UsedResearchSlots = PlayerStatManager:getStat(player, "ResearchersUsed")
-				PlayerStatManager:ChangeStat(player, "ResearchersUsed", UsedResearchSlots - 1, "Research")
-				PlayerStatManager:ChangeStat(player, ResearchName, true, "Research", ResearchType)
+				PlayerStatManager:changeStat(player, "ResearchersUsed", UsedResearchSlots - 1, "Research")
+				PlayerStatManager:changeStat(player, ResearchName, true, "Research", ResearchType)
 				
 				local PlayerDataFile = PlayerData:FindFirstChild(tostring(player.UserId))
 				if ResearchType == "Tycoon Research" then
@@ -338,7 +338,7 @@ local StoreFrontInteract = EventsFolder.HotKeyInteract:WaitForChild("StoreFrontI
 local UpdateStoreFront = EventsFolder.GUI:WaitForChild("UpdateStoreFront")
 
 StoreFrontInteract.OnServerEvent:Connect(function(player, NPC)
-	local shopData = Utility:CloneTable(AllShopData[tostring(NPC)])
+	local shopData = Utility:cloneTable(AllShopData[tostring(NPC)])
 	local AlreadyPurchased = {}
 	
 	for item = 1,#shopData["Items"],1 do
@@ -372,18 +372,18 @@ StoreFrontPurchase.OnServerEvent:Connect(function(player, NPC, Item)
 		if PlayerCash.Value >= ItemPrice then
 			--Pay for Item
 			PlayerCash.Value = PlayerCash.Value - ItemPrice
-			Utility:UpdateMoneyDisplay(player, PlayerCash.Value)
+			Utility:updateMoneyDisplay(player, PlayerCash.Value)
 			
 			local itemName = tostring(Item)
 			local itemType = tostring(Item.Parent)
 			local equipType = tostring(Item.Parent.Parent)
 			
 			if equipType == "InventoryItems" then
-				PlayerStatManager:ChangeStat(player, itemName, true, equipType, itemType)
+				PlayerStatManager:changeStat(player, itemName, true, equipType, itemType)
 				
 			else --Equipment
-				PlayerStatManager:ChangeStat(player, itemName, true, equipType, itemType)
-				PlayerStatManager:ChangeStat(player, "Equipped" .. itemType, itemName, equipType, itemType)
+				PlayerStatManager:changeStat(player, itemName, true, equipType, itemType)
+				PlayerStatManager:changeStat(player, "Equipped" .. itemType, itemName, equipType, itemType)
 			end
 			
 			StoreFrontPurchase:FireClient(player, Item)
