@@ -315,7 +315,7 @@ local function SpawnStructures(x,y,z,Bounds,Region,sourceBlockDist)
 				if Y then
 					if UsedPositions[PositionKey(x,Y,z)] ~= nil and UsedPositions[PositionKey(x,Y,z)] ~= false then
 						local connectedBlock = UsedPositions[PositionKey(x,Y,z)]
-						local connectedBlockInfo = Utility:GetItemInfo(tostring(connectedBlock))
+						local connectedBlockInfo = Utility:getItemInfo(tostring(connectedBlock))
 						if connectedBlockInfo:FindFirstChild("SpecialStructure") then 
 							print("DESTROYING STRUCTURE")
 							Structure:Destroy()
@@ -493,10 +493,10 @@ local UpdateItemCount = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateIt
 MineOre.Event:Connect(function(Player, ore)
 	local itemInfo
 	if ore.Name == "Target" then
-		itemInfo = Utility:GetItemInfo(ore.Parent.Name)
+		itemInfo = Utility:getItemInfo(ore.Parent.Name)
 		ore = ore.Parent
 	else
-		itemInfo = Utility:GetItemInfo(ore.Name)
+		itemInfo = Utility:getItemInfo(ore.Name)
 	end
 	
 	local associatedSkill = itemInfo.AssociatedSkill.Value
@@ -540,7 +540,7 @@ MineOre.Event:Connect(function(Player, ore)
 							else
 								orePosition = connectedOre.Position
 							end
-							local connectedOreInfo = Utility:GetItemInfo(tostring(connectedOre))
+							local connectedOreInfo = Utility:getItemInfo(tostring(connectedOre))
 							local connectedOreColor = connectedOreInfo["GUI Info"].OreColor.Value
 							MakeDustParticles(orePosition, connectedOreColor)
 							connectedOre:Destroy()
@@ -556,24 +556,25 @@ MineOre.Event:Connect(function(Player, ore)
 					local PlayerDataFile = PlayerData:WaitForChild(tostring(Player.UserId))
 					
 					local PlayerInventory = PlayerDataFile:WaitForChild("Inventory")
-					PlayerStatManager:ChangeStat(Player, ore.Name, 1, "Inventory")
+					PlayerStatManager:changeStat(Player, ore.Name, 1, "Inventory")
 					
 					local PlayerExperience = PlayerDataFile:WaitForChild("Experience")
 					local InitialOreExperience = itemInfo.Experience.Value
-					PlayerStatManager:ChangeStat(Player, associatedSkill, InitialOreExperience, "Experience")
+					PlayerStatManager:changeStat(Player, associatedSkill, InitialOreExperience, "Experience")
 					
-					local AssociatedFolder = PlayerInventory:WaitForChild(itemType)
+					local AssociatedFolder = PlayerInventory:WaitForChild(itemType) --Inventory.Mining usually
 					local CurrentOre = AssociatedFolder:FindFirstChild(ore.Name)
 					local SkillsFolder = PlayerExperience:WaitForChild("Skills")
 					local CurrentSkill = SkillsFolder:FindFirstChild("Mining Skill")
-					
 					
 					--Change player discovered value if this is first time acquired
 					local DiscoverValue = CurrentOre:FindFirstChild(tostring(ore) .. "Discovered")
 					if DiscoverValue.Value == false then
 						print("Changing " .. tostring(DiscoverValue) .. " to true")
 						DiscoverValue.Value = true
-						PlayerStatManager:ChangeStat(Player, tostring(ore) .. "Discovered", true, tostring(AssociatedFolder))
+						
+						--saveFolder param is itemType since changing discovery value (not GUIupdated since bool)
+						PlayerStatManager:changeStat(Player, tostring(ore) .. "Discovered", true, tostring(AssociatedFolder))
 					end
 				else
 					warn("mined or experience cannot be saved")
