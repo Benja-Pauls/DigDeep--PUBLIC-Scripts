@@ -20,6 +20,24 @@ for i,pickaxe in pairs (game.ReplicatedStorage.Equippable.Tools.Pickaxes:GetChil
 end
 
 --------------<|Utility Functions|>-------------------------------------------------------------------------------------------
+local PlayerStatManager = require(game.ServerScriptService:WaitForChild("PlayerStatManager"))
+local PlayerData = game.ServerStorage:WaitForChild("PlayerData")
+local TeleportButton = game.ReplicatedStorage.Events.GUI:WaitForChild("TeleportButton")
+
+--Put pickaxe functionality scripts in pickaxes
+local PickServer = script:FindFirstChild("PickServer")
+local PickaxeScript = script:FindFirstChild("Pickaxe Script")
+for i,pickaxe in pairs (game.ReplicatedStorage.Equippable.Tools.Pickaxes:GetChildren()) do
+	local PickServerClone = PickServer:Clone()
+	local PickaxeScriptClone = PickaxeScript:Clone()
+	
+	PickServerClone.Parent = pickaxe
+	PickServerClone.Disabled = false
+	PickaxeScriptClone.Parent = pickaxe
+	PickaxeScriptClone.Disabled = false
+end
+
+--------------<|Utility Functions|>-------------------------------------------------------------------------------------------
 local Utility = require(game.ServerScriptService.Utility)
 	
 local function FillObjectTables(folder, IsA, Table) --Folder Read Setup
@@ -488,7 +506,6 @@ function GenerateOre(x,y,z,Override,PresetPoint,Region,Player)
 end
 
 local MineOre = game.ReplicatedStorage.Events.Utility:WaitForChild("MineOre")
-local UpdateItemCount = game.ReplicatedStorage.Events.GUI:WaitForChild("UpdateItemCount")
 
 MineOre.Event:Connect(function(Player, ore)
 	local itemInfo
@@ -509,28 +526,28 @@ MineOre.Event:Connect(function(Player, ore)
 		if itemAmount < maxItemAmount  then
 			if ore:FindFirstChild("Claimed") == nil then
 				
-				local Hitbox
+				local hitbox
 				if ore:IsA("Model") then
-					Hitbox = ore:FindFirstChild("GenerationPosition")
+					hitbox = ore:FindFirstChild("GenerationPosition")
 				else
-					Hitbox = ore
+					hitbox = ore
 				end
-				local CompactPos = Vector3.new(0 + Hitbox.Position.X/7,(Hitbox.Position.Y - -5)/(-7),Hitbox.Position.Z/7)
 				
-				UsedPositions[PositionKey(CompactPos.X,CompactPos.Y,CompactPos.Z)] = false
+				local compactPos = Vector3.new(0 + hitbox.Position.X/7, (hitbox.Position.Y - -5)/(-7), hitbox.Position.Z/7)
+				UsedPositions[PositionKey(compactPos.X, compactPos.Y, compactPos.Z)] = false
 				
-				for i,Vector in pairs(VectorsMine) do
-					local NewPos = CompactPos + Vector
-					if UsedPositions[PositionKey(NewPos.x,NewPos.y,NewPos.z)] == nil then
-						GenerateOre(NewPos.x,NewPos.y,NewPos.z,false,nil,nil,Player)
+				for _,vector in pairs(VectorsMine) do
+					local newPos = compactPos + vector
+					if UsedPositions[PositionKey(newPos.x, newPos.y, newPos.z)] == nil then
+						GenerateOre(newPos.x, newPos.y, newPos.z, false, nil, nil, Player)
 					end
 				end
 				
-				local Bounds,sourceBlockDist = CalculateNoise(CompactPos.X,CompactPos.Y,CompactPos.Z,true)
+				local bounds,sourceBlockDist = CalculateNoise(compactPos.X,compactPos.Y,compactPos.Z,true)
 				
-				if Bounds then --If structure nearby, break structure (growing from/hanging from) destroyed block
+				if bounds then --If structure nearby, break structure (growing from/hanging from) destroyed block
 					--local Y = CalculateInterferingY(Bounds, CompactPos.Y, nil, sourceBlockDist)--for connected structure
-					local connectedOre = UsedPositions[PositionKey(CompactPos.X,CompactPos.Y+sourceBlockDist,CompactPos.Z)]
+					local connectedOre = UsedPositions[PositionKey(compactPos.X, compactPos.Y+sourceBlockDist, compactPos.Z)]
 					
 					if typeof(connectedOre) ~= "boolean" then
 						if connectedOre:FindFirstChild("SpecialStructure") then
@@ -540,6 +557,7 @@ MineOre.Event:Connect(function(Player, ore)
 							else
 								orePosition = connectedOre.Position
 							end
+							
 							local connectedOreInfo = Utility:getItemInfo(tostring(connectedOre))
 							local connectedOreColor = connectedOreInfo["GUI Info"].OreColor.Value
 							MakeDustParticles(orePosition, connectedOreColor)
@@ -553,44 +571,41 @@ MineOre.Event:Connect(function(Player, ore)
 				local experience = PlayerStatManager:getStat(Player, "Mining Skill")
 				--print(typeof(mined),typeof(experience))
 				if typeof(mined) == "number" and typeof(experience) == "number" then
-					local PlayerDataFile = PlayerData:WaitForChild(tostring(Player.UserId))
+					local playerDataFile = PlayerData:WaitForChild(tostring(Player.UserId))
 					
-					local PlayerInventory = PlayerDataFile:WaitForChild("Inventory")
+					local playerInventory = playerDataFile:WaitForChild("Inventory")
 					PlayerStatManager:changeStat(Player, ore.Name, 1, "Inventory")
 					
-					local PlayerExperience = PlayerDataFile:WaitForChild("Experience")
-					local InitialOreExperience = itemInfo.Experience.Value
-					PlayerStatManager:changeStat(Player, associatedSkill, InitialOreExperience, "Experience")
+					local initialOreExperience = itemInfo.Experience.Value
+					PlayerStatManager:changeStat(Player, associatedSkill, initialOreExperience, "Experience")
 					
-					local AssociatedFolder = PlayerInventory:WaitForChild(itemType) --Inventory.Mining usually
-					local CurrentOre = AssociatedFolder:FindFirstChild(ore.Name)
-					local SkillsFolder = PlayerExperience:WaitForChild("Skills")
-					local CurrentSkill = SkillsFolder:FindFirstChild("Mining Skill")
+					local associatedFolder = playerInventory:WaitForChild(itemType) --Inventory.Mining usually
+					local currentOreData = associatedFolder:FindFirstChild(ore.Name)
 					
 					--Change player discovered value if this is first time acquired
-					local DiscoverValue = CurrentOre:FindFirstChild(tostring(ore) .. "Discovered")
-					if DiscoverValue.Value == false then
-						print("Changing " .. tostring(DiscoverValue) .. " to true")
-						DiscoverValue.Value = true
+					local itemDiscovered = currentOreData:FindFirstChild(tostring(ore) .. "Discovered")
+					if itemDiscovered.Value == false then
+						print("Found a new item!" .. tostring(ore))
+						itemDiscovered.Value = true
 						
 						--saveFolder param is itemType since changing discovery value (not GUIupdated since bool)
-						PlayerStatManager:changeStat(Player, tostring(ore) .. "Discovered", true, tostring(AssociatedFolder))
+						PlayerStatManager:changeStat(Player, tostring(ore) .. "Discovered", true, tostring(associatedFolder))
 					end
 				else
 					warn("mined or experience cannot be saved")
 				end
 				
-				local OrePosition
+				local orePosition
 				if ore:IsA("Model") then
-					OrePosition = ore.GenerationPosition.Position
+					orePosition = ore.GenerationPosition.Position
 				else
-					OrePosition = ore.Position
+					orePosition = ore.Position
 				end
 				
 				ore:Destroy()
 				
 				local oreColor = itemInfo["GUI Info"].OreColor.Value
-				MakeDustParticles(OrePosition,oreColor)
+				MakeDustParticles(orePosition, oreColor)
 			end
 		else
 			print("Inventory has reached capacity with current bag")
@@ -604,22 +619,21 @@ MineOre.Event:Connect(function(Player, ore)
 	end
 end)
 
-function MakeDustParticles(OrePosition, OreColor)
-	--Perhaps have an event fire to all players to check if player has particles enabled?
-	--(Could also be used to check magnitude to mined position to see if they need to be made for their screen at all)
+function MakeDustParticles(orePosition, oreColor)
+	--Have this be a local event to save on lag (individual player can also choose to have particles disabled)
 	
 	coroutine.resume(coroutine.create(function()
-		local LeftoverDust = game.ReplicatedStorage.GuiElements.BlockDestroy:Clone()
+		local leftoverDust = game.ReplicatedStorage.GuiElements.BlockDestroy:Clone()
 
 		--To make the particles look less like they're coming off one source, make multiple small emitters offset from source
-		LeftoverDust.Parent = workspace
-		LeftoverDust.CFrame = CFrame.new(OrePosition)
-		LeftoverDust.Particles.Color = ColorSequence.new(OreColor)
-		LeftoverDust.Particles.Enabled = true
+		leftoverDust.Parent = workspace
+		leftoverDust.CFrame = CFrame.new(orePosition)
+		leftoverDust.Particles.Color = ColorSequence.new(oreColor)
+		leftoverDust.Particles.Enabled = true
 		wait(0.05)
-		LeftoverDust.Particles.Enabled = false
+		leftoverDust.Particles.Enabled = false
 		wait(0.5)
-		LeftoverDust:Destroy()
+		leftoverDust:Destroy()
 	end))	
 end
 
@@ -630,19 +644,19 @@ local function GenerateMine()
 	workspace.Regen.CanCollide = true
 	workspace.Regen.CFrame = CFrame.new(355, -10, 11) --model covers cave during generation
 	
-	for i,Player in pairs(workspace.Players:GetChildren()) do
-		if Player:FindFirstChild("LowerTorso") then
-			local RawPosition = Player.LowerTorso.Position
-			local CompactPos = Vector3.new(0 + RawPosition.X/7,(RawPosition.Y - -5)/(-7),RawPosition.Z/7)
-			if math.floor(CompactPos.X) > 0 and -math.floor(CompactPos.Y) < 10 and math.floor(CompactPos.Z) > 0 then
-				Player.LowerTorso.CFrame = workspace.SpawnLocation.CFrame
+	for _,player in pairs(workspace.Players:GetChildren()) do
+		if player:FindFirstChild("LowerTorso") then
+			local rawPosition = player.LowerTorso.Position
+			local compactPos = Vector3.new(0 + rawPosition.X/7,(rawPosition.Y - -5)/(-7),rawPosition.Z/7)
+			if math.floor(compactPos.X) > 0 and -math.floor(compactPos.Y) < 10 and math.floor(compactPos.Z) > 0 then
+				player.LowerTorso.CFrame = workspace.SpawnLocation.CFrame
 			end
 		end
 	end
 	
 	local count = 1
-	for i,Ore in pairs(workspace.Mine:GetChildren()) do
-		Ore:Destroy()
+	for _,ore in pairs(workspace.Mine:GetChildren()) do
+		ore:Destroy()
 		count = count + 1
 		if count > 50 then
 			count = 1
@@ -664,7 +678,7 @@ local function GenerateMine()
 	workspace.Regen.CFrame = CFrame.new(355, 10, 11)
 	
 	repeat wait(10) until #workspace.Mine:GetChildren() > 5000
-	print(tostring(#workspace.Mine:GetChildren()) .. ";consequently, mine is resetting")
+	print(tostring(#workspace.Mine:GetChildren()) .. "; consequently, the MINE IS RESETTING")
 	GenerateMine()
 end
 
