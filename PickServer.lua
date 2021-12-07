@@ -7,7 +7,7 @@ local Player = script.Parent.Parent.Parent --Maybe set this more accordingly? Se
 local ReplicatedStorage = game.ReplicatedStorage
 local MineOre = ReplicatedStorage.Events.Utility:WaitForChild("MineOre")
 local GetBagCount = ReplicatedStorage.Events.Utility:WaitForChild("GetBagCount")
-local UpdateItemCount = ReplicatedStorage.Events.GUI:WaitForChild("UpdateItemCount")
+local updateItemCount = ReplicatedStorage.Events.GUI:WaitForChild("UpdateItemCount")
 
 --When the player barely hovers over the UI, the pickaxe mines continuously... mouse.target check must be getting confused
 
@@ -100,11 +100,12 @@ local function StartMining()
 								Tool.IsMining.Value = false
 							end
 						else
-							UpdateItemCount:FireClient(Player, ItemCount, BagCapacity, BagType)
+							print("Player's bag is full")
+							updateItemCount:FireClient(Player, ItemCount, BagCapacity, BagType)
 						end
 					else
 						print("Player does not have a bag equipped!", Player, ItemCount, 0, BagType)
-						UpdateItemCount:FireClient(Player, ItemCount, 0, BagType)
+						updateItemCount:FireClient(Player, ItemCount, 0, BagType)
 					end
 				end
 			else
