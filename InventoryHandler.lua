@@ -22,7 +22,6 @@ local UpdateEquippedItem = eventsFolder.GUI:WaitForChild("UpdateEquippedItem")
 local updateExperience = eventsFolder.GUI:WaitForChild("UpdateExperience")
 local updateInventory = eventsFolder.GUI:WaitForChild("UpdateInventory")
 local UpdatePlayerMenu = eventsFolder.GUI:WaitForChild("UpdatePlayerMenu")
-local UpdateItemCount = eventsFolder.GUI:WaitForChild("UpdateItemCount")
 
 local CheckResearchDepends = eventsFolder.Utility:WaitForChild("CheckResearchDepends")
 local DepositInventory = eventsFolder.Utility:WaitForChild("DepositInventory")
