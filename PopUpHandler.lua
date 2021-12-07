@@ -642,11 +642,12 @@ end
 ---------------------<|RightSide PopUp Management|>---------------------------------------------------------------------
 
 local function CreateRightSidePopUp(newPopUp, popUpType, statName, itemTypeName, amountAdded, levelUp)
+	print("New PopUp: ", newPopUp, popUpType, statName, itemTypeName, amountAdded, levelUp)
 	
 	--Insert Tile Info
 	local newTweenInfo
 	local expireTime
-	if popUpType == "Item" or "Equipment" then
+	if popUpType == ("Item" or "Equipment") then
 		local itemInfo
 		if popUpType == "Item" then
 			statName = string.gsub(statName, "Discovered", "") --in case newly discovered
@@ -725,7 +726,10 @@ local function CreateRightSidePopUp(newPopUp, popUpType, statName, itemTypeName,
 				HideGeneralPopUp(newPopUp)
 			end)
 			
+		--elseif 
+			
 		else --BagCapacityNotify, ItemsStoredNotify
+			print("***", popUpType)
 			newPopUp.Activated:Connect(function()
 				ShowDataMenu(nil, nil, nil, dataMenu.InventoryMenu, dataMenu.InventoryMenu.MaterialsMenu)
 				HideGeneralPopUp(newPopUp)
@@ -792,6 +796,19 @@ end)
 local sellItemNotify = guiElements.NotifyPopUps.SellItemNotify
 sellItem.OnClientEvent:Connect(function()
 	CreateRightSidePopUp(sellItemNotify:Clone(), "SellItemNotify") --Should this, if clicked, open notify menu? **Will notify contain transaction history?
+	
+	--This pop up should, instead of making its own popup, use the item
+	--acquired popups and show that the player has lost some.
+	
+	--At the same time, show the overall currencyType display that players
+	--are used to and show a plus of $gained going into the number
+	
+	
+	--**Look at ClickUp To-Do list for more info about this
+	
+	
+	
+	
 end)
 
 updateInventory.OnClientEvent:Connect(function(statName, itemTypeName, value, Type, amountAdded)
@@ -978,6 +995,12 @@ updateResearch.OnClientEvent:Connect(function(researchData, researchType, comple
 	end
 end)
 
+--[[
+
+This should also be a function to call with the sellItemNotify since this will exclusively display
+the +/- amount going into the overall currency display on screen (instead of dedicating its own, large
+popup to itself)
+
 displayCurrencyPopUp.OnClientEvent:Connect(function(currencyType, amount)
 	if amount ~= 0 then
 		local popUpText
@@ -993,4 +1016,5 @@ displayCurrencyPopUp.OnClientEvent:Connect(function(currencyType, amount)
 		CreateRightSidePopUp(currencyPopUp, tostring(currencyPopUp))
 	end
 end)
+]]
 
