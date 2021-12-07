@@ -244,7 +244,7 @@ end)
 local function FindNearbyRarity(Menu, rarityInfo, orderValue, direction)
 	if orderValue + direction ~= 0 and orderValue + direction < #rarityInfo.Parent:GetChildren() then
 		local checkedRarityName
-		for i,rarity in pairs (rarityInfo.Parent:GetChildren()) do
+		for _,rarity in pairs (rarityInfo.Parent:GetChildren()) do
 			if rarity:IsA("Color3Value") and checkedRarityName == nil then
 				if rarity.Order.Value == orderValue + direction then
 					checkedRarityName = rarity.Name
@@ -268,7 +268,7 @@ end
 local function FinalizePageCreation(itemMenu, rarityInfo, referencePageNumber, insertionDirection)
 	--print("Creating a new page in ", itemMenu, " with page number: ", referencePageNumber + insertionDirection, " and rarity ", rarityInfo)
 
-	for i,page in pairs (itemMenu:GetChildren()) do
+	for _,page in pairs (itemMenu:GetChildren()) do
 		local pageNumber = string.gsub(page.Name, "Page", "")
 		if tonumber(pageNumber) >= referencePageNumber + insertionDirection then
 			page.Name = "Page" .. tostring(pageNumber + 1)
@@ -295,7 +295,7 @@ function ManageSellMenu(bool)
 	StorageMenu.EmptyNotifier.Visible = bool
 	StorageMenu.BackgroundFade.Visible = bool
 	
-	for i,button in pairs (StorageMenu:GetChildren()) do
+	for _,button in pairs (StorageMenu:GetChildren()) do
 		if button:IsA("ImageButton") then
 			button.Visible = bool
 			button.Selectable = bool
@@ -303,7 +303,7 @@ function ManageSellMenu(bool)
 		end
 	end
 	
-	for i,button in pairs (SelectionMenu:GetChildren()) do
+	for _,button in pairs (SelectionMenu:GetChildren()) do
 		if button:IsA("ImageButton") and (string.find(button.Name, "Rarity") or string.find(button.Name, "Item")) then
 			button.Active = not bool
 			button.Selectable = not bool
@@ -316,14 +316,14 @@ function OpenAffiliatedItemPreview(MenuName)
 		SelectionMenu.Visible = true
 		ItemsPreview.Visible = true
 		
-		for i,button in pairs (SelectionMenu:GetChildren()) do
+		for _,button in pairs (SelectionMenu:GetChildren()) do
 			if button:IsA("ImageButton") and string.find(button.Name, "Item") or string.find(button.Name, "Rarity") then
 				button.Active = true
 				button.Selectable = true
 			end
 		end
 		
-		for i,menu in pairs (ItemsPreview:GetChildren()) do
+		for _,menu in pairs (ItemsPreview:GetChildren()) do
 			if menu:IsA("Frame") then
 				if tostring(menu) == MenuName then
 					menu.Visible = true
@@ -439,11 +439,11 @@ function ReadyItemTypeMenu(Menu)
 	CurrentMenu = Menu
 	
 	local pageCount = 0
-	for i,page in pairs (Menu:GetChildren()) do
+	for _,page in pairs (Menu:GetChildren()) do
 		if page:IsA("Frame") and string.find(page.Name, "Page") then
 			page.Visible = false
 			pageCount += 1
-			for i,tile in pairs (page:GetChildren()) do
+			for _,tile in pairs (page:GetChildren()) do
 				if tile:IsA("TextButton") then
 					tile.BorderSizePixel = 1
 				end
@@ -493,7 +493,7 @@ local function DisplaySellMenuElements(bool, bool2, ItemName)
 	SellMenu.Visible = bool
 	StorageMenu.CloseSellMenu.Visible = bool
 	StorageMenu.SellButton.Visible = bool
-	for i,gui in pairs (SellMenu:GetChildren()) do
+	for _,gui in pairs (SellMenu:GetChildren()) do
 		if not gui:IsA("NumberValue") and not gui:IsA("ObjectValue") and not string.find(gui.Name, "Constraint") then
 			gui.Visible = bool
 		end
@@ -544,7 +544,7 @@ local function ChangeToTileInMenu(Page, seekedTileSlot)
 	--local newTile
 	if seekedTileSlot == -1 then --last tile of page
 		local pageTileCount = 0
-		for i,tile in pairs (Page:GetChildren()) do
+		for _,tile in pairs (Page:GetChildren()) do
 			if (tile:IsA("TextButton") or tile:IsA("ImageButton")) and string.find(tile.Name, "Slot") then
 				 pageTileCount += 1
 			end
@@ -553,7 +553,7 @@ local function ChangeToTileInMenu(Page, seekedTileSlot)
 	end
 	
 	local tileNotFound = true
-	for i,tile in pairs (Page:GetChildren()) do
+	for _,tile in pairs (Page:GetChildren()) do
 		if tileNotFound then
 			if (tile:IsA("TextButton") or tile:IsA("ImageButton")) and string.find(tile.Name, "Slot") then
 				local tileSlotCount = string.gsub(tile.Name, "Slot", "")
@@ -589,7 +589,7 @@ function MoveToTile(Menu, tileDirection, rarityDirection)
 
 			--Tile Count on page
 			local pageTileCount = 0
-			for i,tile in pairs (currentPage:GetChildren()) do
+			for _,tile in pairs (currentPage:GetChildren()) do
 				if tile:IsA("TextButton") then
 					pageTileCount += 1
 				end
@@ -752,8 +752,8 @@ function ManageStorageTiles(MenuName)
 		
 		local tycoonStorageTile = guiElements.TycoonStorageTile
 		
-		for i,itemType in pairs (game.ReplicatedStorage.InventoryItems:GetChildren()) do
-			for i,item in pairs (itemType:GetChildren()) do --make tile for every item
+		for _,itemType in pairs (game.ReplicatedStorage.InventoryItems:GetChildren()) do
+			for _,item in pairs (itemType:GetChildren()) do --make tile for every item
 				--print("Creating a storage tile for ", item)
 				local itemRarity = item["GUI Info"].RarityName.Value
 				local rarityInfo = guiElements.RarityColors:FindFirstChild(itemRarity)
@@ -770,7 +770,7 @@ function ManageStorageTiles(MenuName)
 						local possiblePage = itemMenu:FindFirstChild("Page" .. tostring(highRarityPage))
 						
 						local tileCount = 0
-						for i,tile in pairs (possiblePage:GetChildren()) do
+						for _,tile in pairs (possiblePage:GetChildren()) do
 							if (tile:IsA("ImageButton") or tile:IsA("TextButton")) and string.find(tile.Name, "Slot") then
 								tileCount += 1
 							end
@@ -786,7 +786,7 @@ function ManageStorageTiles(MenuName)
 						local insertDirection
 						local referencePageNumber
 						local rarityReferenceFound = false
-						for i,page in pairs (itemMenu:GetChildren()) do
+						for _,page in pairs (itemMenu:GetChildren()) do
 							if rarityReferenceFound then --close in on "edge" page
 								if page.Rarity.Value == itemMenu:FindFirstChild("Page" .. tostring(referencePageNumber)) then
 									local pageNumber = string.gsub(page.Name, "Page", "")
@@ -829,7 +829,7 @@ function ManageStorageTiles(MenuName)
 				
 				--Finally, position tile onto page
 				local slotCount = 0
-				for i,slot in pairs (Page:GetChildren()) do
+				for _,slot in pairs (Page:GetChildren()) do
 					if (slot:IsA("ImageButton") or slot:IsA("TextButton")) and string.find(slot.Name, "Slot") then
 						local slotNumber = string.gsub(slot.Name, "Slot", "")
 						if tonumber(slotNumber) > slotCount then
@@ -1613,7 +1613,7 @@ end
 local function GetTileSlotCount(Page, TileTruePosition, AffectingTile, Change)
 	--Count other slots on page
 	local SlotCount = 0
-	for i,slot in pairs (Page:GetChildren()) do
+	for _,slot in pairs (Page:GetChildren()) do
 		if slot:IsA("TextButton") and string.find(slot.Name, "Slot") then
 			if slot.TruePosition.Value < TileTruePosition then
 				if Change == -1 and slot == AffectingTile then
@@ -1632,12 +1632,12 @@ function ManageTileTruePosition(Menu, Page, AffectingTile, TruePosition, MaxTile
 	--Change is how higher TruePosition tiles should move (up 1 or down 1)
 	local PageNumber = string.gsub(Page.Name, "Page", "")
 	
-	for i,page in pairs (Menu:GetChildren()) do
+	for _,page in pairs (Menu:GetChildren()) do
 		if page:IsA("Frame") and string.find(page.Name, "Page") then
 		local CurrentPageNumber = string.gsub(page.Name, "Page", "")
 			
 			if tonumber(CurrentPageNumber) >= tonumber(PageNumber) then
-				for i,tile in pairs (page:GetChildren()) do
+				for _,tile in pairs (page:GetChildren()) do
 					if tile:IsA("TextButton") and string.find(tile.Name, "Slot") then
 						if tile.TruePosition.Value >= TruePosition then --Every tile "above" affecting tile
 							local SlotCount = 0
@@ -1695,7 +1695,7 @@ end
 --------------------<|Page Manager Functions|>------------------------
 
 function ResetPageOrder(Menu)
-	for i,page in pairs (Menu:GetChildren()) do
+	for _,page in pairs (Menu:GetChildren()) do
 		if page:IsA("Frame") and string.find(page.Name, "Page") then
 			page.Position = UDim2.new(0, 0, 0, 0)
 			if page.Name == "Page1" then
@@ -1737,7 +1737,7 @@ end
 
 function GetHighPage(Menu, rarityName)
 	local HighPage = 0
-	for i,page in pairs (Menu:GetChildren()) do
+	for _,page in pairs (Menu:GetChildren()) do
 		if page:IsA("Frame") and string.find(page.Name, "Page") then
 			if rarityName then
 				local RarityIsPresent = false
@@ -1761,7 +1761,7 @@ function GetHighPage(Menu, rarityName)
 end
 
 local function ManagePageInvis(VisiblePage)
-	for i,page in pairs (VisiblePage.Parent:GetChildren()) do
+	for _,page in pairs (VisiblePage.Parent:GetChildren()) do
 		if page:IsA("Frame") then
 			if page ~= VisiblePage then
 				page.Visible = false
@@ -1996,10 +1996,10 @@ local function HandleDepositInventory()
 		repeatDebounce = true
 		
 		--Delete the tiles from the inventory (or set their amounts to zero)
-		for i,menu in pairs (PlayerGui.DataMenu.DataMenu.InventoryMenu:GetChildren()) do
+		for _,menu in pairs (PlayerGui.DataMenu.DataMenu.InventoryMenu:GetChildren()) do
 			if menu:IsA("Frame") then
-				for i,page in pairs (menu:GetChildren()) do
-					for i,tile in pairs (page:GetChildren()) do
+				for _,page in pairs (menu:GetChildren()) do
+					for _,tile in pairs (page:GetChildren()) do
 						if tile:IsA("TextButton") then
 							tile:Destroy()
 						end
