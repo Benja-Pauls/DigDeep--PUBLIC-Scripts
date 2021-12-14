@@ -13,7 +13,7 @@ local experienceData = require(game.ServerStorage.ExperienceData)
 local itemData = require(game.ServerStorage.ItemData)
 local researchData = require(game.ServerStorage.ResearchData)
 
------<|Events/Remote Functions|>--     (key of event order)
+-----<|Events/Functions|>-----     (displayed in order called within folders)
 local eventsFolder = game.ReplicatedStorage.Events
 
 local awardLevelRewards = eventsFolder.GUI:WaitForChild("AwardLevelRewards")
@@ -156,11 +156,7 @@ end
 
 ---------------------<|High-Traffic Functions|>--------------------------------------------------------------------------------------------------------------------------------------
 
-----------------------------
 -- 
--- @param saveFolder ____. player ______. statName _____. value _____. overFlow _____.
-----------------------------
-
 local function updateGUIForFile(saveFolder, player, statName, value, overFlow)
 	local playerUserId = game.Players:FindFirstChild(tostring(player)).UserId
 	local playerDataFile = playerData:WaitForChild(tostring(playerUserId))
@@ -201,11 +197,11 @@ local function updateGUIForFile(saveFolder, player, statName, value, overFlow)
 				local levelUp
 				if savedLevelValue ~= expLevel then --If, because of new exp, player is higher level than save, send signal to display levelUp
 					sessionData[playerUserId][statName .. "Level"] = expLevel
-					sessionData[playerUserId][statName .. "UnseenRewards"] += 1
+					sessionData[playerUserId][statName .. "UnseenLevels"] += 1
 					
 					local expRefer = playerDataFile.Experience:FindFirstChild(tostring(itemType)):FindFirstChild(statName)
 					expRefer.Value = expLevel
-					expRefer:FindFirstChild(statName .. "UnseenRewards").Value += 1
+					expRefer:FindFirstChild(statName .. "UnseenLevels").Value += 1
 
 					levelUp = expLevel
 				end
@@ -392,10 +388,10 @@ function LoadPlayerData(playerDataFile, data, joinedPlayer)
 					local expSave = checkSaveData(data[expName])
 					importSaveData(data, expSave, expName, expRefer)
 					
-					local unseenRewardsSaveName = expName .. "UnseenRewards"
-					local unseenRewardsRefer = createSaveReference(expRefer, unseenRewardsSaveName, "NumberValue")
-					local unseenRewardsSave = checkSaveData(data[unseenRewardsSaveName])
-					importSaveData(data, unseenRewardsSave, unseenRewardsSaveName, unseenRewardsRefer)
+					local unseenLevelsSaveName = expName .. "UnseenLevels"
+					local unseenLevelsRefer = createSaveReference(expRefer, unseenLevelsSaveName, "NumberValue")
+					local unseenLevelsSave = checkSaveData(data[unseenLevelsSaveName])
+					importSaveData(data, unseenLevelsSave, unseenLevelsSaveName, unseenLevelsRefer)
 					
 					--Calculated reference, don't check data
 					local expLevel = createSaveReference(expRefer, expName .. "Level", "NumberValue")
@@ -739,8 +735,8 @@ function GetPlayerLevel(player, expInfo, onlyExpAmount, onlyRewardCount) --Use t
 	
 	if sessionData[playerUserId][expName] then
 		if onlyRewardCount then
-			local unseenRewards = sessionData[playerUserId][expName .. "UnseenRewards"]
-			return unseenRewards
+			local unseenLevels = sessionData[playerUserId][expName .. "UnseenLevels"]
+			return unseenLevels
 		else
 			local expAmount = sessionData[playerUserId][expName]
 
@@ -770,6 +766,10 @@ function getCurrentPlayerLevel.OnServerInvoke(player, expInfo, onlyExpAmount, on
 	return GetPlayerLevel(player, expInfo, onlyExpAmount, onlyRewardCount) --Both PSM and client need to access this function
 end
 
+-- @PARAMS
+-- player = 
+-- expName = 
+-- expTypeName = 
 function awardLevelRewards.OnServerInvoke(player, expName, expTypeName)
 	local playerUserId = player.UserId
 	local playerDataFile = playerData:FindFirstChild(tostring(playerUserId))
@@ -777,13 +777,14 @@ function awardLevelRewards.OnServerInvoke(player, expName, expTypeName)
 	if experienceData[expTypeName] then
 		if experienceData[expTypeName][expName] then
 			local expInfo = experienceData[expTypeName][expName]
-			local unseenRewardsCount = sessionData[playerUserId][expName .. "UnseenRewards"]
+			local unseenLevelsCount = sessionData[playerUserId][expName .. "UnseenLevels"]
 			
-			if unseenRewardsCount > 0 then
+			if unseenLevelsCount > 0 then -- Ensure player actually needs to level up
 				local currentLevel = sessionData[playerUserId][expName .. "Level"]
-				local rewardLevel = currentLevel - unseenRewardsCount + 1
+				local rewardLevel = currentLevel - unseenLevelsCount + 1
 				local levelInfo = expInfo["Levels"][rewardLevel]
 				
+				-- Give player level rewards
 				if sessionData[playerUserId][expName] >= levelInfo["Exp Requirement"] then
 					for r = 1,#levelInfo["Rewards"] do
 						local rewardInfo = levelInfo["Rewards"][r]
@@ -794,7 +795,7 @@ function awardLevelRewards.OnServerInvoke(player, expName, expTypeName)
 							local amount = rewardInfo[3]
 							PlayerStatManager:changeStat(player, tostring(statInfo), amount, "Inventory")
 							
-							--Declare discovery if not
+							-- Declare "new item discovered!" if not already
 							local discoveredValue = sessionData[playerUserId][tostring(statInfo) .. "Discovered"]
 							if discoveredValue == false then
 								PlayerStatManager:changeStat(player, tostring(statInfo) .. "Discovered", true, "Inventory")
@@ -803,7 +804,7 @@ function awardLevelRewards.OnServerInvoke(player, expName, expTypeName)
 						elseif rewardType == "Equipment" then
 							PlayerStatManager:changeStat(player, tostring(statInfo), true, "Equipment")
 							
-						else --Research List
+						else -- Research List Reward
 							for r = 1,#rewardInfo do
 								local researchName = rewardInfo[r]["Research Name"]
 								local researchType = rewardInfo[r]["Resarch Type"]
@@ -825,17 +826,17 @@ function awardLevelRewards.OnServerInvoke(player, expName, expTypeName)
 						end
 					end
 					
-					sessionData[playerUserId][expName .. "UnseenRewards"] -= 1
+					sessionData[playerUserId][expName .. "UnseenLevels"] -= 1
 					if playerDataFile.Experience:FindFirstChild(expTypeName) then
 						local expFolder = playerDataFile.Experience:FindFirstChild(expTypeName):FindFirstChild(expName)
 						if expFolder then
-							if expFolder:FindFirstChild(expName .. "UnseenRewards") then
-								expFolder:FindFirstChild(expName .. "UnseenRewards").Value -= 1
+							if expFolder:FindFirstChild(expName .. "UnseenLevels") then
+								expFolder:FindFirstChild(expName .. "UnseenLevels").Value -= 1
 							end
 						end
 					end
 					
-					if sessionData[playerUserId][expName .. "UnseenRewards"] > 0 then
+					if sessionData[playerUserId][expName .. "UnseenLevels"] > 0 then
 						return true
 					else
 						return false
