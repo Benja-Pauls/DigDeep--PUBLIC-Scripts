@@ -14,7 +14,7 @@ local pageManager = dataMenu.PageManager
 -----------<|Remote Events/Functions|>--
 local eventsFolder = game.ReplicatedStorage.Events
 
-local awardLevelRewards = eventsFolder.GUI:WaitForChild("AwardLevelRewards")
+local AwardLevelRewards = eventsFolder.GUI:WaitForChild("AwardLevelRewards")
 local insertItemViewerInfo = eventsFolder.GUI:WaitForChild("InsertItemViewerInfo")
 local MoveAllBaseScreenUI = eventsFolder.GUI:WaitForChild("MoveAllBaseScreenUI")
 local ManageTilePlacementFunction = eventsFolder.GUI:FindFirstChild("ManageTilePlacement")
@@ -929,9 +929,9 @@ local function ManageEquipButton(currentlyEquipped, statName, Equip)
 end
 
 local levelUpNotify = expInfoViewerMenu.LevelUpNotify
-local function DisplayLevelUp(tile, expInfo, unseenRewardCount, currentLevel)
+local function DisplayLevelUp(tile, expInfo, unseenLevelCount, currentLevel)
 	
-	local newLevel = currentLevel - unseenRewardCount + 1
+	local newLevel = currentLevel - unseenLevelCount + 1
 	local levelInfo = expInfo["Levels"][newLevel]
 	local prevLevelInfo = expInfo["Levels"][newLevel - 1]
 
@@ -1022,12 +1022,12 @@ local function DisplayLevelUp(tile, expInfo, unseenRewardCount, currentLevel)
 	local retractLevelUpTweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Elastic, Enum.EasingDirection.Out)
 	local retractLevelUpTween = TweenService:Create(levelUpDisplay, retractLevelUpTweenInfo, {Size = UDim2.new(0.75, 0, 0.27, 0)})
 	retractLevelUpTween:Play()
+	
+	-- Udpate unseenLevelCount & Give Player Level Rewards
+	if dataMenu.Visible == true then -- If player kept the DataMenu open
+		local rewardsAvailable = AwardLevelRewards:InvokeServer(expInfo["StatName"], expInfo["StatType"])
 		
-	--Udpate unseenReward Count & Give Player Level Rewards
-	if dataMenu.Visible == true then
-		local moreRewards = awardLevelRewards:InvokeServer(expInfo["StatName"], expInfo["StatType"])
-			
-		if moreRewards then
+		if rewardsAvailable then -- There is another level to display rewards for
 			wait(2)
 			local hideLevelUpTweenInfo = TweenInfo.new(2, Enum.EasingStyle.Back, Enum.EasingDirection.In)
 			local hideLevelUpTween = TweenService:Create(levelUpDisplay, hideLevelUpTweenInfo, {Size = UDim2.new(0, 0, 0, 0)})
@@ -1035,13 +1035,17 @@ local function DisplayLevelUp(tile, expInfo, unseenRewardCount, currentLevel)
 			
 			hideLevelUpTween.Completed:Wait()
 			
-			local newUnseenRewardCount = getCurrentPlayerLevel:InvokeServer(expInfo, nil, true)
-			DisplayLevelUp(tile, expInfo, newUnseenRewardCount, getCurrentPlayerLevel:InvokeServer(expInfo))
+			local newUnseenLevelCount = getCurrentPlayerLevel:InvokeServer(expInfo, nil, true)
+			
+			-- Recursive call to prevent redundancy
+			DisplayLevelUp(tile, expInfo, newUnseenLevelCount, getCurrentPlayerLevel:InvokeServer(expInfo))
 		else
-			GuiUtility.UpdateNotifySymbols(tile.Parent.Parent.Parent, tile, false)
 			wait(5)
 			levelUpNotify.Visible = false
 		end
+		
+		-- Show what's new
+		GuiUtility.UpdateNotifySymbols(tile.Parent.Parent.Parent, tile, false)
 	end
 end
 
@@ -1412,13 +1416,13 @@ local function InsertItemViewerInfo(tile, statMenu, Type, statName, statInfo, va
 		--See if ExperienceMenu must display NewLevel Animation Sequence
 		if tile:FindFirstChild("NotifySymbol") then
 			if tile.NotifySymbol.Visible == true then
-				local unseenRewardCount = getCurrentPlayerLevel:InvokeServer(statInfo, nil, true)
+				local unseenLevelCount = getCurrentPlayerLevel:InvokeServer(statInfo, nil, true)
 				local currentLevel = getCurrentPlayerLevel:InvokeServer(statInfo)
-				statMenu.LevelRewards.CurrentDisplayLevel.Value = currentLevel - unseenRewardCount
+				statMenu.LevelRewards.CurrentDisplayLevel.Value = currentLevel - unseenLevelCount
 				MoveRewardBackFrame() --Position bottom BackFrame at Level1 so it can be "rolled up"
 				
 				statMenu.Visible = true
-				DisplayLevelUp(tile, statInfo, unseenRewardCount, currentLevel)
+				DisplayLevelUp(tile, statInfo, unseenLevelCount, currentLevel)
 			else
 				levelUpNotify.Visible = false
 			end
@@ -1515,8 +1519,8 @@ local function InsertTileInfo(Type, tile, statName, value, itemType, tileAlready
 		local percentage = currentProgressExp / totalLevelExp
 		ProgressBar.Progress.Size = UDim2.new(percentage, 0, 1, 0)
 		
-		local unseenRewardCount = getCurrentPlayerLevel:InvokeServer(statInfo, nil, true)
-		if unseenRewardCount > 0 then
+		local unseenLevelCount = getCurrentPlayerLevel:InvokeServer(statInfo, nil, true)
+		if unseenLevelCount > 0 then
 			GuiUtility.UpdateNotifySymbols(dataMenu.ExperienceMenu:FindFirstChild(itemType .. "Menu"), tile, true)
 		else
 			tile.NotifySymbol.Visible = false
