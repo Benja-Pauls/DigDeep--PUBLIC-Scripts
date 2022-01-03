@@ -1,7 +1,5 @@
 --(Script)
 --Entrance to everyone's business, the door you have to go through in order to purchase any plot/structure
-
---**This is a deprecated script and will be replaced since players "purchase" an ISLAND once they unlock it
 -----------------------------------------------------------------------------------------------------------------------------------------------
 local PlayerStatManager = require(game.ServerScriptService:WaitForChild("PlayerStatManager"))
 
@@ -13,6 +11,15 @@ local LocalLoadTycoon = ReplicatedStorage.Events.Tycoon.LocalLoadTycoon
 local LoadTycoon = ReplicatedStorage.Events.Tycoon.LoadTycoon
 
 local debounce = false
+
+
+
+--**This code will be changed in the future since players now own an entire island
+--They will "purchase" the island once they unlock it and land on it (or when joining the game
+--since they've already unlocked it)
+
+
+
 --Player Touches entrance to tycoon
 script.Parent.Head.Touched:connect(function(hit)
 	local tycoon = script.Parent.Parent.Parent
@@ -98,7 +105,7 @@ ClaimTycoon.OnServerEvent:Connect(function(player,tycoon)
 				script.Parent.Head.CanCollide = false 
 				player.TeamColor = tycoon.TeamColor.Value
 
-				PlayerStatManager:ChangeStat(player, tycoon.Entrance.Name, true)
+				PlayerStatManager:changeStat(player, tycoon.Entrance.Name, true)
 			else
 				print("Two players tried to claim a tycoon at once")
 				local TycoonOwnerShipWarning = player.PlayerGui.TycoonPurchaseGui.OwnershipWarning
