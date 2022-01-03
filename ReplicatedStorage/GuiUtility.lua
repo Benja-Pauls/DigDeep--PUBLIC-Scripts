@@ -1,3 +1,6 @@
+--(ModuleScript)
+--Contains helpful functions that are used across multiple GUIs
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 local GuiUtility = {}
 
 function GuiUtility.GetItemInfo(statName, typeOnly)
