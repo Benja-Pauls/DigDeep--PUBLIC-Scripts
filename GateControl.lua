@@ -1,5 +1,7 @@
 --(Script)
 --Entrance to everyone's business, the door you have to go through in order to purchase any plot/structure
+
+--**This is a deprecated script and will be replaced since players "purchase" an ISLAND once they unlock it
 -----------------------------------------------------------------------------------------------------------------------------------------------
 local PlayerStatManager = require(game.ServerScriptService:WaitForChild("PlayerStatManager"))
 
