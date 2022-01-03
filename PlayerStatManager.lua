@@ -766,10 +766,6 @@ function getCurrentPlayerLevel.OnServerInvoke(player, expInfo, onlyExpAmount, on
 	return GetPlayerLevel(player, expInfo, onlyExpAmount, onlyRewardCount) --Both PSM and client need to access this function
 end
 
--- @PARAMS
--- player = 
--- expName = 
--- expTypeName = 
 function awardLevelRewards.OnServerInvoke(player, expName, expTypeName)
 	local playerUserId = player.UserId
 	local playerDataFile = playerData:FindFirstChild(tostring(playerUserId))
