@@ -1,5 +1,5 @@
 --(ModuleScript)
---Script that may be used to replace the physical values attached to different ITEMS. However, this is not required.
+--Script that may be used to replace the physical values attached to different ITEMS. Doing this will improve security.
 
 local RS = game.ReplicatedStorage
 
