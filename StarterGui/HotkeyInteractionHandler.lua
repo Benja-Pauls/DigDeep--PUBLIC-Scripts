@@ -1,7 +1,9 @@
 --(LocalScript)
---GUI handler for purchases around the tycoon (still refered to as buttons)
+--GUI handler for everything the player interacts with using DisplayButtonGUIs
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 wait(5) --**change this later to add to the loading screen that the game is still loading assets
---all assets that player can interact with will probably have to be loaded before the player can begin playing
+--all assets that player can interact with will probably have to be loaded before the player can begin playing and utilizing this script
 
 local Player = game.Players.LocalPlayer
 local PlayerGui = Player:WaitForChild("PlayerGui")
