@@ -1,26 +1,21 @@
 --(LocalScript)
 --Visuals for TycoonComputer GUI that handles player storage and the research menu
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
-local Player = Players.LocalPlayer
+local player = game.Players.LocalPlayer
+local character = game.Workspace.Players:WaitForChild(tostring(player)) -- Physical model
 
-local PlayerGui = Player:WaitForChild("PlayerGui")
+local PlayerGui = player:WaitForChild("PlayerGui")
 local StarterGui = game:GetService("StarterGui")
 local TycoonComputerGui = script.Parent
 
 local guiElements = game.ReplicatedStorage.GuiElements
-local ComputerScreen = TycoonComputerGui.ComputerScreen
-local taskbar = ComputerScreen.Taskbar
-local MenuSelect = ComputerScreen.MenuSelect
-local FadeOut = ComputerScreen.FadeOut
+local computerScreen = TycoonComputerGui.ComputerScreen
+local taskbar = computerScreen.Taskbar
+local menuSelect = computerScreen.MenuSelect
+local fadeOutFrame = computerScreen.FadeOut
 
-ComputerScreen.Visible = false
-
-local Character = game.Workspace.Players:WaitForChild(tostring(Player))
-local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
-local DefaultWalkSpeed = Character.Humanoid.WalkSpeed
-local DefaultJumpPower = Character.Humanoid.JumpPower
+computerScreen.Visible = false
 
 local eventsFolder = game.ReplicatedStorage.Events
 local LocalLoadTycoon = eventsFolder.Tycoon:WaitForChild("LocalLoadTycoon")
@@ -31,14 +26,14 @@ local GetCurrentPlayerLevel = eventsFolder.Utility:WaitForChild("GetCurrentPlaye
 local CheckPlayerStat = eventsFolder.Utility:WaitForChild("CheckPlayerStat")
 
 local ComputerIsOn = false
-local CurrentStorage
+local CurrentStorage -- Currently open storage being used by player
 
 local BeepSound = script.Parent.Beep
 local KeyboardClickSound = script.Parent.KeyboardClick
 local StartUpSound = script.Parent.StartUp
 local HoverSound = script.Parent.Hover
 
-for _,button in pairs (ComputerScreen:GetDescendants()) do
+for _,button in pairs (computerScreen:GetDescendants()) do
 	if button:IsA("TextButton") or button:IsA("ImageButton") then
 		button.MouseEnter:Connect(function()
 			HoverSound:Play()
@@ -50,11 +45,11 @@ end
 
 local GuiUtility = require(game.ReplicatedStorage:FindFirstChild("GuiUtility"))
 
-local function MenuButtonActiveState(Menu, State)
-	for _,button in pairs (Menu:GetChildren()) do
+local function MenuButtonActiveState(menu, state)
+	for _,button in pairs (menu:GetChildren()) do
 		if button:IsA("ImageButton") then
-			button.Active = State
-			button.Selectable = State
+			button.Active = state
+			button.Selectable = state
 		end
 	end
 end
@@ -70,7 +65,7 @@ end
 
 local function EnsureStorageLoaded()
 	local tileCount = 0
-	for _,page in pairs(ComputerScreen.StorageMenu.ItemsPreview.Materials:GetChildren()) do
+	for _,page in pairs(computerScreen.StorageMenu.ItemsPreview.Materials:GetChildren()) do
 		if page:IsA("Frame") and string.find(page.Name, "Page") then
 			for _,tile in pairs (page:GetChildren()) do
 				if (tile:IsA("ImageButton") or tile:IsA("TextButton")) and string.find(tile.Name, "Slot") then
@@ -90,15 +85,15 @@ local function EnsureStorageLoaded()
 	end
 
 	if trueItemCount == tileCount then
-		ComputerScreen.StorageMenu.Loaded.Value = true
+		computerScreen.StorageMenu.Loaded.Value = true
 	end
 end
 
 --------------------------<|Set Up Menu Functions|>-------------------------------------------------------------------------------------------------------------
 
 local function StartUpComputer()
-	ComputerScreen.Visible = true
-	FadeOut.BackgroundTransparency = 0
+	computerScreen.Visible = true
+	fadeOutFrame.BackgroundTransparency = 0
 	wait(.7)
 	SetUpCredentials()
 end
@@ -107,9 +102,9 @@ local function ShutDownComputer()
 	ComputerIsOn = false
 	for t = 1,20,1 do
 		wait(.02)
-		FadeOut.BackgroundTransparency = FadeOut.BackgroundTransparency - 0.05
+		fadeOutFrame.BackgroundTransparency = fadeOutFrame.BackgroundTransparency - 0.05
 	end
-	ComputerScreen.Visible = false
+	computerScreen.Visible = false
 	
 	ShutDownCutscene()
 end
@@ -136,7 +131,7 @@ end
 
 
 local function PrepareAllMenuVisibility()
-	for _,menu in pairs(ComputerScreen:GetChildren()) do
+	for _,menu in pairs(computerScreen:GetChildren()) do
 		if (menu:IsA("Frame") or menu:IsA("ImageLabel")) and tostring(menu) ~= "FadeOut" then
 			menu.Visible = false
 
@@ -152,9 +147,9 @@ local function PrepareAllMenuVisibility()
 				menu.PreviousResearchButton.Visible = false
 				menu.PreviousResearchButton.Active = false
 				
-				UpdatePageDisplay(ComputerScreen.ResearchMenu.PreviousResearch, false)
-				UpdatePageDisplay(ComputerScreen.ResearchMenu.AvailableResearch, false)
-				UpdatePageDisplay(ComputerScreen.ResearchMenu.CostList, false)
+				UpdatePageDisplay(computerScreen.ResearchMenu.PreviousResearch, false)
+				UpdatePageDisplay(computerScreen.ResearchMenu.AvailableResearch, false)
+				UpdatePageDisplay(computerScreen.ResearchMenu.CostList, false)
 			end
 		elseif tostring(menu) == "FadeOut" then
 			menu.Visible = true
@@ -163,32 +158,32 @@ local function PrepareAllMenuVisibility()
 end
 
 function SetUpCredentials()
-	local PlayerUserId = Player.UserId
+	local PlayerUserId = player.UserId
 	
 	local stringTime = "%I:%M %p"
 	local timestamp = os.time()
-	ComputerScreen.CredentialsScreen.Time.Text = tostring(os.date(stringTime, timestamp))
-	ComputerScreen.CredentialsScreen.User_Login.Username.Text = tostring(Player)
+	computerScreen.CredentialsScreen.Time.Text = tostring(os.date(stringTime, timestamp))
+	computerScreen.CredentialsScreen.User_Login.Username.Text = tostring(player)
 	
-	local PlayerThumbnail = ComputerScreen.CredentialsScreen.PlayerThumbnail
+	local PlayerThumbnail = computerScreen.CredentialsScreen.PlayerThumbnail
 	local thumbType = Enum.ThumbnailType.HeadShot
 	local thumbSize = Enum.ThumbnailSize.Size420x420
-	local PlayerProfilePicture = Players:GetUserThumbnailAsync(PlayerUserId, thumbType, thumbSize)
+	local PlayerProfilePicture = game.Players:GetUserThumbnailAsync(PlayerUserId, thumbType, thumbSize)
 	PlayerThumbnail.Image = PlayerProfilePicture
 	
 	PrepareAllMenuVisibility()
 	
 	taskbar.Visible = false
-	ComputerScreen.CredentialsScreen.Visible = true
+	computerScreen.CredentialsScreen.Visible = true
 	
 	--Fade-in login screen
-	local PasswordInput = ComputerScreen.CredentialsScreen.Pass_Login.Password
+	local PasswordInput = computerScreen.CredentialsScreen.Pass_Login.Password
 	for i = 1,4,1 do
 		PasswordInput:FindFirstChild(tostring(i)).Visible = false
 	end
 	for t = 1,20,1 do
 		wait(.02)
-		FadeOut.BackgroundTransparency = FadeOut.BackgroundTransparency + 0.05
+		fadeOutFrame.BackgroundTransparency += 0.05
 	end
 	
 	--Login sound effects
@@ -203,21 +198,21 @@ function SetUpCredentials()
 	wait(1)
 
 	--BackButton.Position = UDim2.new(BackButton.Position.X.Scale, 0, 1, 0)
-	ComputerScreen.CredentialsScreen:TweenPosition(UDim2.new(0,0,-1.3,0), "Out", "Quint", .5)
+	computerScreen.CredentialsScreen:TweenPosition(UDim2.new(0,0,-1.3,0), "Out", "Quint", .5)
 	
 	SetupTaskbar()
 
-	MenuSelect.Visible = true
+	menuSelect.Visible = true
 	wait(.5)
 	
-	ComputerScreen.CredentialsScreen.Visible = false
-	ComputerScreen.CredentialsScreen.Position = UDim2.new(0,0,0,0)
+	computerScreen.CredentialsScreen.Visible = false
+	computerScreen.CredentialsScreen.Position = UDim2.new(0,0,0,0)
 end
 
 
 ----------------------------<|Tycoon Storage GUI Functions|>---------------------------------------------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-local StorageMenu = ComputerScreen.StorageMenu
+local StorageMenu = computerScreen.StorageMenu
 local SelectionMenu = StorageMenu.SelectionMenu
 local ItemsPreview = StorageMenu.ItemsPreview
 
@@ -225,7 +220,7 @@ local function ViewStorageMenu()
 	StorageMenu.Visible = true
 	SelectionMenu.Visible = false
 	ItemsPreview.Visible = false
-	MenuSelect.Visible = false
+	menuSelect.Visible = false
 	StorageMenu.TopTab.Visible = false
 	StorageMenu.EmptyNotifier.Visible = false
 	ManageSellMenu(false)
@@ -235,7 +230,7 @@ local function ViewStorageMenu()
 	OpenAffiliatedItemPreview("Materials")
 end
 
-MenuSelect.StorageMenuButton.Activated:Connect(function()
+menuSelect.StorageMenuButton.Activated:Connect(function()
 	ViewStorageMenu()
 end)
 
@@ -371,7 +366,7 @@ local function UpdateSelectionInfo(page, tile)
 	
 	--Display Selected Item Info
 	if discovered == true then
-		GuiUtility.Display3DModels(Player, SelectionMenu.Picture, itemInfo:Clone(), true, itemInfo["GUI Info"].DisplayAngle.Value)
+		GuiUtility.Display3DModels(player, SelectionMenu.Picture, itemInfo:Clone(), true, itemInfo["GUI Info"].DisplayAngle.Value)
 		
 		SelectionMenu.Picture.BackgroundColor3 = SelectionMenu.RarityFrame.BackgroundColor3
 		SelectionMenu.DisplayName.Text = tile.ItemName.Value
@@ -397,7 +392,7 @@ local function UpdateSelectionInfo(page, tile)
 			end
 		end)
 	else --Item not discovered
-		GuiUtility.Display3DModels(Player, SelectionMenu.Picture, guiElements.LockedBlock:Clone(), true, itemInfo["GUI Info"].DisplayAngle.Value)
+		GuiUtility.Display3DModels(player, SelectionMenu.Picture, guiElements.LockedBlock:Clone(), true, itemInfo["GUI Info"].DisplayAngle.Value)
 		SelectionMenu.Picture.BackgroundColor3 = Color3.fromRGB(5, 16, 29)
 		SelectionMenu.DisplayName.Text = "Not Discovered"
 		SelectionMenu.DisplayName.TextColor3 = Color3.fromRGB(150, 150, 150)
@@ -919,7 +914,7 @@ end)
 
 -------------------------------------------<|Tycoon Research GUI Functions|>-----------------------------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-local ResearchMenu = ComputerScreen.ResearchMenu
+local ResearchMenu = computerScreen.ResearchMenu
 local AvailableResearch = ResearchMenu.AvailableResearch
 local CurrentResearch = ResearchMenu.CurrentResearch
 local PreviousResearch = ResearchMenu.PreviousResearch
@@ -969,11 +964,11 @@ local function ViewResearchMenu()
 	UpdatePageDisplay(PreviousResearch, false)
 	UpdatePageDisplay(CostList, false)
 
-	MenuSelect.Visible = false
+	menuSelect.Visible = false
 	--BeepSound:Play()
 end
 
-MenuSelect.ResearchMenuButton.Activated:Connect(function()
+menuSelect.ResearchMenuButton.Activated:Connect(function()
 	ViewResearchMenu()
 end)
 
@@ -1404,7 +1399,7 @@ local function InsertTileInfo(menu, tile, researchData, researchType, finishTime
 			statAmount = GuiUtility.ConvertShort(statAmount) --simplify for display
 			
 			--Open storage view for cost tile
-			--**Player can access items in storage even if undiscovered or 0
+			--**player can access items in storage even if undiscovered or 0
 			tile.Activated:Connect(function()
 				local statName = tile.CostTile.StatName.DisplayName.Value
 				
@@ -2008,7 +2003,7 @@ local function HandleDepositInventory()
 			end
 		end
 
-		local finished = DepositInventory:FireServer(Player)
+		local finished = DepositInventory:FireServer(player)
 		wait(finished)
 
 		repeatDebounce = false	
@@ -2033,7 +2028,7 @@ end)
 
 taskbar.Home.Activated:Connect(function()
 	PrepareAllMenuVisibility()
-	MenuSelect.Visible = true
+	menuSelect.Visible = true
 	taskbar.Visible = true
 end)
 
@@ -2090,8 +2085,8 @@ function MoveCamera(StartPart, EndPart, Duration, EasingStyle, EasingDirection)
 end
 
 function StartUpCutscene(promptObject)
-	Character.Humanoid.WalkSpeed = 0
-	Character.Humanoid.JumpPower = 0
+	character.Humanoid.WalkSpeed = 0
+	character.Humanoid.JumpPower = 0
 	
 	CurrentStorage = promptObject.Parent.Parent.Parent
 	promptObject.Enabled = false
@@ -2105,6 +2100,9 @@ function StartUpCutscene(promptObject)
 	StartUpComputer()
 end
 
+local defaultWalkSpeed = character.Humanoid.WalkSpeed
+local defaultJumpPower = character.Humanoid.JumpPower
+
 function ShutDownCutscene()
 	local CutsceneFolder = CurrentStorage:FindFirstChild("CutsceneCameras")
 	MoveCamera(CutsceneFolder.Camera2, CutsceneFolder.Camera1, .7, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
@@ -2113,11 +2111,11 @@ function ShutDownCutscene()
 
 	wait(.8)
 	Camera.CameraType = Enum.CameraType.Custom
-	Camera.CameraSubject = game.Players.LocalPlayer.Character:WaitForChild("Humanoid")
+	Camera.CameraSubject = character:WaitForChild("Humanoid")
 	CurrentStorage.InteractedModel.Main.DisplayButtonGUI.Enabled = true
 	
-	Character.Humanoid.WalkSpeed = DefaultWalkSpeed
-	Character.Humanoid.JumpPower = DefaultJumpPower
+	character.Humanoid.WalkSpeed = defaultWalkSpeed
+	character.Humanoid.JumpPower = defaultJumpPower
 end
 
 ManageStorageTiles("Materials")
