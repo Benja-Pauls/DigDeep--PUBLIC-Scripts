@@ -1,7 +1,4 @@
 --One Module Script to reference every equipment value in the game across all scripts
---Server scripts require this script while local scripts use the GetItemStats remote function with checks in PlayerStatManager before returning cloned item info
-
---One Module Script to reference every equipment value in the game across all scripts
 --Server scripts require this script while local scripts use the GetItemStatTable remote function with checks in PlayerStatManager before returning cloned item info
 
 local RS = game.ReplicatedStorage
@@ -10,6 +7,10 @@ local EquipmentData = {
 	
 	["Tools"] = {
 		["Pickaxes"] = {
+			
+			--GUI Info for these pickaxes are still within the physical object's GUI Info folder
+			
+			
 			
 			["Glow Pickaxe"] = {
 				["Stats"] = {
@@ -121,4 +122,3 @@ local EquipmentData = {
 
 
 return EquipmentData
-
