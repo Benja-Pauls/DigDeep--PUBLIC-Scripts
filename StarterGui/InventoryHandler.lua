@@ -96,34 +96,30 @@ for _,v in pairs (MenuTabs) do
 	end)
 end
 
+local function CloseDataMenu()
+	OpenDataMenuButton.Active = false
+	dataMenu:TweenPosition((UDim2.new(0.5, 0, -0.8, 0)), "Out", "Quint", 0.5)
+	wait(0.5)
+	dataMenu.Visible = false
+	dataMenu.Position = UDim2.new(dataMenu.Position.X, 0, 0.141, 0)
+	pageManager.Visible = false
+	
+	dataMenu.TopTabBar.CloseMenu.Active = false
+	OpenDataMenuButton.Active = true
+end
+
 local PlayerViewport = dataMenu.PlayerMenu.PlayerInfo.PlayerView
 local PlayerModel = game.Workspace.Players:WaitForChild(tostring(Player))
 OpenDataMenuButton.Activated:Connect(function()
 	if dataMenu.Visible == false then
 		GuiUtility.OpenDataMenu(Player, PlayerModel, dataMenu, "PlayerMenu")
 	elseif dataMenu.Visible == true then
-		OpenDataMenuButton.Active = false
-		dataMenu:TweenPosition(UDim2.new(0.5, 0, -0.8, 0), "Out", "Quint", 0.5)
-		wait(0.5)
-		dataMenu.Visible = false
-		dataMenu.Position = UDim2.new(0.159, 0, 0.141, 0)
-		pageManager.Visible = false
-
-		dataMenu.TopTabBar.CloseMenu.Active = false
-		OpenDataMenuButton.Active = true
+		CloseDataMenu()
 	end
 end)
 
 dataMenu.TopTabBar.CloseMenu.Activated:Connect(function()
-	dataMenu.TopTabBar.CloseMenu.Active = false
-	OpenDataMenuButton.Active = false
-	dataMenu:TweenPosition(UDim2.new(0.159, 0, -0.8, 0), "Out", "Quint", .5)
-	wait(.5)
-	dataMenu.Visible = false
-	dataMenu.Position = UDim2.new(0.159, 0, 0.141, 0)
-	pageManager.Visible = false
-
-	OpenDataMenuButton.Active = true
+	CloseDataMenu()
 end)
 
 dataMenu.SelectedBagInfo.Position = UDim2.new(0, 0, 0.94, 0)
