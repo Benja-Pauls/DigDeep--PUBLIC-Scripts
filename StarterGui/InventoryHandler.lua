@@ -638,7 +638,7 @@ local function ManageTilePlacement(menu, menuType, rarityInfo)
 			Page = menu:FindFirstChild("Page" .. tostring(pageCount))
 
 			local slotCount = 0
-			for i,slot in pairs (Page:GetChildren()) do
+			for _,slot in pairs (Page:GetChildren()) do
 				if (slot:IsA("TextButton") or slot:IsA("ImageButton")) and string.find(slot.Name, "Slot") then
 					slotCount += 1
 				end
@@ -756,7 +756,7 @@ function ManageTileTruePosition(menu, tilePage, affectingTile, truePosition, max
 								local truePositionValue = GetTileTruePosition(tilePage, pageSlotCount, maxTileAmount)
 								tile.TruePosition.Value = truePositionValue
 
-								if menuType ~= "Experience" or string.match(menuType, "Research") then --straight down insertion
+								if menuType ~= "Inventory" or string.match(menuType, "Research") then --straight down insertion
 									if menuType == "Experience" then
 										tile.Position = UDim2.new(0.023,0,0.023+((pageSlotCount)*0.215),0)
 										tile.Size = UDim2.new(0.952, 0, 0.2, 0)
@@ -1692,7 +1692,8 @@ end
 
 local function ManageTiles(statName, Menu, value, Type, itemType, updateNotify)
 	--print(Stat,Menu,Value,Type,AcquiredLocation) = Stone,OresMenu,2,Inventory,Mineshaft
-
+	
+	-- Tile representations with info outside a Module Script
 	local rarityInfo
 	if Type ~= "Experience" then
 		local statLocation
