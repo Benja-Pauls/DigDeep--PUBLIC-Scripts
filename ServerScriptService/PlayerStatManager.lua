@@ -105,7 +105,7 @@ end
 
 -- Update ServerStorage Folders With Data
 local function importSaveData(data, previousSave, saveName, refer)
-	if not previousSave then
+	if not previousSave then -- Set values to default
 		if typeof(refer.Value) == "number" then
 			refer.Value = 0
 		elseif typeof(refer.Value) == "boolean" then
@@ -116,9 +116,9 @@ local function importSaveData(data, previousSave, saveName, refer)
 	end
 	
 	if data[saveName] == nil then
-		data[saveName] = refer.Value -- laceholder value to create (even if not interacted with yet)
+		data[saveName] = refer.Value -- Associate data with ref set to default
 	else
-		refer.Value = data[saveName]
+		refer.Value = data[saveName] -- Apply data to ServerStorage reference
 	end
 end
 
@@ -693,7 +693,7 @@ function getItemStatTable.OnServerInvoke(player, dataType, equipType, itemType, 
 	end
 	
 	if itemInfo then
-		local cloneInfo = Utility:cloneTable(itemInfo)
+		local cloneInfo = Utility:cloneTable(itemInfo) -- Clone table so exploiters cannot manipulate
 		return cloneInfo
 	else
 		warn(player, " is possibly exploiting: Trying to grab nil DataStatTables")
