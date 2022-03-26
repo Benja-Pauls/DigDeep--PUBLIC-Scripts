@@ -1,3 +1,7 @@
+# DigDeep--PUBLIC-Scripts
+All scripts that are **allowed to be public** during Dig Deep's development process.
+
+
 For those who accessed this GitHub from Twitter, I will be updating these GitHub scripts with the "End of Day Update" tweets (this GitHub is not a replacement for the tweets).
 If you didn't access this GitHub through Twitter, Twitter is this project's development log, announcing nightly update summaries whenever possible about the day's progress.
 If you would like to hear those daily updates, the project's Twitter is https://twitter.com/Benisthedj
