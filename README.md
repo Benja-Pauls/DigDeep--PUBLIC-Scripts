@@ -1,5 +1,5 @@
 # DigDeep--PUBLIC-Scripts
-All scripts that are **allowed to be public** during Dig Deep's development process.
+All scripts that are **allowed to be public** during Dig Deep's development process. Previously sensitive files were stored in this repository, so feel free to delve-through the commit history to see old versions of data management for your own projects. This choice was made after significant changes were made to the PlayerStatManager script.
 
 
 For those who accessed this GitHub from Twitter, I will be updating these GitHub scripts with the "End of Day Update" tweets (this GitHub is not a replacement for the tweets).
